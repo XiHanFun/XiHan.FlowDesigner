@@ -1,0 +1,527 @@
+/*
+ * Copyright (c) 2021-Present XiHanFun and contributors.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ */
+
+// <xh-flow-viewer>：只读流程图查看器。按文档与节点类型画出节点、连线、箭头与标签，叠加运行状态与高亮；
+// 拖动平移，Ctrl / ⌘ + 滚轮缩放，滚轮平移；获得焦点后 + / - / 0 缩放、方向键平移。
+
+import type { FlowDocument, FlowEdgeRouter, FlowNode, FlowNodeType, FlowNodeTypeRegistry, FlowRect } from '@xihan-flow/core'
+import type { Viewport } from '@xihan-ui/designer-kit'
+import type { KeyedChildren, PropertyValues } from '@xihan-ui/web-components/authoring'
+import type { FlowNodeStatus, FlowScene, FlowSceneEdge, FlowSceneNode } from './scene'
+import { centerOn, DEFAULT_VIEWPORT, expandRect, fitRect, panBy, revealRect, wheelZoomFactor, zoomBy } from '@xihan-ui/designer-kit'
+import {
+  createGeneratedElement,
+  emitEvent,
+  GEN_ATTR,
+  reconcile,
+  registerElement,
+  SVG_NS,
+  XhConfigController,
+  XhReactiveElement,
+} from '@xihan-ui/web-components/authoring'
+import { createOrthogonalRouter } from './router'
+import { buildScene } from './scene'
+
+/** 查看器的标签名。 */
+export const FLOW_VIEWER_TAG = 'xh-flow-viewer'
+
+/** 查看器的文案。 */
+export interface FlowViewerTranslations {
+  /** 视口区域的可访问名。 */
+  readonly label: string
+}
+
+/** 自定义节点内容时拿到的上下文。 */
+export interface FlowNodeRenderContext {
+  readonly node: FlowNode
+  readonly nodeType: FlowNodeType | undefined
+  readonly label: string
+  readonly status: FlowNodeStatus | undefined
+  readonly highlighted: boolean
+}
+
+/** 自定义节点内容：每次绘制都会调用，把内容写进 container；不给时显示标签文字。 */
+export type FlowNodeRenderer = (container: HTMLElement, context: FlowNodeRenderContext) => void
+
+/** 查看器派发的事件；x / y 为浏览器视口坐标。 */
+export interface FlowViewerEventMap {
+  'node-click': CustomEvent<{ id: string }>
+  'edge-click': CustomEvent<{ id: string }>
+  'blank-click': CustomEvent<Record<string, never>>
+  'node-contextmenu': CustomEvent<{ id: string, x: number, y: number }>
+  'edge-contextmenu': CustomEvent<{ id: string, x: number, y: number }>
+  'blank-contextmenu': CustomEvent<{ x: number, y: number }>
+  'viewport-change': CustomEvent<{ viewport: Viewport }>
+}
+
+const DEFAULT_TRANSLATIONS: FlowViewerTranslations = { label: 'Flow diagram' }
+const ZOOM_STEP = 1.2
+const PAN_STEP = 48
+const CLICK_SLOP = 4
+const FIT_PADDING = 24
+const EDGE_LAYER_MARGIN = 32
+
+interface PanState {
+  readonly pointerId: number
+  readonly startX: number
+  readonly startY: number
+  lastX: number
+  lastY: number
+  moved: boolean
+}
+
+interface Layers {
+  readonly root: HTMLElement
+  readonly world: HTMLElement
+  readonly edges: SVGSVGElement
+  readonly labels: HTMLElement
+  readonly nodes: HTMLElement
+}
+
+export class XhFlowViewer extends XhReactiveElement {
+  static override properties = {
+    document: { attribute: false },
+    nodeTypes: { attribute: false },
+    statuses: { attribute: false },
+    highlighted: { attribute: false },
+    renderNode: { attribute: false },
+    router: { attribute: false },
+    translations: { attribute: false },
+  }
+
+  /** 要显示的流程图文档。 */
+  declare document: FlowDocument | undefined
+  /** 节点类型登记表，决定端口位置与缺省标签。 */
+  declare nodeTypes: FlowNodeTypeRegistry | undefined
+  /** 节点 id → 运行状态；null 表示没有状态。 */
+  declare statuses: Readonly<Record<string, FlowNodeStatus | null>> | undefined
+  /** 高亮的节点 id。 */
+  declare highlighted: readonly string[] | undefined
+  /** 自定义节点内容。 */
+  declare renderNode: FlowNodeRenderer | undefined
+  /** 连线路由器，缺省为直角路由。 */
+  declare router: FlowEdgeRouter | undefined
+  /** 元素自己的文案，压在全局配置之上。 */
+  declare translations: Partial<FlowViewerTranslations> | undefined
+
+  readonly #config = new XhConfigController(this)
+  readonly #keys: KeyedChildren = new WeakMap()
+  #layers: Layers | undefined
+  #defaultRouter: FlowEdgeRouter | undefined
+  #scene: FlowScene | undefined
+  #viewport: Viewport = DEFAULT_VIEWPORT
+  #fitPending = true
+  #pan: PanState | undefined
+  #suppressClick = false
+  #resizeObserver: ResizeObserver | undefined
+
+  override connectedCallback(): void {
+    super.connectedCallback()
+    const layers = this.#ensureLayers()
+    if (typeof ResizeObserver !== 'undefined') {
+      this.#resizeObserver ??= new ResizeObserver(() => this.#fitIfPending())
+      this.#resizeObserver.observe(layers.root)
+    }
+  }
+
+  override disconnectedCallback(): void {
+    super.disconnectedCallback()
+    this.#resizeObserver?.disconnect()
+    this.#pan = undefined
+  }
+
+  protected override update(changed: PropertyValues): void {
+    super.update(changed)
+    const layers = this.#ensureLayers()
+    const t = this.#config.translations<FlowViewerTranslations>('xh-flow-viewer', DEFAULT_TRANSLATIONS, this.translations)
+    layers.root.setAttribute('aria-label', t.label)
+    if (changed.has('document') && changed.get('document') === undefined)
+      this.#fitPending = true
+    if (!this.#scene || changed.has('document') || changed.has('nodeTypes') || changed.has('router'))
+      this.#scene = this.document && this.nodeTypes ? buildScene(this.document, this.nodeTypes, { route: this.#route() }) : undefined
+    this.#renderEdges(layers)
+    this.#renderLabels(layers)
+    this.#renderNodes(layers)
+    if (!this.#fitIfPending())
+      this.#applyViewport(false)
+  }
+
+  /** 当前视口。 */
+  getViewport(): Viewport {
+    return this.#viewport
+  }
+
+  /** 设置视口。 */
+  setViewport(viewport: Viewport): void {
+    this.#viewport = viewport
+    this.#fitPending = false
+    this.#applyViewport(true)
+  }
+
+  /** 缩放并平移到让整张图落在视口中央，小图不放大到 100% 以上。 */
+  zoomToFit(): void {
+    const bounds = this.#scene?.bounds
+    const size = this.#size()
+    if (!bounds || !size)
+      return
+    this.setViewport(fitRect(bounds, size, { padding: FIT_PADDING }))
+  }
+
+  /** 以视口中心放大一档。 */
+  zoomIn(): void {
+    this.#zoomAtCenter(ZOOM_STEP)
+  }
+
+  /** 以视口中心缩小一档。 */
+  zoomOut(): void {
+    this.#zoomAtCenter(1 / ZOOM_STEP)
+  }
+
+  /** 缩放到 100% 并把整张图居中。 */
+  zoomToActual(): void {
+    const bounds = this.#scene?.bounds
+    const size = this.#size()
+    if (!size)
+      return
+    const center = bounds ? { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 } : { x: 0, y: 0 }
+    this.setViewport(centerOn({ x: 0, y: 0, zoom: 1 }, center, size))
+  }
+
+  /** 把节点居中显示。 */
+  scrollToNode(id: string): void {
+    const rect = this.#nodeRect(id)
+    const size = this.#size()
+    if (!rect || !size)
+      return
+    this.setViewport(centerOn(this.#viewport, { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }, size))
+  }
+
+  /** 节点没整个落在视口内时把它居中，已在视口内则不动。 */
+  revealNode(id: string): void {
+    const rect = this.#nodeRect(id)
+    const size = this.#size()
+    if (!rect || !size)
+      return
+    const next = revealRect(this.#viewport, rect, size, FIT_PADDING)
+    if (next !== this.#viewport)
+      this.setViewport(next)
+  }
+
+  /** 设置单个节点的运行状态，传 null 清除。 */
+  setNodeStatus(id: string, status: FlowNodeStatus | null): void {
+    this.statuses = { ...this.statuses, [id]: status }
+  }
+
+  /** 批量设置节点运行状态，未列出的节点保持不变。 */
+  setNodeStatuses(statuses: Readonly<Record<string, FlowNodeStatus | null>>): void {
+    this.statuses = { ...this.statuses, ...statuses }
+  }
+
+  /** 高亮一组节点，其余节点取消高亮。 */
+  highlightNodes(ids: readonly string[]): void {
+    this.highlighted = [...ids]
+  }
+
+  /** 清除全部高亮。 */
+  clearHighlights(): void {
+    this.highlighted = []
+  }
+
+  #route(): FlowEdgeRouter {
+    if (this.router)
+      return this.router
+    this.#defaultRouter ??= createOrthogonalRouter()
+    return this.#defaultRouter
+  }
+
+  #ensureLayers(): Layers {
+    if (this.#layers?.root.isConnected && this.#layers.root.parentElement === this)
+      return this.#layers
+    const doc = this.ownerDocument
+    const root = createGeneratedElement(doc, 'div')
+    root.dataset.part = 'viewport'
+    root.setAttribute('role', 'region')
+    root.tabIndex = 0
+    const world = createGeneratedElement(doc, 'div')
+    world.dataset.part = 'world'
+    const edges = doc.createElementNS(SVG_NS, 'svg')
+    edges.setAttribute(GEN_ATTR, '')
+    edges.setAttribute('data-part', 'edges')
+    edges.setAttribute('aria-hidden', 'true')
+    const labels = createGeneratedElement(doc, 'div')
+    labels.dataset.part = 'labels'
+    const nodes = createGeneratedElement(doc, 'div')
+    nodes.dataset.part = 'nodes'
+    world.append(edges, labels, nodes)
+    root.append(world)
+    this.append(root)
+    root.addEventListener('pointerdown', this.#onPointerDown)
+    root.addEventListener('pointermove', this.#onPointerMove)
+    root.addEventListener('pointerup', this.#onPointerEnd)
+    root.addEventListener('pointercancel', this.#onPointerEnd)
+    root.addEventListener('click', this.#onClick)
+    root.addEventListener('contextmenu', this.#onContextMenu)
+    root.addEventListener('wheel', this.#onWheel, { passive: false })
+    root.addEventListener('keydown', this.#onKeyDown)
+    this.#layers = { root, world, edges, labels, nodes }
+    return this.#layers
+  }
+
+  #renderEdges(layers: Layers): void {
+    const scene = this.#scene
+    const edges = scene?.edges.filter(edge => edge.path !== '') ?? []
+    const box = scene?.bounds ? expandRect(scene.bounds, EDGE_LAYER_MARGIN) : { x: 0, y: 0, width: 0, height: 0 }
+    const svg = layers.edges
+    svg.setAttribute('viewBox', `${box.x} ${box.y} ${box.width} ${box.height}`)
+    svg.setAttribute('width', String(box.width))
+    svg.setAttribute('height', String(box.height))
+    svg.style.left = `${box.x}px`
+    svg.style.top = `${box.y}px`
+    const doc = this.ownerDocument
+    reconcile(svg, edges, this.#keys, edge => edge.id, (edge, reuse) => {
+      const group = reuse ?? createEdgeGroup(doc)
+      paintEdge(group, edge)
+      return group
+    })
+  }
+
+  #renderLabels(layers: Layers): void {
+    const labeled = this.#scene?.edges.filter(edge => edge.label !== undefined && edge.labelPoint !== undefined) ?? []
+    const doc = this.ownerDocument
+    reconcile(layers.labels, labeled, this.#keys, edge => edge.id, (edge, reuse) => {
+      const label = (reuse as HTMLElement | undefined) ?? createGeneratedElement(doc, 'div')
+      label.dataset.part = 'edge-label'
+      label.dataset.edgeId = edge.id
+      label.textContent = edge.label ?? ''
+      label.style.left = `${edge.labelPoint!.x}px`
+      label.style.top = `${edge.labelPoint!.y}px`
+      return label
+    })
+  }
+
+  #renderNodes(layers: Layers): void {
+    const nodes = this.#scene?.nodes ?? []
+    const statuses = this.statuses ?? {}
+    const highlighted = new Set(this.highlighted ?? [])
+    const doc = this.ownerDocument
+    reconcile(layers.nodes, nodes, this.#keys, node => node.id, (sceneNode, reuse) => {
+      const element = (reuse as HTMLElement | undefined) ?? createGeneratedElement(doc, 'div')
+      this.#paintNode(element, sceneNode, statuses[sceneNode.id] ?? undefined, highlighted.has(sceneNode.id))
+      return element
+    })
+  }
+
+  #paintNode(element: HTMLElement, sceneNode: FlowSceneNode, status: FlowNodeStatus | undefined, highlighted: boolean): void {
+    const { node, rect } = sceneNode
+    element.dataset.part = 'node'
+    element.dataset.nodeId = node.id
+    element.dataset.nodeType = node.type
+    toggleData(element, 'status', status)
+    toggleData(element, 'highlighted', highlighted ? '' : undefined)
+    element.style.left = `${rect.x}px`
+    element.style.top = `${rect.y}px`
+    element.style.width = `${rect.width}px`
+    element.style.height = `${rect.height}px`
+    if (this.renderNode)
+      this.renderNode(element, { node, nodeType: sceneNode.nodeType, label: sceneNode.label, status, highlighted })
+    else if (element.textContent !== sceneNode.label)
+      element.textContent = sceneNode.label
+  }
+
+  #fitIfPending(): boolean {
+    if (!this.#fitPending || !this.#scene?.bounds || !this.#size())
+      return false
+    this.#fitPending = false
+    this.zoomToFit()
+    return true
+  }
+
+  #applyViewport(notify: boolean): void {
+    const world = this.#layers?.world
+    if (world) {
+      const { x, y, zoom } = this.#viewport
+      world.style.transform = `translate(${x}px, ${y}px) scale(${zoom})`
+    }
+    if (notify)
+      emitEvent(this, 'viewport-change', { viewport: this.#viewport })
+  }
+
+  #size(): { width: number, height: number } | undefined {
+    const root = this.#layers?.root
+    if (!root || root.clientWidth === 0 || root.clientHeight === 0)
+      return undefined
+    return { width: root.clientWidth, height: root.clientHeight }
+  }
+
+  #nodeRect(id: string): FlowRect | undefined {
+    return this.#scene?.nodes.find(node => node.id === id)?.rect
+  }
+
+  #zoomAtCenter(factor: number): void {
+    const size = this.#size()
+    if (!size)
+      return
+    this.setViewport(zoomBy(this.#viewport, factor, { x: size.width / 2, y: size.height / 2 }))
+  }
+
+  #localPoint(event: MouseEvent): { x: number, y: number } {
+    const box = this.#layers!.root.getBoundingClientRect()
+    return { x: event.clientX - box.left, y: event.clientY - box.top }
+  }
+
+  #targetOf(event: Event): { kind: 'node' | 'edge', id: string } | undefined {
+    const target = event.target instanceof Element ? event.target : undefined
+    const node = target?.closest<HTMLElement>('[data-part="node"]')
+    if (node?.dataset.nodeId !== undefined && this.contains(node))
+      return { kind: 'node', id: node.dataset.nodeId }
+    const edge = target?.closest('[data-edge-id]')
+    const edgeId = edge?.getAttribute('data-edge-id')
+    if (edge && edgeId !== null && edgeId !== undefined && this.contains(edge))
+      return { kind: 'edge', id: edgeId }
+    return undefined
+  }
+
+  readonly #onPointerDown = (event: PointerEvent): void => {
+    if (event.button !== 0 || this.#pan)
+      return
+    this.#pan = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, lastX: event.clientX, lastY: event.clientY, moved: false }
+    this.#suppressClick = false
+  }
+
+  readonly #onPointerMove = (event: PointerEvent): void => {
+    const pan = this.#pan
+    if (!pan || pan.pointerId !== event.pointerId)
+      return
+    if (!pan.moved) {
+      if (Math.hypot(event.clientX - pan.startX, event.clientY - pan.startY) < CLICK_SLOP)
+        return
+      pan.moved = true
+      this.#layers?.root.setPointerCapture?.(event.pointerId)
+      this.#layers?.root.setAttribute('data-panning', '')
+    }
+    const dx = event.clientX - pan.lastX
+    const dy = event.clientY - pan.lastY
+    pan.lastX = event.clientX
+    pan.lastY = event.clientY
+    this.setViewport(panBy(this.#viewport, dx, dy))
+  }
+
+  readonly #onPointerEnd = (event: PointerEvent): void => {
+    const pan = this.#pan
+    if (!pan || pan.pointerId !== event.pointerId)
+      return
+    this.#pan = undefined
+    this.#suppressClick = pan.moved
+    this.#layers?.root.removeAttribute('data-panning')
+    if (this.#layers?.root.hasPointerCapture?.(event.pointerId))
+      this.#layers.root.releasePointerCapture(event.pointerId)
+  }
+
+  readonly #onClick = (event: MouseEvent): void => {
+    if (this.#suppressClick) {
+      this.#suppressClick = false
+      return
+    }
+    const target = this.#targetOf(event)
+    if (!target)
+      emitEvent(this, 'blank-click', {})
+    else
+      emitEvent(this, target.kind === 'node' ? 'node-click' : 'edge-click', { id: target.id })
+  }
+
+  readonly #onContextMenu = (event: MouseEvent): void => {
+    const target = this.#targetOf(event)
+    const position = { x: event.clientX, y: event.clientY }
+    const proceed = target
+      ? emitEvent(this, `${target.kind}-contextmenu`, { id: target.id, ...position }, { cancelable: true })
+      : emitEvent(this, 'blank-contextmenu', position, { cancelable: true })
+    if (!proceed)
+      event.preventDefault()
+  }
+
+  readonly #onWheel = (event: WheelEvent): void => {
+    event.preventDefault()
+    if (event.ctrlKey || event.metaKey) {
+      this.setViewport(zoomBy(this.#viewport, wheelZoomFactor(event.deltaY, event.deltaMode), this.#localPoint(event)))
+      return
+    }
+    const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? (this.#size()?.height ?? 0) : 1
+    this.setViewport(panBy(this.#viewport, -event.deltaX * unit, -event.deltaY * unit))
+  }
+
+  readonly #onKeyDown = (event: KeyboardEvent): void => {
+    if (event.ctrlKey || event.metaKey || event.altKey)
+      return
+    switch (event.key) {
+      case '+':
+      case '=':
+        this.zoomIn()
+        break
+      case '-':
+        this.zoomOut()
+        break
+      case '0':
+        this.zoomToFit()
+        break
+      case 'ArrowLeft':
+        this.setViewport(panBy(this.#viewport, PAN_STEP, 0))
+        break
+      case 'ArrowRight':
+        this.setViewport(panBy(this.#viewport, -PAN_STEP, 0))
+        break
+      case 'ArrowUp':
+        this.setViewport(panBy(this.#viewport, 0, PAN_STEP))
+        break
+      case 'ArrowDown':
+        this.setViewport(panBy(this.#viewport, 0, -PAN_STEP))
+        break
+      default:
+        return
+    }
+    event.preventDefault()
+  }
+}
+
+/** 注册 <xh-flow-viewer>；重复调用不报错。 */
+export function defineFlowViewer(): void {
+  registerElement(FLOW_VIEWER_TAG, XhFlowViewer)
+}
+
+function createEdgeGroup(doc: Document): SVGGElement {
+  const group = doc.createElementNS(SVG_NS, 'g')
+  group.setAttribute(GEN_ATTR, '')
+  group.setAttribute('data-part', 'edge')
+  for (const part of ['edge-hit', 'edge-line', 'edge-arrow']) {
+    const path = doc.createElementNS(SVG_NS, 'path')
+    path.setAttribute('data-part', part)
+    group.append(path)
+  }
+  return group
+}
+
+function paintEdge(group: Element, edge: FlowSceneEdge): void {
+  group.setAttribute('data-edge-id', edge.id)
+  if (edge.dashed)
+    group.setAttribute('data-dashed', '')
+  else
+    group.removeAttribute('data-dashed')
+  const [hit, line, arrow] = Array.from(group.children)
+  hit!.setAttribute('d', edge.path)
+  line!.setAttribute('d', edge.path)
+  arrow!.setAttribute('d', edge.arrow)
+}
+
+function toggleData(element: HTMLElement, key: string, value: string | undefined): void {
+  if (value === undefined)
+    delete element.dataset[key]
+  else
+    element.dataset[key] = value
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'xh-flow-viewer': XhFlowViewer
+  }
+}
