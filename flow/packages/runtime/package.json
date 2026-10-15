@@ -25,6 +25,7 @@
     "web-components",
     "xihanfun"
   ],
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -50,6 +51,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@xihan-flow/core": "workspace:^"
+    "@xihan-flow/core": "workspace:^",
+    "@xihan-ui/designer-kit": "catalog:",
+    "@xihan-ui/viz": "catalog:"
   }
 }

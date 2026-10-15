@@ -49,17 +49,17 @@ describe('buildScene', () => {
     const scene = buildScene(document, registry, { route: straight, arrowSize: 10 })
     const ab = scene.edges[0]!
     expect(ab.points).toEqual([{ x: 100, y: 20 }, { x: 200, y: 20 }])
-    expect(ab.path).toBe('M100,20 L190,20')
-    expect(ab.arrow).toBe('M200,20 L190,25 L190,15 Z')
+    expect(ab.path).toBe('M100,20L190,20')
+    expect(ab.arrow).toBe('M200,20L190,25L190,15Z')
     expect([ab.label, ab.dashed]).toEqual(['同意', true])
     expect(ab.labelPoint).toEqual({ x: 150, y: 20 })
   })
 
-  it('带折点的连线穿过折点并倒圆角', () => {
+  it('带折点的连线穿过折点并在拐角倒圆弧', () => {
     const scene = buildScene(document, registry, { route: straight, arrowSize: 0, cornerRadius: 10 })
     const ba = scene.edges[1]!
     expect(ba.points).toHaveLength(6)
-    expect(ba.path.startsWith('M300,20 L310,20 Q320,20 320,10')).toBe(true)
+    expect(ba.path.startsWith('M300,20L310,20A10,10,0,0,0,320,10')).toBe(true)
     expect(ba.arrow).toBe('')
     expect([ba.label, ba.dashed]).toEqual([undefined, false])
   })
@@ -76,14 +76,14 @@ describe('buildScene', () => {
 })
 
 describe('路径工具', () => {
-  it('折线转 SVG path，圆角半径不超过相邻段长度的一半', () => {
+  it('折线转 SVG path，圆角的切点不越过相邻两段的中点', () => {
     expect(polylinePath([])).toBe('')
-    expect(polylinePath([{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 4 }], 6)).toBe('M0,0 L8,0 Q10,0 10,2 L10,4')
-    expect(polylinePath([{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }])).toBe('M0,0 L10,0 L10,10')
+    expect(polylinePath([{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 4 }], 6)).toBe('M0,0L8,0A2,2,0,0,1,10,2L10,4')
+    expect(polylinePath([{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }])).toBe('M0,0L10,0L10,10')
   })
 
   it('箭头沿最后一段方向，忽略与终点重合的点', () => {
-    expect(arrowPath([{ x: 0, y: 0 }, { x: 0, y: 10 }, { x: 0, y: 10 }], 4)).toBe('M0,10 L-2,6 L2,6 Z')
+    expect(arrowPath([{ x: 0, y: 0 }, { x: 0, y: 10 }, { x: 0, y: 10 }], 4)).toBe('M0,10L-2,6L2,6Z')
     expect(arrowPath([{ x: 5, y: 5 }], 4)).toBe('')
   })
 })

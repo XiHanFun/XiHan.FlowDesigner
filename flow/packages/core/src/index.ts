@@ -5,7 +5,7 @@
 
 // 导出 @xihan-flow/core 的公共接口。
 
-export { computeEdgeGeometry, getDocumentBounds, polylineMidpoint, resolveEdgeAnchor } from './geometry'
+export { computeEdgeGeometry, polylineMidpoint, resolveEdgeAnchor } from './geometry'
 export type { FlowEdgeAnchor, FlowEdgeGeometry, FlowEdgeRouter, FlowRouteRequest } from './geometry'
 export type { FlowEdgeEnd, FlowIssue, FlowIssueCode, FlowIssueLocation, FlowIssueSeverity, FlowSchemaIssueCode, FlowValidationIssueCode } from './issues'
 export { appendPointer, cloneJson, encodePointerToken, findJsonViolation, isJsonValue, isPlainObject, jsonEquals } from './json'
