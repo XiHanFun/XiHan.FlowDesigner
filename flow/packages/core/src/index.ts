@@ -28,3 +28,5 @@ export type {
 } from './registry'
 export { createDocument, FLOW_DOCUMENT_VERSION } from './schema'
 export type { FlowDocument, FlowEdge, FlowEdgeStyle, FlowEndpoint, FlowNode, FlowPoint, FlowRect, FlowSize } from './schema'
+export { checkConnection, DEFAULT_ISSUE_SEVERITY, resolveEndpointPort, validateDocument } from './validate'
+export type { FlowConnectionCheckOptions, FlowConnectionIssueCode, FlowConnectionProblem, FlowValidateOptions } from './validate'
