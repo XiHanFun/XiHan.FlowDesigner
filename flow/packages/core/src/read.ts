@@ -6,7 +6,7 @@
 import type { JsonObject, JsonValue } from '@xihan-ui/core/json'
 import type { FlowIssue, FlowSchemaIssueCode } from './issues'
 import type { FlowDocument, FlowEdge, FlowEdgeStyle, FlowEndpoint, FlowNode, FlowPoint } from './schema'
-import { cloneJson, findJsonViolation, isPlainObject } from '@xihan-ui/core/json'
+import { appendJsonPointer, cloneJson, findJsonViolation, isPlainObject } from '@xihan-ui/core/json'
 import { FLOW_DOCUMENT_VERSION } from './schema'
 
 /** 读取结果：成功时给出规范化后的文档副本，失败时给出全部结构问题。 */
@@ -70,14 +70,14 @@ function readNode(reader: SchemaReader, value: unknown, pointer: string): FlowNo
   const fields = reader.object(value, pointer, NODE_KEYS, ['id', 'type', 'x', 'y', 'width', 'height'])
   if (!fields)
     return undefined
-  const id = reader.nonEmptyString(fields.id, appendPointer(pointer, 'id'))
-  const type = reader.nonEmptyString(fields.type, appendPointer(pointer, 'type'))
-  const x = reader.finiteNumber(fields.x, appendPointer(pointer, 'x'))
-  const y = reader.finiteNumber(fields.y, appendPointer(pointer, 'y'))
-  const width = reader.nonNegativeNumber(fields.width, appendPointer(pointer, 'width'))
-  const height = reader.nonNegativeNumber(fields.height, appendPointer(pointer, 'height'))
-  const label = reader.optionalString(fields.label, appendPointer(pointer, 'label'))
-  const data = reader.optionalJsonObject(fields.data, appendPointer(pointer, 'data'))
+  const id = reader.nonEmptyString(fields.id, appendJsonPointer(pointer, 'id'))
+  const type = reader.nonEmptyString(fields.type, appendJsonPointer(pointer, 'type'))
+  const x = reader.finiteNumber(fields.x, appendJsonPointer(pointer, 'x'))
+  const y = reader.finiteNumber(fields.y, appendJsonPointer(pointer, 'y'))
+  const width = reader.nonNegativeNumber(fields.width, appendJsonPointer(pointer, 'width'))
+  const height = reader.nonNegativeNumber(fields.height, appendJsonPointer(pointer, 'height'))
+  const label = reader.optionalString(fields.label, appendJsonPointer(pointer, 'label'))
+  const data = reader.optionalJsonObject(fields.data, appendJsonPointer(pointer, 'data'))
   if (id === undefined || type === undefined || x === undefined || y === undefined || width === undefined || height === undefined)
     return undefined
   return {
@@ -96,15 +96,15 @@ function readEdge(reader: SchemaReader, value: unknown, pointer: string): FlowEd
   const fields = reader.object(value, pointer, EDGE_KEYS, ['id', 'source', 'target'])
   if (!fields)
     return undefined
-  const id = reader.nonEmptyString(fields.id, appendPointer(pointer, 'id'))
-  const source = readEndpoint(reader, fields.source, appendPointer(pointer, 'source'))
-  const target = readEndpoint(reader, fields.target, appendPointer(pointer, 'target'))
-  const label = reader.optionalString(fields.label, appendPointer(pointer, 'label'))
-  const style = fields.style === undefined ? undefined : readStyle(reader, fields.style, appendPointer(pointer, 'style'))
-  const data = reader.optionalJsonObject(fields.data, appendPointer(pointer, 'data'))
+  const id = reader.nonEmptyString(fields.id, appendJsonPointer(pointer, 'id'))
+  const source = readEndpoint(reader, fields.source, appendJsonPointer(pointer, 'source'))
+  const target = readEndpoint(reader, fields.target, appendJsonPointer(pointer, 'target'))
+  const label = reader.optionalString(fields.label, appendJsonPointer(pointer, 'label'))
+  const style = fields.style === undefined ? undefined : readStyle(reader, fields.style, appendJsonPointer(pointer, 'style'))
+  const data = reader.optionalJsonObject(fields.data, appendJsonPointer(pointer, 'data'))
   const vertices = fields.vertices === undefined
     ? undefined
-    : reader.array(fields.vertices, appendPointer(pointer, 'vertices'), (item, itemPointer) => readPoint(reader, item, itemPointer))
+    : reader.array(fields.vertices, appendJsonPointer(pointer, 'vertices'), (item, itemPointer) => readPoint(reader, item, itemPointer))
   if (id === undefined || source === undefined || target === undefined)
     return undefined
   return {
@@ -122,8 +122,8 @@ function readEndpoint(reader: SchemaReader, value: unknown, pointer: string): Fl
   const fields = reader.object(value, pointer, ENDPOINT_KEYS, ['node'])
   if (!fields)
     return undefined
-  const node = reader.nonEmptyString(fields.node, appendPointer(pointer, 'node'))
-  const port = fields.port === undefined ? undefined : reader.nonEmptyString(fields.port, appendPointer(pointer, 'port'))
+  const node = reader.nonEmptyString(fields.node, appendJsonPointer(pointer, 'node'))
+  const port = fields.port === undefined ? undefined : reader.nonEmptyString(fields.port, appendJsonPointer(pointer, 'port'))
   if (node === undefined)
     return undefined
   return port === undefined ? { node } : { node, port }
@@ -133,7 +133,7 @@ function readStyle(reader: SchemaReader, value: unknown, pointer: string): FlowE
   const fields = reader.object(value, pointer, STYLE_KEYS, [])
   if (!fields)
     return undefined
-  const dashed = reader.optionalBoolean(fields.dashed, appendPointer(pointer, 'dashed'))
+  const dashed = reader.optionalBoolean(fields.dashed, appendJsonPointer(pointer, 'dashed'))
   return dashed === undefined ? {} : { dashed }
 }
 
@@ -141,16 +141,11 @@ function readPoint(reader: SchemaReader, value: unknown, pointer: string): FlowP
   const fields = reader.object(value, pointer, POINT_KEYS, ['x', 'y'])
   if (!fields)
     return undefined
-  const x = reader.finiteNumber(fields.x, appendPointer(pointer, 'x'))
-  const y = reader.finiteNumber(fields.y, appendPointer(pointer, 'y'))
+  const x = reader.finiteNumber(fields.x, appendJsonPointer(pointer, 'x'))
+  const y = reader.finiteNumber(fields.y, appendJsonPointer(pointer, 'y'))
   if (x === undefined || y === undefined)
     return undefined
   return { x, y }
-}
-
-/** 在 JSON Pointer 后追加一个片段，片段里的 ~ 与 / 按规范转义。 */
-function appendPointer(pointer: string, token: string | number): string {
-  return `${pointer}/${String(token).replace(/~/g, '~0').replace(/\//g, '~1')}`
 }
 
 /** 收集结构问题的读取器。 */
@@ -173,11 +168,11 @@ class SchemaReader {
     }
     for (const key of Object.keys(value)) {
       if (!allowed.includes(key))
-        this.report('schema.unknown-field', { pointer: appendPointer(pointer, key) })
+        this.report('schema.unknown-field', { pointer: appendJsonPointer(pointer, key) })
     }
     for (const key of required) {
       if (value[key] === undefined)
-        this.report('schema.missing-field', { pointer: appendPointer(pointer, key) })
+        this.report('schema.missing-field', { pointer: appendJsonPointer(pointer, key) })
     }
     return value
   }
@@ -193,7 +188,7 @@ class SchemaReader {
     const result: T[] = []
     let failed = false
     value.forEach((item, index) => {
-      const read = readItem(item, appendPointer(pointer, index))
+      const read = readItem(item, appendJsonPointer(pointer, index))
       if (read === undefined)
         failed = true
       else
