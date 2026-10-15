@@ -60,6 +60,8 @@ XiHan.FlowDesigner 是框架无关的流程设计器，以原生 Web Components 
 - **无全局状态**：不往 `window` 上挂对象，不读写固定键名的 localStorage，不在模块顶层产生副作用；同一页面放多个实例互不影响。
 - **数据由使用方提供**：组件不发网络请求，数据、存储与权限都经回调或属性交给使用方。
 - **对外契约**：复杂数据走 property 不走 attribute；事件用 `CustomEvent`；公开方法、事件和属性都要有类型声明。
+- **命名（四款设计器统一）**：元素名一律 `xh-flow-*`，查看器是 `<xh-flow-viewer>`、设计器是 `<xh-flow-designer>`；流程定义的属性叫 `schema`，变化事件叫 `schema-change`；表达式引擎叫 `expressionEngine`，格式化叫 `formatter`；事件名照 XiHan.UI 的写法，不带前缀、用短横线，如 `value-change`。内建文案按产品出一份语言包 `flowZhCN`（`@xihan-flow/runtime/locale`，查看器与设计器共用），宿主用 `mergeXhConfig` 与 UI 的语言包合并，类型经 `XhTranslationOverrides` 的模块扩充补进去。
+- **与 XiHan.UI 的边界**：UI 已有的组件、算法与工具直接用，不在本仓另写；常用能力即使眼下只有流程用到，也先封装进 UI 再调用；只有流程专属语义（端口位置、节点类型、带业务语义的编辑操作）留在本仓。
 - **样式**：Light DOM，样式只消费 `@xihan-ui` 设计令牌，不写颜色、间距、圆角等散值。
 - **注释**：只写代码做什么，不写为什么这样设计、也不写任何参考项目名称；设计理由写进提交说明。
 - **源码文件头**：
