@@ -138,14 +138,14 @@ describe('节点数据', () => {
   it('同一路径的连续写入合并为一步，封口后另起一步', () => {
     let time = 0
     const editor = createFlowEditor({ document: sample(), registry, now: () => time })
-    editor.setNodeData('t', ['assignee'], 'b')
+    editor.setNodeProperty('t', ['data', 'assignee'], 'b')
     time += 100
-    editor.setNodeData('t', ['assignee'], 'bc')
+    editor.setNodeProperty('t', ['data', 'assignee'], 'bc')
     expect(editor.history.undoCount).toBe(1)
     editor.seal()
-    editor.setNodeData('t', ['assignee'], 'bcd')
+    editor.setNodeProperty('t', ['data', 'assignee'], 'bcd')
     expect(editor.history.undoCount).toBe(2)
-    editor.setNodeData('t', ['assignee'], 'bcd')
+    editor.setNodeProperty('t', ['data', 'assignee'], 'bcd')
     expect(editor.history.undoCount).toBe(2)
     editor.undo()
     expect(editor.document.nodes[1]!.data).toEqual({ assignee: 'bc' })
@@ -155,10 +155,21 @@ describe('节点数据', () => {
 
   it('写入 undefined 删除键，data 变空时删除 data 字段', () => {
     const { editor } = setup()
-    editor.setNodeData('t', ['assignee'], undefined)
+    editor.setNodeProperty('t', ['data', 'assignee'], undefined)
     expect(editor.document.nodes[1]).not.toHaveProperty('data')
-    editor.setNodeData('s', ['form', 'code'], 'leave')
+    editor.setNodeProperty('s', ['data', 'form', 'code'], 'leave')
     expect(editor.document.nodes[0]!.data).toEqual({ form: { code: 'leave' } })
+  })
+
+  it('[label] 写标签，其余不在 data 下的路径不可写', () => {
+    const { editor } = setup()
+    editor.setNodeProperty('t', ['label'], '审批')
+    expect(editor.document.nodes[1]!.label).toBe('审批')
+    editor.setNodeProperty('t', ['label'], undefined)
+    expect(editor.document.nodes[1]).not.toHaveProperty('label')
+    expect(() => editor.setNodeProperty('t', ['x'], 1)).toThrow(/not writable/)
+    expect(() => editor.setNodeProperty('t', ['data'], {})).toThrow(/not writable/)
+    expect(() => editor.setNodeProperty('t', ['label'], 1)).toThrow(/must be a string/)
   })
 })
 

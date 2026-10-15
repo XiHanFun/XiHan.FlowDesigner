@@ -41,9 +41,9 @@ function doc(nodes: readonly FlowNode[], edges: readonly FlowEdge[] = []): FlowD
 
 function brief(issues: readonly FlowIssue[]): string[] {
   return issues.map((issue) => {
-    const location = issue.location.kind === 'document'
+    const location = issue.target === undefined
       ? 'doc'
-      : `${issue.location.kind}:${issue.location.id}${issue.location.kind === 'edge' && issue.location.end ? `.${issue.location.end}` : ''}`
+      : `${issue.target.kind}:${issue.target.id}${issue.path.length > 2 ? `.${String(issue.path[2])}` : ''}`
     return `${issue.code}@${location}`
   })
 }
@@ -66,9 +66,9 @@ describe('validateDocument', () => {
       [edge('e1', 's', 't'), edge('e1', 't', 'x')],
     ), registry)
     expect(issues.slice(0, 3)).toEqual([
-      { code: 'node.duplicate-id', severity: 'error', location: { kind: 'node', id: 't', index: 2 }, params: { id: 't' } },
-      { code: 'node.unknown-type', severity: 'error', location: { kind: 'node', id: 'x', index: 3 }, params: { type: 'ghost' } },
-      { code: 'edge.duplicate-id', severity: 'error', location: { kind: 'edge', id: 'e1', index: 1 }, params: { id: 'e1' } },
+      { code: 'node.duplicate-id', severity: 'error', path: ['nodes', 2], target: { kind: 'node', id: 't' }, params: { id: 't' } },
+      { code: 'node.unknown-type', severity: 'error', path: ['nodes', 3], target: { kind: 'node', id: 'x' }, params: { type: 'ghost' } },
+      { code: 'edge.duplicate-id', severity: 'error', path: ['edges', 1], target: { kind: 'edge', id: 'e1' }, params: { id: 'e1' } },
     ])
   })
 
@@ -99,7 +99,7 @@ describe('validateDocument', () => {
     ])
     expect(issues[0]!.params).toEqual({ port: 'yes' })
     expect(issues[1]!.params).toEqual({ port: 'maybe' })
-    expect(issues[2]!.params).toEqual({})
+    expect(issues[2]!.params).toBeUndefined()
   })
 
   it('无端口的节点不参与连通性检查', () => {
@@ -143,9 +143,9 @@ describe('validateDocument', () => {
     ), registry)
     const limits = issues.filter(issue => ['node.max-incoming', 'node.max-outgoing', 'port.max-connections'].includes(issue.code))
     expect(limits).toEqual([
-      { code: 'node.max-incoming', severity: 'error', location: { kind: 'node', id: 'k', index: 3 }, params: { max: 1, count: 2 } },
-      { code: 'port.max-connections', severity: 'error', location: { kind: 'node', id: 'g', index: 4 }, params: { port: 'yes', max: 1, count: 2 } },
-      { code: 'node.max-outgoing', severity: 'error', location: { kind: 'node', id: 'l', index: 7 }, params: { max: 1, count: 2 } },
+      { code: 'node.max-incoming', severity: 'error', path: ['nodes', 3], target: { kind: 'node', id: 'k' }, params: { max: 1, count: 2 } },
+      { code: 'port.max-connections', severity: 'error', path: ['nodes', 4], target: { kind: 'node', id: 'g' }, params: { port: 'yes', max: 1, count: 2 } },
+      { code: 'node.max-outgoing', severity: 'error', path: ['nodes', 7], target: { kind: 'node', id: 'l' }, params: { max: 1, count: 2 } },
     ])
   })
 
@@ -158,12 +158,12 @@ describe('validateDocument', () => {
   })
 
   it('类型个数上下限', () => {
-    expect(validateDocument(doc([node('t', 'task')]), registry).filter(issue => issue.location.kind === 'document')).toEqual([
-      { code: 'type.min-count', severity: 'error', location: { kind: 'document' }, params: { type: 'start', min: 1, count: 0 } },
+    expect(validateDocument(doc([node('t', 'task')]), registry).filter(issue => issue.target === undefined)).toEqual([
+      { code: 'type.min-count', severity: 'error', path: [], params: { type: 'start', min: 1, count: 0 } },
     ])
     const twoStarts = validateDocument(doc([node('a', 'start'), node('b', 'start'), node('e', 'end')], [edge('x', 'a', 'e'), edge('y', 'b', 'e')]), registry)
     expect(twoStarts).toEqual([
-      { code: 'type.max-count', severity: 'error', location: { kind: 'document' }, params: { type: 'start', max: 1, count: 2 } },
+      { code: 'type.max-count', severity: 'error', path: [], params: { type: 'start', max: 1, count: 2 } },
     ])
   })
 
@@ -195,25 +195,27 @@ describe('validateDocument', () => {
     expect(issues).toEqual([])
   })
 
-  it('显示中的必填属性', () => {
+  it('节点属性：显示中的必填与内建编辑方式的取值', () => {
     const typed = createNodeTypeRegistry([{
       type: 'task',
       size,
       ports: 'none',
       properties: [
-        { path: ['props', 'url'], editor: 'text', required: true },
-        { path: ['props', 'fallback'], editor: 'text', required: true, visibleWhen: { path: ['props', 'mode'], equals: 'fallback' } },
-        { path: ['props', 'note'], editor: 'text' },
+        { path: ['data', 'props', 'url'], control: { kind: 'text' }, required: true },
+        { path: ['data', 'props', 'fallback'], control: { kind: 'text' }, required: true, visibleWhen: { path: ['data', 'props', 'mode'], equals: 'fallback' } },
+        { path: ['data', 'props', 'retries'], control: { kind: 'number', integer: true, min: 0 } },
+        { path: ['data', 'props', 'rules'], control: { kind: 'assignees' } },
       ],
     }])
     const issues = validateDocument(doc([
       node('a', 'task'),
       node('b', 'task', { data: { props: { url: 'x', mode: 'fallback', fallback: '' } } }),
-      node('c', 'task', { data: { props: { url: 'x', mode: 'other' } } }),
+      node('c', 'task', { data: { props: { url: 'x', mode: 'other', retries: 1.5, rules: 'anything' } } }),
     ]), typed)
     expect(issues).toEqual([
-      { code: 'node.property-required', severity: 'error', location: { kind: 'node', id: 'a', index: 0 }, params: { path: ['props', 'url'] } },
-      { code: 'node.property-required', severity: 'error', location: { kind: 'node', id: 'b', index: 1 }, params: { path: ['props', 'fallback'] } },
+      { code: 'required', severity: 'error', path: ['nodes', 0, 'data', 'props', 'url'], target: { kind: 'node', id: 'a' } },
+      { code: 'required', severity: 'error', path: ['nodes', 1, 'data', 'props', 'fallback'], target: { kind: 'node', id: 'b' } },
+      { code: 'not-integer', severity: 'error', path: ['nodes', 2, 'data', 'props', 'retries'], target: { kind: 'node', id: 'c' } },
     ])
   })
 
@@ -224,7 +226,7 @@ describe('validateDocument', () => {
   })
 
   it('缺省严重程度表覆盖全部校验问题码', () => {
-    expect(Object.keys(DEFAULT_ISSUE_SEVERITY)).toHaveLength(19)
+    expect(Object.keys(DEFAULT_ISSUE_SEVERITY)).toHaveLength(24)
   })
 })
 

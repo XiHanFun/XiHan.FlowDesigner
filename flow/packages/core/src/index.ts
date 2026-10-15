@@ -7,7 +7,7 @@
 
 export { computeEdgeGeometry, resolveEdgeAnchor } from './geometry'
 export type { FlowEdgeAnchor, FlowEdgeGeometry, FlowEdgeRouter, FlowRouteRequest } from './geometry'
-export type { FlowEdgeEnd, FlowIssue, FlowIssueCode, FlowIssueLocation, FlowIssueSeverity, FlowSchemaIssueCode, FlowValidationIssueCode } from './issues'
+export type { FlowEdgeEnd, FlowIssue, FlowIssueCode, FlowSchemaIssueCode, FlowValidationIssueCode } from './issues'
 export { applyOperation, applyOperations, FlowOperationError } from './operations'
 export type {
   FlowDocumentPatch,
@@ -19,10 +19,8 @@ export type {
   FlowOperationResult,
   FlowOperationType,
 } from './operations'
-export { evaluateCondition, groupProperties, isFilled, isPropertyVisible } from './properties'
-export type { FlowDataPath, FlowPropertyCondition, FlowPropertyDescriptor, FlowPropertyGroup, FlowPropertyOption } from './properties'
 export { readDocument } from './read'
-export type { FlowReadResult, FlowSchemaExpectation } from './read'
+export type { FlowReadResult } from './read'
 export { createNode, createNodeTypeRegistry, findPort, getPortPosition, portAllows } from './registry'
 export type {
   FlowConnectionRule,
@@ -36,6 +34,8 @@ export type {
   FlowPortDirection,
   FlowPortPreset,
   FlowPortSide,
+  FlowPropertyControl,
+  FlowPropertyDescriptor,
 } from './registry'
 export { createDocument, FLOW_DOCUMENT_VERSION } from './schema'
 export type { FlowDocument, FlowEdge, FlowEdgeStyle, FlowEndpoint, FlowNode, FlowPoint, FlowRect, FlowSize } from './schema'

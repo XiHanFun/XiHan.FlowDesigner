@@ -3,81 +3,99 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-import type { JsonObject, JsonValue } from '@xihan-ui/core/json'
+import type { JsonObject, JsonPath, JsonValue } from '@xihan-ui/core/json'
+import type { IssueSink } from '@xihan-ui/designer-kit/schema'
 import type { FlowIssue, FlowSchemaIssueCode } from './issues'
 import type { FlowDocument, FlowEdge, FlowEdgeStyle, FlowEndpoint, FlowNode, FlowPoint } from './schema'
-import { appendJsonPointer, cloneJson, findJsonViolation, isPlainObject } from '@xihan-ui/core/json'
+import { cloneJson, isPlainObject } from '@xihan-ui/core/json'
+import { createIssueSink, readArray, readBoolean, readJson, readNumber, readObject, readString } from '@xihan-ui/designer-kit/schema'
 import { FLOW_DOCUMENT_VERSION } from './schema'
 
 /** 读取结果：成功时给出规范化后的文档副本，失败时给出全部结构问题。 */
 export type FlowReadResult
   = | { readonly ok: true, readonly document: FlowDocument }
-    | { readonly ok: false, readonly issues: readonly FlowIssue[] }
+    | { readonly ok: false, readonly issues: readonly FlowIssue<FlowSchemaIssueCode>[] }
 
-/** 结构问题参数 expected 的取值。 */
-export type FlowSchemaExpectation
-  = | 'object'
-    | 'array'
-    | 'string'
-    | 'non-empty-string'
-    | 'finite-number'
-    | 'non-negative-number'
-    | 'boolean'
-    | 'json'
+type Sink = IssueSink<FlowSchemaIssueCode>
 
-const DOCUMENT_KEYS = ['version', 'nodes', 'edges', 'data'] as const
-const NODE_KEYS = ['id', 'type', 'x', 'y', 'width', 'height', 'label', 'data'] as const
-const EDGE_KEYS = ['id', 'source', 'target', 'label', 'style', 'data', 'vertices'] as const
-const ENDPOINT_KEYS = ['node', 'port'] as const
-const STYLE_KEYS = ['dashed'] as const
-const POINT_KEYS = ['x', 'y'] as const
-
-type Fields = Record<string, unknown>
+const DOCUMENT_KEYS = ['version', 'nodes', 'edges', 'data']
+const NODE_KEYS = ['id', 'type', 'x', 'y', 'width', 'height', 'label', 'data']
+const EDGE_KEYS = ['id', 'source', 'target', 'label', 'style', 'data', 'vertices']
+const ENDPOINT_KEYS = ['node', 'port']
+const STYLE_KEYS = ['dashed']
+const POINT_KEYS = ['x', 'y']
 
 /**
  * 把未知输入读成文档：逐项检查字段类型、必填项与多余字段，返回不与输入共享引用的副本。
  * 只检查结构；重复 id、悬空引用等语义问题由 validateDocument 负责。
  */
 export function readDocument(value: unknown): FlowReadResult {
-  const reader = new SchemaReader()
-  const fields = reader.object(value, '', DOCUMENT_KEYS, ['version', 'nodes', 'edges'])
-  if (!fields)
-    return { ok: false, issues: reader.issues }
+  const sink = createIssueSink<FlowSchemaIssueCode>()
+  const fail = (): FlowReadResult => ({ ok: false, issues: sink.issues })
+  if (!isPlainObject(value)) {
+    sink.report('invalid-type', [], { params: { expected: 'object' } })
+    return fail()
+  }
+  const fields = readObject(sink, value, [], { required: ['version', 'nodes', 'edges'], allowed: DOCUMENT_KEYS })!
 
   const version = fields.version
   if (version !== undefined && version !== FLOW_DOCUMENT_VERSION) {
     if (typeof version === 'number' && Number.isFinite(version)) {
-      reader.report('document.unsupported-version', { version, supported: FLOW_DOCUMENT_VERSION })
-      return { ok: false, issues: reader.issues }
+      sink.report('document.unsupported-version', ['version'], { params: { version, supported: FLOW_DOCUMENT_VERSION } })
+      return fail()
     }
-    reader.mismatch('/version', 'finite-number')
+    readNumber(sink, version, ['version'])
   }
 
-  const nodes = reader.array(fields.nodes, '/nodes', (item, pointer) => readNode(reader, item, pointer))
-  const edges = reader.array(fields.edges, '/edges', (item, pointer) => readEdge(reader, item, pointer))
-  const data = reader.optionalJsonObject(fields.data, '/data')
+  const nodes = readItems(sink, fields.nodes, ['nodes'], readNode)
+  const edges = readItems(sink, fields.edges, ['edges'], readEdge)
+  const data = readData(sink, fields.data, ['data'])
 
-  if (reader.issues.length > 0 || !nodes || !edges)
-    return { ok: false, issues: reader.issues }
-
+  if (sink.issues.length > 0 || !nodes || !edges)
+    return fail()
   const document: FlowDocument = data === undefined
     ? { version: FLOW_DOCUMENT_VERSION, nodes, edges }
     : { version: FLOW_DOCUMENT_VERSION, nodes, edges, data }
   return { ok: true, document }
 }
 
-function readNode(reader: SchemaReader, value: unknown, pointer: string): FlowNode | undefined {
-  const fields = reader.object(value, pointer, NODE_KEYS, ['id', 'type', 'x', 'y', 'width', 'height'])
+/** 读取数组的每一项，任一项失败时返回 undefined。 */
+function readItems<T>(sink: Sink, value: unknown, path: JsonPath, readItem: (sink: Sink, item: unknown, path: JsonPath) => T | undefined): T[] | undefined {
+  const items = readArray(sink, value, path)
+  if (!items)
+    return undefined
+  const result: T[] = []
+  let failed = false
+  items.forEach((item, index) => {
+    const read = readItem(sink, item, [...path, index])
+    if (read === undefined)
+      failed = true
+    else
+      result.push(read)
+  })
+  return failed ? undefined : result
+}
+
+/** 读取 JSON 对象并深拷贝。 */
+function readData(sink: Sink, value: unknown, path: JsonPath): JsonObject | undefined {
+  const fields = readObject(sink, value, path)
+  if (!fields || readJson(sink, fields, path) === undefined)
+    return undefined
+  return cloneJson(fields as JsonValue) as JsonObject
+}
+
+function readNode(sink: Sink, value: unknown, path: JsonPath): FlowNode | undefined {
+  const fields = readObject(sink, value, path, { required: ['id', 'type', 'x', 'y', 'width', 'height'], allowed: NODE_KEYS })
   if (!fields)
     return undefined
-  const id = reader.nonEmptyString(fields.id, appendJsonPointer(pointer, 'id'))
-  const type = reader.nonEmptyString(fields.type, appendJsonPointer(pointer, 'type'))
-  const x = reader.finiteNumber(fields.x, appendJsonPointer(pointer, 'x'))
-  const y = reader.finiteNumber(fields.y, appendJsonPointer(pointer, 'y'))
-  const width = reader.nonNegativeNumber(fields.width, appendJsonPointer(pointer, 'width'))
-  const height = reader.nonNegativeNumber(fields.height, appendJsonPointer(pointer, 'height'))
-  const label = reader.optionalString(fields.label, appendJsonPointer(pointer, 'label'))
-  const data = reader.optionalJsonObject(fields.data, appendJsonPointer(pointer, 'data'))
+  const id = readString(sink, fields.id, [...path, 'id'], { nonEmpty: true })
+  const type = readString(sink, fields.type, [...path, 'type'], { nonEmpty: true })
+  const x = readNumber(sink, fields.x, [...path, 'x'])
+  const y = readNumber(sink, fields.y, [...path, 'y'])
+  const width = readNumber(sink, fields.width, [...path, 'width'], { min: 0 })
+  const height = readNumber(sink, fields.height, [...path, 'height'], { min: 0 })
+  const label = readString(sink, fields.label, [...path, 'label'])
+  const data = readData(sink, fields.data, [...path, 'data'])
   if (id === undefined || type === undefined || x === undefined || y === undefined || width === undefined || height === undefined)
     return undefined
   return {
@@ -92,19 +110,17 @@ function readNode(reader: SchemaReader, value: unknown, pointer: string): FlowNo
   }
 }
 
-function readEdge(reader: SchemaReader, value: unknown, pointer: string): FlowEdge | undefined {
-  const fields = reader.object(value, pointer, EDGE_KEYS, ['id', 'source', 'target'])
+function readEdge(sink: Sink, value: unknown, path: JsonPath): FlowEdge | undefined {
+  const fields = readObject(sink, value, path, { required: ['id', 'source', 'target'], allowed: EDGE_KEYS })
   if (!fields)
     return undefined
-  const id = reader.nonEmptyString(fields.id, appendJsonPointer(pointer, 'id'))
-  const source = readEndpoint(reader, fields.source, appendJsonPointer(pointer, 'source'))
-  const target = readEndpoint(reader, fields.target, appendJsonPointer(pointer, 'target'))
-  const label = reader.optionalString(fields.label, appendJsonPointer(pointer, 'label'))
-  const style = fields.style === undefined ? undefined : readStyle(reader, fields.style, appendJsonPointer(pointer, 'style'))
-  const data = reader.optionalJsonObject(fields.data, appendJsonPointer(pointer, 'data'))
-  const vertices = fields.vertices === undefined
-    ? undefined
-    : reader.array(fields.vertices, appendJsonPointer(pointer, 'vertices'), (item, itemPointer) => readPoint(reader, item, itemPointer))
+  const id = readString(sink, fields.id, [...path, 'id'], { nonEmpty: true })
+  const source = readEndpoint(sink, fields.source, [...path, 'source'])
+  const target = readEndpoint(sink, fields.target, [...path, 'target'])
+  const label = readString(sink, fields.label, [...path, 'label'])
+  const style = readStyle(sink, fields.style, [...path, 'style'])
+  const data = readData(sink, fields.data, [...path, 'data'])
+  const vertices = readItems(sink, fields.vertices, [...path, 'vertices'], readPoint)
   if (id === undefined || source === undefined || target === undefined)
     return undefined
   return {
@@ -118,148 +134,32 @@ function readEdge(reader: SchemaReader, value: unknown, pointer: string): FlowEd
   }
 }
 
-function readEndpoint(reader: SchemaReader, value: unknown, pointer: string): FlowEndpoint | undefined {
-  const fields = reader.object(value, pointer, ENDPOINT_KEYS, ['node'])
+function readEndpoint(sink: Sink, value: unknown, path: JsonPath): FlowEndpoint | undefined {
+  const fields = readObject(sink, value, path, { required: ['node'], allowed: ENDPOINT_KEYS })
   if (!fields)
     return undefined
-  const node = reader.nonEmptyString(fields.node, appendJsonPointer(pointer, 'node'))
-  const port = fields.port === undefined ? undefined : reader.nonEmptyString(fields.port, appendJsonPointer(pointer, 'port'))
+  const node = readString(sink, fields.node, [...path, 'node'], { nonEmpty: true })
+  const port = readString(sink, fields.port, [...path, 'port'], { nonEmpty: true })
   if (node === undefined)
     return undefined
   return port === undefined ? { node } : { node, port }
 }
 
-function readStyle(reader: SchemaReader, value: unknown, pointer: string): FlowEdgeStyle | undefined {
-  const fields = reader.object(value, pointer, STYLE_KEYS, [])
+function readStyle(sink: Sink, value: unknown, path: JsonPath): FlowEdgeStyle | undefined {
+  const fields = readObject(sink, value, path, { allowed: STYLE_KEYS })
   if (!fields)
     return undefined
-  const dashed = reader.optionalBoolean(fields.dashed, appendJsonPointer(pointer, 'dashed'))
+  const dashed = readBoolean(sink, fields.dashed, [...path, 'dashed'])
   return dashed === undefined ? {} : { dashed }
 }
 
-function readPoint(reader: SchemaReader, value: unknown, pointer: string): FlowPoint | undefined {
-  const fields = reader.object(value, pointer, POINT_KEYS, ['x', 'y'])
+function readPoint(sink: Sink, value: unknown, path: JsonPath): FlowPoint | undefined {
+  const fields = readObject(sink, value, path, { required: ['x', 'y'], allowed: POINT_KEYS })
   if (!fields)
     return undefined
-  const x = reader.finiteNumber(fields.x, appendJsonPointer(pointer, 'x'))
-  const y = reader.finiteNumber(fields.y, appendJsonPointer(pointer, 'y'))
+  const x = readNumber(sink, fields.x, [...path, 'x'])
+  const y = readNumber(sink, fields.y, [...path, 'y'])
   if (x === undefined || y === undefined)
     return undefined
   return { x, y }
-}
-
-/** 收集结构问题的读取器。 */
-class SchemaReader {
-  readonly issues: FlowIssue[] = []
-
-  report(code: FlowSchemaIssueCode, params: JsonObject): void {
-    this.issues.push({ code, severity: 'error', location: { kind: 'document' }, params })
-  }
-
-  mismatch(pointer: string, expected: FlowSchemaExpectation): void {
-    this.report('schema.type-mismatch', { pointer, expected })
-  }
-
-  /** 读取普通对象，报告缺失的必填字段与未登记字段；值为 undefined 的字段视为缺省。 */
-  object(value: unknown, pointer: string, allowed: readonly string[], required: readonly string[]): Fields | undefined {
-    if (!isPlainObject(value)) {
-      this.mismatch(pointer, 'object')
-      return undefined
-    }
-    for (const key of Object.keys(value)) {
-      if (!allowed.includes(key))
-        this.report('schema.unknown-field', { pointer: appendJsonPointer(pointer, key) })
-    }
-    for (const key of required) {
-      if (value[key] === undefined)
-        this.report('schema.missing-field', { pointer: appendJsonPointer(pointer, key) })
-    }
-    return value
-  }
-
-  /** 读取数组，任一元素失败时返回 undefined。 */
-  array<T>(value: unknown, pointer: string, readItem: (item: unknown, pointer: string) => T | undefined): T[] | undefined {
-    if (value === undefined)
-      return undefined
-    if (!Array.isArray(value)) {
-      this.mismatch(pointer, 'array')
-      return undefined
-    }
-    const result: T[] = []
-    let failed = false
-    value.forEach((item, index) => {
-      const read = readItem(item, appendJsonPointer(pointer, index))
-      if (read === undefined)
-        failed = true
-      else
-        result.push(read)
-    })
-    return failed ? undefined : result
-  }
-
-  nonEmptyString(value: unknown, pointer: string): string | undefined {
-    if (value === undefined)
-      return undefined
-    if (typeof value !== 'string' || value.length === 0) {
-      this.mismatch(pointer, 'non-empty-string')
-      return undefined
-    }
-    return value
-  }
-
-  optionalString(value: unknown, pointer: string): string | undefined {
-    if (value === undefined)
-      return undefined
-    if (typeof value !== 'string') {
-      this.mismatch(pointer, 'string')
-      return undefined
-    }
-    return value
-  }
-
-  optionalBoolean(value: unknown, pointer: string): boolean | undefined {
-    if (value === undefined)
-      return undefined
-    if (typeof value !== 'boolean') {
-      this.mismatch(pointer, 'boolean')
-      return undefined
-    }
-    return value
-  }
-
-  finiteNumber(value: unknown, pointer: string): number | undefined {
-    if (value === undefined)
-      return undefined
-    if (typeof value !== 'number' || !Number.isFinite(value)) {
-      this.mismatch(pointer, 'finite-number')
-      return undefined
-    }
-    return value
-  }
-
-  nonNegativeNumber(value: unknown, pointer: string): number | undefined {
-    if (value === undefined)
-      return undefined
-    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
-      this.mismatch(pointer, 'non-negative-number')
-      return undefined
-    }
-    return value
-  }
-
-  /** 读取 JSON 对象并深拷贝；内部出现非 JSON 值时报告其位置。 */
-  optionalJsonObject(value: unknown, pointer: string): JsonObject | undefined {
-    if (value === undefined)
-      return undefined
-    if (!isPlainObject(value)) {
-      this.mismatch(pointer, 'object')
-      return undefined
-    }
-    const violation = findJsonViolation(value, pointer)
-    if (violation !== undefined) {
-      this.mismatch(violation, 'json')
-      return undefined
-    }
-    return cloneJson(value as JsonValue) as JsonObject
-  }
 }
