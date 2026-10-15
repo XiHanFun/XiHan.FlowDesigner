@@ -4,7 +4,7 @@
  */
 
 // 连线几何：端点落在哪个端口、从哪一边离开，连线的折线（有折点时穿过折点，否则交给注入的路由器），
-// 折线上标签的位置，以及整张图的包围盒。
+// 以及折线上标签的位置。
 
 import type { FlowEdgeEnd } from './issues'
 import type { FlowNodeTypeRegistry, FlowPortSide } from './registry'
@@ -99,29 +99,6 @@ export function polylineMidpoint(points: readonly FlowPoint[]): FlowPoint | unde
     remaining -= length
   }
   return points[points.length - 1]
-}
-
-/** 包住全部节点与连线折点的矩形；空文档返回 undefined。 */
-export function getDocumentBounds(document: FlowDocument): FlowRect | undefined {
-  let x0 = Infinity
-  let y0 = Infinity
-  let x1 = -Infinity
-  let y1 = -Infinity
-  for (const node of document.nodes) {
-    x0 = Math.min(x0, node.x)
-    y0 = Math.min(y0, node.y)
-    x1 = Math.max(x1, node.x + node.width)
-    y1 = Math.max(y1, node.y + node.height)
-  }
-  for (const edge of document.edges) {
-    for (const vertex of edge.vertices ?? []) {
-      x0 = Math.min(x0, vertex.x)
-      y0 = Math.min(y0, vertex.y)
-      x1 = Math.max(x1, vertex.x)
-      y1 = Math.max(y1, vertex.y)
-    }
-  }
-  return x0 === Infinity ? undefined : { x: x0, y: y0, width: x1 - x0, height: y1 - y0 }
 }
 
 function nodeRect(node: FlowNode): FlowRect {

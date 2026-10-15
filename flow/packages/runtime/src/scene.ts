@@ -6,7 +6,9 @@
 // 查看器的场景：把文档、节点类型与运行状态算成可直接绘制的节点框、连线路径、箭头与标签位置，不碰 DOM。
 
 import type { FlowDocument, FlowEdge, FlowEdgeRouter, FlowNode, FlowNodeType, FlowNodeTypeRegistry, FlowPoint, FlowRect } from '@xihan-flow/core'
-import { computeEdgeGeometry, getDocumentBounds, polylineMidpoint } from '@xihan-flow/core'
+import { computeEdgeGeometry, polylineMidpoint } from '@xihan-flow/core'
+import { unionRects } from '@xihan-ui/designer-kit'
+import { createSvgPath } from '@xihan-ui/viz'
 
 /** 节点运行状态；内置样式覆盖 running / completed / faulted / waiting / canceled / compensated，其余取值由使用方自行着色。 */
 export type FlowNodeStatus = string
@@ -91,34 +93,24 @@ export function buildScene(document: FlowDocument, registry: FlowNodeTypeRegistr
       dashed: edge.style?.dashed === true,
     }
   })
-  return { nodes, edges, bounds: sceneBounds(document, edges) }
+  return { nodes, edges, bounds: sceneBounds(nodes, edges) }
 }
 
-/** 把折线写成 SVG path：拐角处用二次曲线倒圆角，半径不超过相邻两段各自长度的一半。 */
+/** 把折线写成 SVG path：拐角处倒圆弧，切点不越过相邻两段各自的中点。 */
 export function polylinePath(points: readonly FlowPoint[], radius = 0): string {
   if (points.length === 0)
     return ''
-  const parts = [`M${format(points[0]!.x)},${format(points[0]!.y)}`]
+  const path = createSvgPath()
+  path.moveTo(points[0]!.x, points[0]!.y)
   for (let i = 1; i < points.length; i++) {
     const current = points[i]!
     const next = points[i + 1]
-    if (!next || radius <= 0) {
-      parts.push(`L${format(current.x)},${format(current.y)}`)
-      continue
-    }
-    const previous = points[i - 1]!
-    const inLength = Math.hypot(current.x - previous.x, current.y - previous.y)
-    const outLength = Math.hypot(next.x - current.x, next.y - current.y)
-    const r = Math.min(radius, inLength / 2, outLength / 2)
-    if (r <= 0) {
-      parts.push(`L${format(current.x)},${format(current.y)}`)
-      continue
-    }
-    const before = toward(current, previous, r)
-    const after = toward(current, next, r)
-    parts.push(`L${format(before.x)},${format(before.y)}`, `Q${format(current.x)},${format(current.y)} ${format(after.x)},${format(after.y)}`)
+    if (next && radius > 0)
+      path.arcTo(current.x, current.y, next.x, next.y, cornerRadius(points[i - 1]!, current, next, radius))
+    else
+      path.lineTo(current.x, current.y)
   }
-  return parts.join(' ')
+  return path.toString()
 }
 
 /** 终点箭头：尖端在折线终点，沿最后一段方向，长 size、宽 size。 */
@@ -133,9 +125,28 @@ export function arrowPath(points: readonly FlowPoint[], size: number): string {
   const baseX = tip.x - ux * size
   const baseY = tip.y - uy * size
   const half = size / 2
-  const left = { x: baseX - uy * half, y: baseY + ux * half }
-  const right = { x: baseX + uy * half, y: baseY - ux * half }
-  return `M${format(tip.x)},${format(tip.y)} L${format(left.x)},${format(left.y)} L${format(right.x)},${format(right.y)} Z`
+  const path = createSvgPath()
+  path.moveTo(tip.x, tip.y)
+  path.lineTo(baseX - uy * half, baseY + ux * half)
+  path.lineTo(baseX + uy * half, baseY - ux * half)
+  path.closePath()
+  return path.toString()
+}
+
+/** 圆角半径：切点到拐点的距离不超过相邻两段各自长度的一半。 */
+function cornerRadius(previous: FlowPoint, corner: FlowPoint, next: FlowPoint, radius: number): number {
+  const inX = previous.x - corner.x
+  const inY = previous.y - corner.y
+  const outX = next.x - corner.x
+  const outY = next.y - corner.y
+  const inLength = Math.hypot(inX, inY)
+  const outLength = Math.hypot(outX, outY)
+  if (inLength === 0 || outLength === 0)
+    return 0
+  const cos = Math.max(-1, Math.min(1, (inX * outX + inY * outY) / (inLength * outLength)))
+  const halfAngle = Math.acos(cos) / 2
+  const reach = Math.min(inLength, outLength) / 2
+  return Math.min(radius, reach * Math.tan(halfAngle))
 }
 
 /** 把折线终点沿最后一段往回收 amount，供箭头占位；最后一段不够长时收到它的起点为止。 */
@@ -162,30 +173,9 @@ function lastDistinct(points: readonly FlowPoint[]): FlowPoint | undefined {
   return undefined
 }
 
-function toward(from: FlowPoint, to: FlowPoint, distance: number): FlowPoint {
-  const length = Math.hypot(to.x - from.x, to.y - from.y)
-  return { x: from.x + (to.x - from.x) * distance / length, y: from.y + (to.y - from.y) * distance / length }
-}
-
-function sceneBounds(document: FlowDocument, edges: readonly FlowSceneEdge[]): FlowRect | undefined {
-  const base = getDocumentBounds(document)
-  if (!base)
-    return undefined
-  let x0 = base.x
-  let y0 = base.y
-  let x1 = base.x + base.width
-  let y1 = base.y + base.height
-  for (const edge of edges) {
-    for (const point of edge.points) {
-      x0 = Math.min(x0, point.x)
-      y0 = Math.min(y0, point.y)
-      x1 = Math.max(x1, point.x)
-      y1 = Math.max(y1, point.y)
-    }
-  }
-  return { x: x0, y: y0, width: x1 - x0, height: y1 - y0 }
-}
-
-function format(value: number): string {
-  return String(Math.round(value * 100) / 100)
+/** 包住全部节点框与连线折线上各点的矩形。 */
+function sceneBounds(nodes: readonly FlowSceneNode[], edges: readonly FlowSceneEdge[]): FlowRect | undefined {
+  const points = edges.flatMap(edge => edge.points.map(point => ({ x: point.x, y: point.y, width: 0, height: 0 })))
+  const vertices = edges.flatMap(edge => (edge.edge.vertices ?? []).map(point => ({ x: point.x, y: point.y, width: 0, height: 0 })))
+  return unionRects([...nodes.map(node => node.rect), ...points, ...vertices])
 }

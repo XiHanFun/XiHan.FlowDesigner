@@ -5,7 +5,7 @@
 
 import type { FlowDocument, FlowRouteRequest } from '../src'
 import { describe, expect, it, vi } from 'vitest'
-import { computeEdgeGeometry, createNodeTypeRegistry, getDocumentBounds, polylineMidpoint, resolveEdgeAnchor } from '../src'
+import { computeEdgeGeometry, createNodeTypeRegistry, polylineMidpoint, resolveEdgeAnchor } from '../src'
 
 const registry = createNodeTypeRegistry([
   { type: 'task', size: { width: 100, height: 40 }, ports: 'both' },
@@ -73,12 +73,5 @@ describe('polylineMidpoint', () => {
     expect(polylineMidpoint([{ x: 5, y: 5 }])).toEqual({ x: 5, y: 5 })
     expect(polylineMidpoint([{ x: 1, y: 1 }, { x: 1, y: 1 }])).toEqual({ x: 1, y: 1 })
     expect(polylineMidpoint([])).toBeUndefined()
-  })
-})
-
-describe('getDocumentBounds', () => {
-  it('包住节点与折点', () => {
-    expect(getDocumentBounds(document)).toEqual({ x: -50, y: 0, width: 290, height: 400 })
-    expect(getDocumentBounds({ version: 1, nodes: [], edges: [] })).toBeUndefined()
   })
 })
