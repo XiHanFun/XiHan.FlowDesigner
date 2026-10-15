@@ -11,6 +11,7 @@ import { createNodeTypeRegistry } from '@xihan-flow/core'
 import { setXhConfig } from '@xihan-ui/web-components'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defineFlowViewer, FLOW_VIEWER_TAG } from '../src'
+import { flowZhCN } from '../src/locale'
 
 defineFlowViewer()
 
@@ -35,7 +36,7 @@ const mounted: Element[] = []
 async function mount(setup: (viewer: XhFlowViewer) => void = () => {}): Promise<XhFlowViewer> {
   const viewer = window.document.createElement(FLOW_VIEWER_TAG)
   viewer.nodeTypes = registry
-  viewer.document = document
+  viewer.schema = document
   setup(viewer)
   window.document.body.append(viewer)
   mounted.push(viewer)
@@ -195,7 +196,7 @@ describe('<xh-flow-viewer>', () => {
     const viewer = await mount()
     const root = part(viewer, 'viewport')[0]!
     expect(root.getAttribute('aria-label')).toBe('Flow diagram')
-    setXhConfig({ translations: { 'xh-flow-viewer': { label: '流程图' } } as never })
+    setXhConfig(flowZhCN)
     await viewer.updateComplete
     expect(root.getAttribute('aria-label')).toBe('流程图')
     viewer.translations = { label: '审批流程' }
@@ -205,7 +206,7 @@ describe('<xh-flow-viewer>', () => {
 
   it('换节点类型或文档后重新计算', async () => {
     const viewer = await mount()
-    viewer.document = { ...document, nodes: document.nodes.slice(0, 1), edges: [] }
+    viewer.schema = { ...document, nodes: document.nodes.slice(0, 1), edges: [] }
     await viewer.updateComplete
     expect(part(viewer, 'node')).toHaveLength(1)
     expect(part(viewer, 'edge')).toHaveLength(0)
