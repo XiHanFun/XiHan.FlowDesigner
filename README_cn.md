@@ -44,9 +44,9 @@ XiHan.FlowDesigner 是一款框架无关的流程设计器，以原生 Web Compo
 
 | 包 | 说明 |
 | --- | --- |
-| `@xihanfun/flow-core` | 模型层：流程图 schema、校验、布局算法与编辑命令，纯 TypeScript，不依赖 DOM |
-| `@xihanfun/flow-runtime` | 运行时：业务页面使用的流程图查看与运行状态展示 |
-| `@xihanfun/flow-designer` | 设计器：可视化流程设计器 |
+| `@xihan-flow/core` | 模型层：流程图 schema、校验、布局算法与编辑命令，纯 TypeScript，不依赖 DOM |
+| `@xihan-flow/runtime` | 运行时：业务页面使用的流程图查看与运行状态展示 |
+| `@xihan-flow/designer` | 设计器：可视化流程设计器 |
 
 依赖方向为 `designer → runtime → core`。业务页面只需要 runtime，设计器只在需要编辑模板的地方加载。
 

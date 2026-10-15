@@ -58,16 +58,16 @@ importers:
 
   packages/designer:
     dependencies:
-      '@xihanfun/flow-core':
+      '@xihan-flow/core':
         specifier: workspace:^
         version: link:../core
-      '@xihanfun/flow-runtime':
+      '@xihan-flow/runtime':
         specifier: workspace:^
         version: link:../runtime
 
   packages/runtime:
     dependencies:
-      '@xihanfun/flow-core':
+      '@xihan-flow/core':
         specifier: workspace:^
         version: link:../core
 
