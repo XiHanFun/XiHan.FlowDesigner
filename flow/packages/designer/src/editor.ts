@@ -23,9 +23,8 @@ import type { AlignMode, DistributeAxis, ExecuteOptions, History, HistoryChangeK
 import type { LayeredDirection } from '@xihan-ui/viz/graph'
 import { applyOperation, checkConnection, createNode, validateDocument } from '@xihan-flow/core'
 import { getJsonAt, jsonEquals, setJsonAt } from '@xihan-ui/core/json'
-import { alignRects, createHistory, distributeRects, unionRects } from '@xihan-ui/designer-kit'
+import { alignRects, createHistory, distributeRects, nextFreeId, unionRects } from '@xihan-ui/designer-kit'
 import { layered } from '@xihan-ui/viz/graph'
-import { nextFreeId } from './ids'
 
 /** 选中的节点与连线 id，各自按选中先后排列。 */
 export interface FlowSelection {
@@ -184,7 +183,7 @@ export function createFlowEditor(options: FlowEditorOptions): FlowEditor {
     else {
       const current = document()
       const existing = kind === 'node' ? current.nodes.map(node => node.id) : current.edges.map(edge => edge.id)
-      id = nextFreeId(kind === 'node' ? `${nodeType}_` : 'edge_', new Set([...existing, ...batch]))
+      id = nextFreeId(kind === 'node' ? `${nodeType}_` : 'edge_', [...existing, ...batch])
     }
     batch.add(id)
     return id
