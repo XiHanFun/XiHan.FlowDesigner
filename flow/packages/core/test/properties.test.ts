@@ -3,7 +3,8 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-import type { FlowPropertyDescriptor, JsonObject } from '../src'
+import type { JsonObject } from '@xihan-ui/core/json'
+import type { FlowPropertyDescriptor } from '../src'
 import { describe, expect, it } from 'vitest'
 import { evaluateCondition, getDataValue, groupProperties, isFilled, isPropertyVisible, setDataValue } from '../src'
 

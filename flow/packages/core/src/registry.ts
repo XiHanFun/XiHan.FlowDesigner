@@ -3,11 +3,11 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
+import type { JsonObject } from '@xihan-ui/core/json'
 import type { FlowEdgeEnd } from './issues'
-import type { JsonObject } from './json'
 import type { FlowPropertyDescriptor } from './properties'
 import type { FlowNode, FlowPoint, FlowRect, FlowSize } from './schema'
-import { cloneJson, findJsonViolation } from './json'
+import { cloneJson, findJsonViolation } from '@xihan-ui/core/json'
 
 /** 端口方向：只入、只出或双向。 */
 export type FlowPortDirection = 'in' | 'out' | 'both'

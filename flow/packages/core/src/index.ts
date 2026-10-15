@@ -8,8 +8,6 @@
 export { computeEdgeGeometry, polylineMidpoint, resolveEdgeAnchor } from './geometry'
 export type { FlowEdgeAnchor, FlowEdgeGeometry, FlowEdgeRouter, FlowRouteRequest } from './geometry'
 export type { FlowEdgeEnd, FlowIssue, FlowIssueCode, FlowIssueLocation, FlowIssueSeverity, FlowSchemaIssueCode, FlowValidationIssueCode } from './issues'
-export { appendPointer, cloneJson, encodePointerToken, findJsonViolation, isJsonValue, isPlainObject, jsonEquals } from './json'
-export type { JsonArray, JsonObject, JsonPrimitive, JsonValue } from './json'
 export { applyOperation, applyOperations, FlowOperationError } from './operations'
 export type {
   FlowDocumentPatch,

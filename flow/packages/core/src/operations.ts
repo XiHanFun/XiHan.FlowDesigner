@@ -3,9 +3,9 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-import type { JsonObject, JsonValue } from './json'
+import type { JsonObject, JsonValue } from '@xihan-ui/core/json'
 import type { FlowDocument, FlowEdge, FlowEdgeStyle, FlowEndpoint, FlowNode, FlowPoint } from './schema'
-import { jsonEquals } from './json'
+import { jsonEquals } from '@xihan-ui/core/json'
 
 /** 节点的新位置。 */
 export interface FlowNodePosition {

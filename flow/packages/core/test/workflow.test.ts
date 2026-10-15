@@ -3,7 +3,8 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-import type { FlowDocument, JsonObject } from '../src'
+import type { JsonObject } from '@xihan-ui/core/json'
+import type { FlowDocument } from '../src'
 import type { WorkflowDefinitionJson } from './fixtures/workflow'
 import { describe, expect, it } from 'vitest'
 import { groupProperties, readDocument, setDataValue, validateDocument } from '../src'

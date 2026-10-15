@@ -32,6 +32,7 @@ catalogs:
       version: 4.1.11
 
 overrides:
+  '@xihan-ui/core': link:../../XiHan.UI/ui/packages/engine/core
   '@xihan-ui/designer-kit': link:../../XiHan.UI/ui/packages/features/designer-kit
   '@xihan-ui/viz': link:../../XiHan.UI/ui/packages/engine/viz
   '@xihan-ui/web-components': link:../../XiHan.UI/ui/packages/adapters/web-components
@@ -62,7 +63,11 @@ importers:
         specifier: 'catalog:'
         version: 4.1.11(@types/node@24.19.2)(jsdom@27.4.0)(vite@8.3.4(@types/node@24.19.2)(yaml@2.9.1))
 
-  packages/core: {}
+  packages/core:
+    dependencies:
+      '@xihan-ui/core':
+        specifier: link:../../../../XiHan.UI/ui/packages/engine/core
+        version: link:../../../../XiHan.UI/ui/packages/engine/core
 
   packages/designer:
     dependencies:

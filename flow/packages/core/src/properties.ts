@@ -3,8 +3,8 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-import type { JsonObject, JsonPrimitive, JsonValue } from './json'
-import { isPlainObject, jsonEquals } from './json'
+import type { JsonObject, JsonPrimitive, JsonValue } from '@xihan-ui/core/json'
+import { isPlainObject, jsonEquals } from '@xihan-ui/core/json'
 
 /** 节点 data 内的路径，逐级为对象键。 */
 export type FlowDataPath = readonly string[]

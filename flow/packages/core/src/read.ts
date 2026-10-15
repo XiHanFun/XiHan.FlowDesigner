@@ -3,10 +3,10 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
+import type { JsonObject, JsonValue } from '@xihan-ui/core/json'
 import type { FlowIssue, FlowSchemaIssueCode } from './issues'
-import type { JsonObject, JsonValue } from './json'
 import type { FlowDocument, FlowEdge, FlowEdgeStyle, FlowEndpoint, FlowNode, FlowPoint } from './schema'
-import { appendPointer, cloneJson, findJsonViolation, isPlainObject } from './json'
+import { cloneJson, findJsonViolation, isPlainObject } from '@xihan-ui/core/json'
 import { FLOW_DOCUMENT_VERSION } from './schema'
 
 /** 读取结果：成功时给出规范化后的文档副本，失败时给出全部结构问题。 */
@@ -146,6 +146,11 @@ function readPoint(reader: SchemaReader, value: unknown, pointer: string): FlowP
   if (x === undefined || y === undefined)
     return undefined
   return { x, y }
+}
+
+/** 在 JSON Pointer 后追加一个片段，片段里的 ~ 与 / 按规范转义。 */
+function appendPointer(pointer: string, token: string | number): string {
+  return `${pointer}/${String(token).replace(/~/g, '~0').replace(/\//g, '~1')}`
 }
 
 /** 收集结构问题的读取器。 */

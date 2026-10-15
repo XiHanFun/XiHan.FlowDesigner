@@ -3,8 +3,8 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
+import type { JsonObject } from '@xihan-ui/core/json'
 import type { FlowEdgeEnd, FlowIssue, FlowIssueLocation, FlowIssueSeverity, FlowValidationIssueCode } from './issues'
-import type { JsonObject } from './json'
 import type { FlowNodeType, FlowNodeTypeRegistry, FlowPort } from './registry'
 import type { FlowDocument, FlowEndpoint, FlowNode } from './schema'
 import { getDataValue, isFilled, isPropertyVisible } from './properties'
