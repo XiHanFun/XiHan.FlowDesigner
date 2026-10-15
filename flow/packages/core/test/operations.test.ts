@@ -175,6 +175,43 @@ describe('文档操作', () => {
   })
 })
 
+describe('没有带来变化的操作', () => {
+  it.each<[string, FlowOperation]>([
+    ['移到原位', { type: 'moveNodes', positions: [{ id: 'a', x: 0, y: 0 }] }],
+    ['空移动', { type: 'moveNodes', positions: [] }],
+    ['尺寸不变', { type: 'resizeNode', id: 'b', x: 200, y: 0, width: 100, height: 40 }],
+    ['标签与数据相同', { type: 'updateNode', id: 'a', patch: { label: 'A', data: { k: 1 } } }],
+    ['删除本来没有的字段', { type: 'updateNode', id: 'b', patch: { label: null, data: null } }],
+    ['空补丁', { type: 'updateEdge', id: 'ab', patch: {} }],
+    ['连线属性相同', { type: 'updateEdge', id: 'bc', patch: { data: { priority: 1 }, vertices: [{ x: 300, y: 0 }] } }],
+    ['端点相同', { type: 'reconnectEdge', id: 'ab', source: { node: 'a' }, target: { node: 'b' } }],
+    ['文档数据相同', { type: 'updateDocument', patch: { data: { code: 'flow' } } }],
+  ])('%s：返回同一文档、逆操作为空', (_, operation) => {
+    const document = sample()
+    expect(applyOperation(document, operation)).toEqual({ document, inverse: [] })
+    expect(applyOperation(document, operation).document).toBe(document)
+  })
+
+  it('批量移动只记下真正移动了的节点', () => {
+    const result = applyOperation(sample(), { type: 'moveNodes', positions: [{ id: 'a', x: 0, y: 0 }, { id: 'b', x: 5, y: 5 }] })
+    expect(result.inverse).toEqual([{ type: 'moveNodes', positions: [{ id: 'b', x: 200, y: 0 }] }])
+  })
+
+  it('补丁的逆操作只含真正变了的字段', () => {
+    const result = applyOperation(sample(), { type: 'updateNode', id: 'a', patch: { label: 'A', data: { k: 2 } } })
+    expect(result.inverse).toEqual([{ type: 'updateNode', id: 'a', patch: { data: { k: 1 } } }])
+    const reconnect = applyOperation(sample(), { type: 'reconnectEdge', id: 'ab', source: { node: 'a' }, target: { node: 'c' } })
+    expect(reconnect.inverse).toEqual([{ type: 'reconnectEdge', id: 'ab', target: { node: 'b' } }])
+  })
+
+  it('一组操作都没有变化时返回同一文档', () => {
+    const document = sample()
+    const result = applyOperations(document, [{ type: 'moveNodes', positions: [] }, { type: 'updateEdge', id: 'ab', patch: { label: 'go' } }])
+    expect(result.document).toBe(document)
+    expect(result.inverse).toEqual([])
+  })
+})
+
 describe('applyOperations', () => {
   it('逆操作按反序拼接', () => {
     const result = roundTrip(sample(), [

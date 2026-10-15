@@ -3,8 +3,9 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-import type { JsonObject } from './json'
+import type { JsonObject, JsonValue } from './json'
 import type { FlowDocument, FlowEdge, FlowEdgeStyle, FlowEndpoint, FlowNode, FlowPoint } from './schema'
+import { jsonEquals } from './json'
 
 /** 节点的新位置。 */
 export interface FlowNodePosition {
@@ -48,7 +49,7 @@ export type FlowOperation
 /** 操作类型名。 */
 export type FlowOperationType = FlowOperation['type']
 
-/** 应用操作的结果：新文档与按顺序应用即可撤销的逆操作。 */
+/** 应用操作的结果：新文档与按顺序应用即可撤销的逆操作；没有带来变化时文档是传入的同一引用、逆操作为空。 */
 export interface FlowOperationResult {
   readonly document: FlowDocument
   readonly inverse: readonly FlowOperation[]
@@ -82,6 +83,7 @@ const DOCUMENT_PATCH_KEYS: readonly string[] = ['data']
 
 /**
  * 应用一个编辑操作，返回新文档与逆操作，不修改输入文档；未改动的节点与连线沿用原引用。
+ * 操作没有带来变化时返回传入文档的同一引用，逆操作为空数组。
  * 操作只保证 id 唯一与被操作对象存在，引用完整性与端口约束由 validateDocument 与 checkConnection 负责。
  * 删除节点时级联删除与它相连的连线，逆操作会把它们放回原位置。
  */
@@ -169,20 +171,26 @@ function moveNodes(document: FlowDocument, operation: Op<'moveNodes'>): FlowOper
     targets.set(position.id, position)
   }
   const previous = new Map<string, FlowNodePosition>()
+  const seen = new Set<string>()
   const nodes = document.nodes.map((node) => {
     const target = targets.get(node.id)
-    if (!target || previous.has(node.id))
+    if (!target || seen.has(node.id))
+      return node
+    seen.add(node.id)
+    if (target.x === node.x && target.y === node.y)
       return node
     previous.set(node.id, { id: node.id, x: node.x, y: node.y })
     return { ...node, x: target.x, y: target.y }
   })
   for (const id of targets.keys()) {
-    if (!previous.has(id))
+    if (!seen.has(id))
       throw new FlowOperationError('node-not-found', operation, `node "${id}" does not exist`)
   }
+  if (previous.size === 0)
+    return unchanged(document)
   return {
-    document: targets.size === 0 ? document : { ...document, nodes },
-    inverse: [{ type: 'moveNodes', positions: operation.positions.map(position => previous.get(position.id)!) }],
+    document: { ...document, nodes },
+    inverse: [{ type: 'moveNodes', positions: operation.positions.flatMap(position => previous.get(position.id) ?? []) }],
   }
 }
 
@@ -192,6 +200,8 @@ function resizeNode(document: FlowDocument, operation: Op<'resizeNode'>): FlowOp
     throw new FlowOperationError('invalid-operation', operation, 'bounds must be finite with non-negative size')
   const index = nodeIndexOf(document, operation, operation.id)
   const node = document.nodes[index]!
+  if (node.x === x && node.y === y && node.width === width && node.height === height)
+    return unchanged(document)
   return {
     document: { ...document, nodes: replaceAt(document.nodes, index, { ...node, x, y, width, height }) },
     inverse: [{ type: 'resizeNode', id: node.id, x: node.x, y: node.y, width: node.width, height: node.height }],
@@ -202,6 +212,8 @@ function updateNode(document: FlowDocument, operation: Op<'updateNode'>): FlowOp
   const index = nodeIndexOf(document, operation, operation.id)
   const node = document.nodes[index]!
   const { value, inverse } = applyPatch(operation, node, operation.patch, NODE_PATCH_KEYS)
+  if (value === node)
+    return unchanged(document)
   return {
     document: { ...document, nodes: replaceAt(document.nodes, index, value) },
     inverse: [{ type: 'updateNode', id: node.id, patch: inverse }],
@@ -234,16 +246,24 @@ function reconnectEdge(document: FlowDocument, operation: Op<'reconnectEdge'>): 
     throw new FlowOperationError('invalid-operation', operation, 'source or target is required')
   const index = edgeIndexOf(document, operation, operation.id)
   const edge = document.edges[index]!
+  const moveSource = source !== undefined && !sameValue(source, edge.source)
+  const moveTarget = target !== undefined && !sameValue(target, edge.target)
+  if (!moveSource && !moveTarget)
+    return unchanged(document)
   return {
     document: {
       ...document,
-      edges: replaceAt(document.edges, index, { ...edge, source: source ?? edge.source, target: target ?? edge.target }),
+      edges: replaceAt(document.edges, index, {
+        ...edge,
+        source: moveSource ? source : edge.source,
+        target: moveTarget ? target : edge.target,
+      }),
     },
     inverse: [{
       type: 'reconnectEdge',
       id: edge.id,
-      ...(source === undefined ? {} : { source: edge.source }),
-      ...(target === undefined ? {} : { target: edge.target }),
+      ...(moveSource ? { source: edge.source } : {}),
+      ...(moveTarget ? { target: edge.target } : {}),
     }],
   }
 }
@@ -252,6 +272,8 @@ function updateEdge(document: FlowDocument, operation: Op<'updateEdge'>): FlowOp
   const index = edgeIndexOf(document, operation, operation.id)
   const edge = document.edges[index]!
   const { value, inverse } = applyPatch(operation, edge, operation.patch, EDGE_PATCH_KEYS)
+  if (value === edge)
+    return unchanged(document)
   return {
     document: { ...document, edges: replaceAt(document.edges, index, value) },
     inverse: [{ type: 'updateEdge', id: edge.id, patch: inverse }],
@@ -260,13 +282,18 @@ function updateEdge(document: FlowDocument, operation: Op<'updateEdge'>): FlowOp
 
 function updateDocument(document: FlowDocument, operation: Op<'updateDocument'>): FlowOperationResult {
   const { value, inverse } = applyPatch(operation, document, operation.patch, DOCUMENT_PATCH_KEYS)
+  if (value === document)
+    return unchanged(document)
   return {
     document: value,
     inverse: [{ type: 'updateDocument', patch: inverse }],
   }
 }
 
-/** 按补丁写入字段：缺省不变，null 删除；同时给出恢复原值的补丁。补丁含未登记字段时抛错。 */
+/**
+ * 按补丁写入字段：缺省不变，null 删除；同时给出恢复原值的补丁，只含真正变了的字段。
+ * 没有字段变化时返回传入的同一对象。补丁含未登记字段时抛错。
+ */
 function applyPatch<T extends object, P extends object>(
   operation: FlowOperation,
   target: T,
@@ -276,18 +303,33 @@ function applyPatch<T extends object, P extends object>(
   const source = target as Record<string, unknown>
   const value: Record<string, unknown> = { ...source }
   const inverse: Record<string, unknown> = {}
+  let changed = false
   for (const [key, next] of Object.entries(patch)) {
     if (!allowed.includes(key))
       throw new FlowOperationError('invalid-operation', operation, `field "${key}" cannot be patched`)
     if (next === undefined)
       continue
-    inverse[key] = source[key] === undefined ? null : source[key]
+    const current = source[key]
+    if (next === null ? current === undefined : sameValue(current, next))
+      continue
+    changed = true
+    inverse[key] = current === undefined ? null : current
     if (next === null)
       delete value[key]
     else
       value[key] = next
   }
-  return { value: value as T, inverse: inverse as P }
+  return changed ? { value: value as T, inverse: inverse as P } : { value: target, inverse: {} as P }
+}
+
+/** 没有带来变化的结果：同一文档、空逆操作。 */
+function unchanged(document: FlowDocument): FlowOperationResult {
+  return { document, inverse: [] }
+}
+
+/** 按 JSON 值比较两个字段值。 */
+function sameValue(a: unknown, b: unknown): boolean {
+  return jsonEquals(a as JsonValue | undefined, b as JsonValue | undefined)
 }
 
 function edgesTouching(document: FlowDocument, nodeId: string): { edge: FlowEdge, index: number }[] {
