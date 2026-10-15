@@ -63,8 +63,9 @@ describe('createNodeTypeRegistry', () => {
     ['最大入度为负', [{ ...base, type: 'a', ports: 'in', connection: { maxIncoming: -1 } }], /maxIncoming/],
     ['个数上下限颠倒', [{ ...base, type: 'a', ports: 'in', minCount: 2, maxCount: 1 }], /minCount must not exceed/],
     ['默认 data 不是 JSON', [{ ...base, type: 'a', ports: 'in', defaults: { data: { v: Number.NaN } } }], /defaults.data/],
-    ['属性路径为空', [{ ...base, type: 'a', ports: 'in', properties: [{ path: [], editor: 'text' }] }], /path must not be empty/],
-    ['属性路径重复', [{ ...base, type: 'a', ports: 'in', properties: [{ path: ['a'], editor: 'text' }, { path: ['a'], editor: 'select' }] }], /declared more than once/],
+    ['属性路径为空', [{ ...base, type: 'a', ports: 'in', properties: [{ path: [], control: { kind: 'text' } }] }], /path must not be empty/],
+    ['属性路径含原型段', [{ ...base, type: 'a', ports: 'in', properties: [{ path: ['data', '__proto__'], control: { kind: 'text' } }] }], /is invalid/],
+    ['属性路径重复', [{ ...base, type: 'a', ports: 'in', properties: [{ path: ['a'], control: { kind: 'text' } }, { path: ['a'], control: { kind: 'json' } }] }], /declared more than once/],
   ])('定义不合法时抛错：%s', (_, definitions, message) => {
     expect(() => createNodeTypeRegistry(definitions)).toThrow(message)
   })

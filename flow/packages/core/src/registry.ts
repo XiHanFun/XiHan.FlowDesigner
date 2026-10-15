@@ -4,10 +4,10 @@
  */
 
 import type { JsonObject } from '@xihan-ui/core/json'
+import type { PropertyControl, PropertyDescriptor } from '@xihan-ui/designer-kit/properties'
 import type { FlowEdgeEnd } from './issues'
-import type { FlowPropertyDescriptor } from './properties'
 import type { FlowNode, FlowPoint, FlowRect, FlowSize } from './schema'
-import { cloneJson, findJsonViolation } from '@xihan-ui/core/json'
+import { cloneJson, findJsonViolation, formatJsonPath, getJsonAt } from '@xihan-ui/core/json'
 
 /** 端口方向：只入、只出或双向。 */
 export type FlowPortDirection = 'in' | 'out' | 'both'
@@ -48,6 +48,12 @@ export interface FlowConnectionRule {
   /** 是否允许连向自身，缺省不允许。 */
   readonly allowSelfLoop?: boolean
 }
+
+/** 节点属性的编辑方式：内建七种之外，宿主可以用自己的种类（如受理人选择），由宿主提供编辑器。 */
+export type FlowPropertyControl = PropertyControl | { readonly kind: string }
+
+/** 节点属性描述：path 相对节点本身，如 ['data', 'properties', 'Url']、['label']。 */
+export type FlowPropertyDescriptor = PropertyDescriptor<FlowPropertyControl>
 
 /** 新建节点时的默认值。 */
 export interface FlowNodeDefaults {
@@ -199,7 +205,13 @@ function normalizeNodeType(definition: FlowNodeTypeDefinition): FlowNodeType {
   for (const descriptor of definition.properties ?? []) {
     if (descriptor.path.length === 0)
       fail(type, 'property path must not be empty')
-    const key = JSON.stringify(descriptor.path)
+    try {
+      getJsonAt(undefined, descriptor.path)
+    }
+    catch {
+      fail(type, `property path ${JSON.stringify(descriptor.path)} is invalid`)
+    }
+    const key = formatJsonPath(descriptor.path)
     if (paths.has(key))
       fail(type, `property ${key} is declared more than once`)
     paths.add(key)

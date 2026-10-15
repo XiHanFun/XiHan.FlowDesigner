@@ -7,7 +7,7 @@ import type { JsonObject, JsonValue } from '@xihan-ui/core/json'
 import type { FlowDocument, FlowEdge, FlowNode, FlowNodeTypeDefinition, FlowNodeTypeRegistry } from '../../src'
 import { createNodeTypeRegistry } from '../../src'
 
-/** 工作流活动节点类型：节点 type 即活动类型，活动属性位于 data.properties。 */
+/** 工作流活动节点类型：节点 type 即活动类型，活动属性位于 data.properties；属性路径相对节点。 */
 export const workflowNodeTypes: readonly FlowNodeTypeDefinition[] = [
   { type: 'Start', category: 'control', icon: 'lucide:play', size: { width: 160, height: 48 }, ports: 'out', entry: true, minCount: 1, maxCount: 1 },
   {
@@ -17,18 +17,21 @@ export const workflowNodeTypes: readonly FlowNodeTypeDefinition[] = [
     ports: 'in',
     terminal: true,
     properties: [
-      { path: ['properties', 'Outcome'], editor: 'select', options: [{ value: 'approved', label: 'outcome_approved' }, { value: 'rejected', label: 'outcome_rejected' }] },
+      {
+        path: ['data', 'properties', 'Outcome'],
+        control: { kind: 'select', options: [{ value: 'approved', label: 'outcome_approved' }, { value: 'rejected', label: 'outcome_rejected' }] },
+      },
     ],
   },
-  { type: 'Terminate', category: 'control', size: { width: 160, height: 48 }, ports: 'in', terminal: true, properties: [{ path: ['properties', 'Reason'], editor: 'text' }] },
-  { type: 'Fault', category: 'control', size: { width: 160, height: 48 }, ports: 'in', terminal: true, properties: [{ path: ['properties', 'Message'], editor: 'text' }] },
+  { type: 'Terminate', category: 'control', size: { width: 160, height: 48 }, ports: 'in', terminal: true, properties: [{ path: ['data', 'properties', 'Reason'], control: { kind: 'text' } }] },
+  { type: 'Fault', category: 'control', size: { width: 160, height: 48 }, ports: 'in', terminal: true, properties: [{ path: ['data', 'properties', 'Message'], control: { kind: 'text' } }] },
   { type: 'Decision', category: 'control', size: { width: 160, height: 48 }, ports: 'both' },
   {
     type: 'Join',
     category: 'control',
     size: { width: 160, height: 48 },
     ports: 'both',
-    properties: [{ path: ['properties', 'Mode'], editor: 'select', options: [{ value: 'WaitAll' }, { value: 'WaitAny' }] }],
+    properties: [{ path: ['data', 'properties', 'Mode'], control: { kind: 'select', options: [{ value: 'WaitAll' }, { value: 'WaitAny' }] } }],
   },
   {
     type: 'UserTask',
@@ -39,38 +42,36 @@ export const workflowNodeTypes: readonly FlowNodeTypeDefinition[] = [
     defaults: { data: { properties: { CompletionPolicy: 'Any' } } },
     meta: { outcomes: ['approved', 'rejected', 'timeout'] },
     properties: [
-      { path: ['properties', 'AssigneeRules'], editor: 'assignees', group: 'participants', required: true },
+      { path: ['data', 'properties', 'AssigneeRules'], control: { kind: 'assignees' }, group: 'participants', required: true },
       {
-        path: ['properties', 'CompletionPolicy'],
-        editor: 'select',
+        path: ['data', 'properties', 'CompletionPolicy'],
+        control: { kind: 'select', options: [{ value: 'Any' }, { value: 'All' }, { value: 'Sequential' }] },
         group: 'participants',
-        defaultValue: 'Any',
-        options: [{ value: 'Any' }, { value: 'All' }, { value: 'Sequential' }],
+        meta: { placeholder: 'Any' },
       },
       {
-        path: ['properties', 'EmptyAssigneeStrategy'],
-        editor: 'select',
+        path: ['data', 'properties', 'EmptyAssigneeStrategy'],
+        control: { kind: 'select', options: [{ value: 'Fault' }, { value: 'AutoApprove' }, { value: 'AutoReject' }, { value: 'Fallback' }] },
         group: 'participants',
-        defaultValue: 'Fault',
-        options: [{ value: 'Fault' }, { value: 'AutoApprove' }, { value: 'AutoReject' }, { value: 'Fallback' }],
+        meta: { placeholder: 'Fault' },
       },
       {
-        path: ['properties', 'FallbackAssigneeRules'],
-        editor: 'assignees',
+        path: ['data', 'properties', 'FallbackAssigneeRules'],
+        control: { kind: 'assignees' },
         group: 'participants',
         required: true,
         visibleWhen: {
           any: [
-            { path: ['properties', 'EmptyAssigneeStrategy'], equals: 'Fallback' },
-            { path: ['properties', 'FallbackAssigneeRules'], filled: true },
+            { path: ['data', 'properties', 'EmptyAssigneeStrategy'], equals: 'Fallback' },
+            { path: ['data', 'properties', 'FallbackAssigneeRules'], filled: true },
           ],
         },
       },
-      { path: ['properties', 'Title'], editor: 'text', group: 'basic', meta: { placeholder: '单据 {{billNo}} 审批' } },
-      { path: ['properties', 'AllowedOutcomes'], editor: 'tags', group: 'form' },
-      { path: ['retryPolicy'], editor: 'retry', group: 'execution' },
-      { path: ['timeoutSeconds'], editor: 'number', group: 'execution' },
-      { path: ['continueOnError'], editor: 'boolean', group: 'execution' },
+      { path: ['data', 'properties', 'Title'], control: { kind: 'text', placeholder: '单据 {{billNo}} 审批' }, group: 'basic' },
+      { path: ['data', 'properties', 'AllowedOutcomes'], control: { kind: 'tags' }, group: 'form' },
+      { path: ['data', 'retryPolicy'], control: { kind: 'retry' }, group: 'execution' },
+      { path: ['data', 'timeoutSeconds'], control: { kind: 'number', integer: true, min: 0 }, group: 'execution' },
+      { path: ['data', 'continueOnError'], control: { kind: 'boolean' }, group: 'execution' },
     ],
   },
   {
@@ -79,8 +80,8 @@ export const workflowNodeTypes: readonly FlowNodeTypeDefinition[] = [
     size: { width: 200, height: 64 },
     ports: 'both',
     properties: [
-      { path: ['properties', 'Url'], editor: 'text', required: true },
-      { path: ['properties', 'Method'], editor: 'select', options: [{ value: 'GET' }, { value: 'POST' }] },
+      { path: ['data', 'properties', 'Url'], control: { kind: 'text' }, required: true },
+      { path: ['data', 'properties', 'Method'], control: { kind: 'select', options: [{ value: 'GET' }, { value: 'POST' }] } },
     ],
   },
 ]

@@ -4,6 +4,7 @@
  */
 
 import type { FlowIssue } from '../src'
+import { formatJsonPath } from '@xihan-ui/core/json'
 import { describe, expect, it } from 'vitest'
 import { createDocument, FLOW_DOCUMENT_VERSION, readDocument } from '../src'
 
@@ -15,7 +16,7 @@ function issuesOf(value: unknown): readonly FlowIssue[] {
 }
 
 function summary(issues: readonly FlowIssue[]): string[] {
-  return issues.map(issue => `${issue.code} ${String(issue.params.pointer ?? '')} ${String(issue.params.expected ?? '')}`.trim())
+  return issues.map(issue => `${issue.code} ${formatJsonPath(issue.path)} ${String(issue.params?.expected ?? issue.params?.pointer ?? '')}`.trim())
 }
 
 const fullDocument = {
@@ -66,25 +67,25 @@ describe('readDocument', () => {
   })
 
   it('根不是对象', () => {
-    expect(summary(issuesOf([]))).toEqual(['schema.type-mismatch  object'])
-    expect(summary(issuesOf(null))).toEqual(['schema.type-mismatch  object'])
+    expect(summary(issuesOf([]))).toEqual(['invalid-type  object'])
+    expect(summary(issuesOf(null))).toEqual(['invalid-type  object'])
   })
 
   it('报告缺失字段与多余字段', () => {
     expect(summary(issuesOf({ nodes: [], extra: 1 }))).toEqual([
-      'schema.unknown-field /extra',
-      'schema.missing-field /version',
-      'schema.missing-field /edges',
+      'unknown-key extra',
+      'required version',
+      'required edges',
     ])
   })
 
   it('不支持的版本只报告版本问题', () => {
     const issues = issuesOf({ version: 2, nodes: 'x', edges: [] })
-    expect(issues).toEqual([{ code: 'document.unsupported-version', severity: 'error', location: { kind: 'document' }, params: { version: 2, supported: 1 } }])
+    expect(issues).toEqual([{ code: 'document.unsupported-version', path: ['version'], params: { version: 2, supported: 1 } }])
   })
 
   it('版本不是数字', () => {
-    expect(summary(issuesOf({ version: '1', nodes: [], edges: [] }))).toEqual(['schema.type-mismatch /version finite-number'])
+    expect(summary(issuesOf({ version: '1', nodes: [], edges: [] }))).toEqual(['invalid-type version number'])
   })
 
   it('逐项报告节点字段问题', () => {
@@ -94,14 +95,14 @@ describe('readDocument', () => {
       edges: [],
     })
     expect(summary(issues)).toEqual([
-      'schema.unknown-field /nodes/0/color',
-      'schema.type-mismatch /nodes/0/id non-empty-string',
-      'schema.type-mismatch /nodes/0/type non-empty-string',
-      'schema.type-mismatch /nodes/0/x finite-number',
-      'schema.type-mismatch /nodes/0/y finite-number',
-      'schema.type-mismatch /nodes/0/width non-negative-number',
-      'schema.type-mismatch /nodes/0/label string',
-      'schema.type-mismatch /nodes/0/data object',
+      'unknown-key nodes[0].color',
+      'empty nodes[0].id',
+      'invalid-type nodes[0].type string',
+      'invalid-type nodes[0].x number',
+      'invalid-type nodes[0].y number',
+      'out-of-range nodes[0].width',
+      'invalid-type nodes[0].label string',
+      'invalid-type nodes[0].data object',
     ])
   })
 
@@ -113,8 +114,8 @@ describe('readDocument', () => {
       data: { when: new Date(0) },
     })
     expect(summary(issues)).toEqual([
-      'schema.type-mismatch /nodes/0/data/list/1 json',
-      'schema.type-mismatch /data/when json',
+      'invalid-value nodes[0].data /list/1',
+      'invalid-value data /when',
     ])
   })
 
@@ -128,27 +129,29 @@ describe('readDocument', () => {
       ],
     })
     expect(summary(issues)).toEqual([
-      'schema.type-mismatch /edges/0/source object',
-      'schema.missing-field /edges/0/target/node',
-      'schema.unknown-field /edges/0/style/color',
-      'schema.type-mismatch /edges/0/style/dashed boolean',
-      'schema.missing-field /edges/0/vertices/0/y',
-      'schema.type-mismatch /edges/0/vertices/1 object',
-      'schema.type-mismatch /edges/1/source/port non-empty-string',
+      'invalid-type edges[0].source object',
+      'required edges[0].target.node',
+      'unknown-key edges[0].style.color',
+      'invalid-type edges[0].style.dashed boolean',
+      'required edges[0].vertices[0].y',
+      'invalid-type edges[0].vertices[1] object',
+      'empty edges[1].source.port',
     ])
   })
 
   it('nodes 与 edges 必须是数组', () => {
     expect(summary(issuesOf({ version: 1, nodes: {}, edges: 'x' }))).toEqual([
-      'schema.type-mismatch /nodes array',
-      'schema.type-mismatch /edges array',
+      'invalid-type nodes array',
+      'invalid-type edges array',
     ])
   })
 
-  it('结构问题都定位到文档并标为 error', () => {
-    for (const issue of issuesOf({ version: 1, nodes: [{}], edges: [] })) {
-      expect(issue.severity).toBe('error')
-      expect(issue.location).toEqual({ kind: 'document' })
+  it('结构问题不写严重程度（按 error 处理），路径从文档根算起', () => {
+    const issues = issuesOf({ version: 1, nodes: [{}], edges: [] })
+    expect(issues.map(issue => formatJsonPath(issue.path))).toEqual(['nodes[0].id', 'nodes[0].type', 'nodes[0].x', 'nodes[0].y', 'nodes[0].width', 'nodes[0].height'])
+    for (const issue of issues) {
+      expect(issue.code).toBe('required')
+      expect(issue.severity).toBeUndefined()
     }
   })
 })

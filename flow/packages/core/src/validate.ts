@@ -3,18 +3,19 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-import type { JsonObject } from '@xihan-ui/core/json'
+import type { JsonObject, JsonPath } from '@xihan-ui/core/json'
+import type { IssueParamValue, IssueSeverity, SchemaIssueTarget } from '@xihan-ui/designer-kit/schema'
 import type { GraphLink } from '@xihan-ui/viz/graph'
-import type { FlowEdgeEnd, FlowIssue, FlowIssueLocation, FlowIssueSeverity, FlowValidationIssueCode } from './issues'
+import type { FlowEdgeEnd, FlowIssue, FlowValidationIssueCode } from './issues'
 import type { FlowNodeType, FlowNodeTypeRegistry, FlowPort } from './registry'
 import type { FlowDocument, FlowEndpoint, FlowNode } from './schema'
-import { getJsonAt } from '@xihan-ui/core/json'
+import { checkProperties } from '@xihan-ui/designer-kit/properties'
+import { withSeverity } from '@xihan-ui/designer-kit/schema'
 import { reachableFrom } from '@xihan-ui/viz/graph'
-import { isFilled, isPropertyVisible } from './properties'
 import { portAllows } from './registry'
 
 /** 各问题码的缺省严重程度。 */
-export const DEFAULT_ISSUE_SEVERITY: Readonly<Record<FlowValidationIssueCode, FlowIssueSeverity>> = {
+export const DEFAULT_ISSUE_SEVERITY: Readonly<Record<FlowValidationIssueCode, IssueSeverity>> = {
   'node.duplicate-id': 'error',
   'node.unknown-type': 'error',
   'edge.duplicate-id': 'error',
@@ -33,13 +34,18 @@ export const DEFAULT_ISSUE_SEVERITY: Readonly<Record<FlowValidationIssueCode, Fl
   'node.missing-incoming': 'warning',
   'node.missing-outgoing': 'warning',
   'node.unreachable': 'warning',
-  'node.property-required': 'error',
+  'required': 'error',
+  'invalid-type': 'error',
+  'out-of-range': 'error',
+  'not-integer': 'error',
+  'invalid-option': 'error',
+  'invalid-color': 'error',
 }
 
 /** 校验选项。 */
 export interface FlowValidateOptions {
   /** 按问题码覆盖严重程度，off 表示不报告。 */
-  readonly severity?: Readonly<Partial<Record<FlowValidationIssueCode, FlowIssueSeverity | 'off'>>>
+  readonly severity?: Readonly<Partial<Record<FlowValidationIssueCode, IssueSeverity | 'off'>>>
 }
 
 /** 连接检查可能给出的问题码。 */
@@ -159,27 +165,28 @@ export function checkConnection(
 }
 
 /**
- * 按节点类型登记表校验文档结构，返回全部问题。
+ * 按节点类型登记表校验文档结构，返回全部问题，每条都带上严重程度。
  * 覆盖重复 id、未知类型、悬空引用、端口方向、自环、允许的连接类型、入度 / 出度与端口连接数、
- * 类型个数、孤立 / 缺少入线或出线 / 从入口不可达的节点，以及显示中的必填属性。
- * 重复 id 的节点只按首次出现的那个参与引用解析与连通性分析。
+ * 类型个数、孤立 / 缺少入线或出线 / 从入口不可达的节点，以及节点属性（显示中的必填与内建编辑方式的取值）。
+ * 问题落在节点上时路径为 ['nodes', 下标]，落在连线上时为 ['edges', 下标]（指明一端时再加 source / target），
+ * 并带 target；类型个数的问题路径为空。重复 id 的节点只按首次出现的那个参与引用解析与连通性分析。
  */
 export function validateDocument(
   document: FlowDocument,
   registry: FlowNodeTypeRegistry,
   options: FlowValidateOptions = {},
 ): FlowIssue[] {
-  const issues: FlowIssue[] = []
-  const report = (code: FlowValidationIssueCode, location: FlowIssueLocation, params: JsonObject = {}): void => {
-    const severity = options.severity?.[code] ?? DEFAULT_ISSUE_SEVERITY[code]
-    if (severity !== 'off')
-      issues.push({ code, severity, location, params })
+  const issues: FlowIssue<FlowValidationIssueCode>[] = []
+  interface Location { readonly path: JsonPath, readonly target?: SchemaIssueTarget }
+  const report = (code: FlowValidationIssueCode, location: Location, params?: JsonObject): void => {
+    issues.push({ code, ...location, ...(params === undefined || Object.keys(params).length === 0 ? {} : { params: params as Readonly<Record<string, IssueParamValue>> }) })
   }
-  const nodeAt = (index: number): FlowIssueLocation => ({ kind: 'node', id: document.nodes[index]!.id, index })
-  const edgeAt = (index: number, end?: FlowEdgeEnd): FlowIssueLocation => {
-    const id = document.edges[index]!.id
-    return end === undefined ? { kind: 'edge', id, index } : { kind: 'edge', id, index, end }
-  }
+  const nodeAt = (index: number): Location => ({ path: ['nodes', index], target: { kind: 'node', id: document.nodes[index]!.id } })
+  const edgeAt = (index: number, end?: FlowEdgeEnd): Location => ({
+    path: end === undefined ? ['edges', index] : ['edges', index, end],
+    target: { kind: 'edge', id: document.edges[index]!.id },
+  })
+  const documentLevel: Location = { path: [] }
 
   const nodeIndex = new Map<string, number>()
   const types: (FlowNodeType | undefined)[] = []
@@ -265,9 +272,9 @@ export function validateDocument(
   for (const nodeType of registry.types) {
     const count = typeCounts.get(nodeType.type) ?? 0
     if (nodeType.minCount !== undefined && count < nodeType.minCount)
-      report('type.min-count', { kind: 'document' }, { type: nodeType.type, min: nodeType.minCount, count })
+      report('type.min-count', documentLevel, { type: nodeType.type, min: nodeType.minCount, count })
     if (nodeType.maxCount !== undefined && count > nodeType.maxCount)
-      report('type.max-count', { kind: 'document' }, { type: nodeType.type, max: nodeType.maxCount, count })
+      report('type.max-count', documentLevel, { type: nodeType.type, max: nodeType.maxCount, count })
   }
 
   const connectable = (index: number): boolean => primary(index) && (types[index]?.ports.length ?? 0) > 0
@@ -299,15 +306,14 @@ export function validateDocument(
 
   document.nodes.forEach((node, index) => {
     const nodeType = types[index]
-    if (!nodeType || !primary(index))
+    if (!nodeType?.properties || !primary(index))
       return
-    for (const descriptor of nodeType.properties ?? []) {
-      if (descriptor.required && isPropertyVisible(descriptor, node.data) && !isFilled(getJsonAt(node.data, descriptor.path)))
-        report('node.property-required', nodeAt(index), { path: [...descriptor.path] })
-    }
+    const found = checkProperties(nodeType.properties, node as unknown as JsonObject, nodeAt(index))
+    for (const issue of found)
+      issues.push(issue as FlowIssue<FlowValidationIssueCode>)
   })
 
-  return issues
+  return withSeverity(issues, DEFAULT_ISSUE_SEVERITY, options.severity)
 }
 
 function inspectEnd(nodeType: FlowNodeType, endpoint: FlowEndpoint, end: FlowEdgeEnd): { port?: FlowPort, problem?: EndProblem } {

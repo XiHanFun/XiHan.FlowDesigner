@@ -7,8 +7,9 @@ import type { JsonObject } from '@xihan-ui/core/json'
 import type { FlowDocument } from '../src'
 import type { WorkflowDefinitionJson } from './fixtures/workflow'
 import { setJsonAt } from '@xihan-ui/core/json'
+import { groupProperties } from '@xihan-ui/designer-kit/properties'
 import { describe, expect, it } from 'vitest'
-import { groupProperties, readDocument, validateDocument } from '../src'
+import { readDocument, validateDocument } from '../src'
 import { approvalDefinition, fromDefinition, toDefinition, workflowRegistry } from './fixtures/workflow'
 
 function normalize(definition: WorkflowDefinitionJson): unknown {
@@ -56,10 +57,10 @@ describe('工作流定义的表达', () => {
       ],
       edges: [...document.edges, { id: 't5', source: { node: 'start2' }, target: { node: 'http' } }],
     }
-    expect(validateDocument(broken, workflowRegistry).map(issue => `${issue.code}:${issue.location.kind === 'node' ? issue.location.id : ''}`)).toEqual([
+    expect(validateDocument(broken, workflowRegistry).map(issue => `${issue.code}:${issue.target?.kind === 'node' ? issue.target.id : ''}`)).toEqual([
       'type.max-count:',
       'node.missing-outgoing:http',
-      'node.property-required:approve',
+      'required:approve',
     ])
   })
 
@@ -68,7 +69,7 @@ describe('工作流定义的表达', () => {
     const data = (strategy: string, fallback?: unknown[]): JsonObject => ({
       properties: { AssigneeRules: [{ kind: 'role' }], EmptyAssigneeStrategy: strategy, ...(fallback ? { FallbackAssigneeRules: fallback as JsonObject[] } : {}) },
     })
-    const participants = (value: JsonObject): string[] => groupProperties(userTask.properties!, value, ['basic', 'participants'])
+    const participants = (value: JsonObject): unknown[] => groupProperties(userTask.properties!, { data: value }, ['basic', 'participants'])
       .find(group => group.group === 'participants')!
       .properties
       .map(descriptor => descriptor.path.at(-1)!)
@@ -81,8 +82,8 @@ describe('工作流定义的表达', () => {
       return { ...document, nodes: document.nodes.map(node => node.id === 'approve' ? { ...node, data: value } : node) }
     }
     expect(validateDocument(withNode(data('Fault')), workflowRegistry)).toEqual([])
-    expect(validateDocument(withNode(data('Fallback')), workflowRegistry).map(issue => issue.params)).toEqual([
-      { path: ['properties', 'FallbackAssigneeRules'] },
+    expect(validateDocument(withNode(data('Fallback')), workflowRegistry).map(issue => [issue.code, issue.target?.id, issue.path.slice(2)])).toEqual([
+      ['required', 'approve', ['data', 'properties', 'FallbackAssigneeRules']],
     ])
   })
 })

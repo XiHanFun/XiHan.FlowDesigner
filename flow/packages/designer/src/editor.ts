@@ -5,7 +5,6 @@
 
 import type {
   FlowConnectionProblem,
-  FlowDataPath,
   FlowDocument,
   FlowEdge,
   FlowEdgeEnd,
@@ -18,11 +17,11 @@ import type {
   FlowOperation,
   FlowValidateOptions,
 } from '@xihan-flow/core'
-import type { JsonObject, JsonValue } from '@xihan-ui/core/json'
+import type { JsonObject, JsonPath, JsonValue } from '@xihan-ui/core/json'
 import type { AlignMode, DistributeAxis, ExecuteOptions, History, HistoryChangeKind, Point } from '@xihan-ui/designer-kit'
 import type { LayeredDirection } from '@xihan-ui/viz/graph'
 import { applyOperation, checkConnection, createNode, validateDocument } from '@xihan-flow/core'
-import { getJsonAt, jsonEquals, setJsonAt } from '@xihan-ui/core/json'
+import { formatJsonPath, getJsonAt, jsonEquals, setJsonAt } from '@xihan-ui/core/json'
 import { alignRects, createHistory, distributeRects, nextFreeId, unionRects } from '@xihan-ui/designer-kit'
 import { layered } from '@xihan-ui/viz/graph'
 
@@ -114,8 +113,11 @@ export interface FlowEditor {
   readonly moveNodes: (ids: readonly string[], dx: number, dy: number, options?: ExecuteOptions) => void
   readonly updateNode: (id: string, patch: FlowNodePatch, options?: ExecuteOptions) => void
   readonly updateEdge: (id: string, patch: FlowEdgePatch, options?: ExecuteOptions) => void
-  /** 写入节点 data 中路径处的值，value 为 undefined 时删除；同一节点同一路径的连续写入合并为一步。 */
-  readonly setNodeData: (id: string, path: FlowDataPath, value: JsonValue | undefined, options?: ExecuteOptions) => void
+  /**
+   * 写入节点属性：path 相对节点本身，与属性描述的 path 相同。['label'] 写标签，以 'data' 开头的写进 data，
+   * 其余路径抛错；value 为 undefined 时删除。同一节点同一路径的连续写入合并为一步。
+   */
+  readonly setNodeProperty: (id: string, path: JsonPath, value: JsonValue | undefined, options?: ExecuteOptions) => void
   /** 复制选中的节点与两端都被选中的连线；没有选中节点时返回 undefined。 */
   readonly copy: () => FlowClipboard | undefined
   /** 粘贴剪贴板内容并选中粘贴出的对象；缺省用最近一次 copy 的内容，每次粘贴比上一次多偏移 offset。 */
@@ -352,17 +354,24 @@ export function createFlowEditor(options: FlowEditorOptions): FlowEditor {
       history.execute([{ type: 'updateEdge', id, patch }], executeOptions)
     },
 
-    setNodeData(id, path, value, executeOptions) {
+    setNodeProperty(id, path, value, executeOptions) {
       const node = nodeById(id)
       if (!node)
         throw new Error(`[flow-designer] node "${id}" does not exist`)
-      if (jsonEquals(getJsonAt(node.data, path), value))
+      const merge = { merge: `property:${id}:${formatJsonPath(path)}`, ...executeOptions }
+      if (path.length === 1 && path[0] === 'label') {
+        if (value !== undefined && typeof value !== 'string')
+          throw new Error('[flow-designer] node label must be a string')
+        history.execute([{ type: 'updateNode', id, patch: { label: value === undefined ? null : value } }], merge)
         return
-      const data = setJsonAt(node.data ?? {}, path, value, { createMissing: true }).root
-      history.execute(
-        [{ type: 'updateNode', id, patch: { data: Object.keys(data).length === 0 ? null : data } }],
-        { merge: `data:${id}:${JSON.stringify(path)}`, ...executeOptions },
-      )
+      }
+      if (path[0] !== 'data' || path.length < 2)
+        throw new Error(`[flow-designer] node property path "${formatJsonPath(path)}" is not writable`)
+      const inner = path.slice(1)
+      if (jsonEquals(getJsonAt(node.data, inner), value))
+        return
+      const data = setJsonAt(node.data ?? {}, inner, value, { createMissing: true }).root
+      history.execute([{ type: 'updateNode', id, patch: { data: Object.keys(data).length === 0 ? null : data } }], merge)
     },
 
     copy() {
