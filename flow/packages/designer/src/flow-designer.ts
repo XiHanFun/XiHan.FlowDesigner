@@ -145,6 +145,7 @@ export class XhFlowDesigner extends XhReactiveElement {
   #scene: FlowScene | undefined
   #sceneStale = true
   #viewport: Viewport = DEFAULT_VIEWPORT
+  #autoFit = true
   #fitPending = true
   #gesture: Gesture | undefined
   #guides: readonly SnapGuide[] = []
@@ -197,7 +198,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     })
   }
 
-  /** 流程定义。赋值时装载并清空撤销历史（赋回当前这一份不重新装载）；读取时得到当前定义。 */
+  /** 流程定义。赋值时装载、清空撤销历史并重新自动适配（赋回当前这一份不重新装载）；读取时得到当前定义。 */
   get schema(): FlowDocument {
     return this.#editor.document
   }
@@ -205,7 +206,7 @@ export class XhFlowDesigner extends XhReactiveElement {
   set schema(value: FlowDocument) {
     if (value === this.#editor.document)
       return
-    this.#fitPending = true
+    this.#startAutoFit()
     this.#editor.load(value)
   }
 
@@ -226,7 +227,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     super.connectedCallback()
     const layers = this.#ensureLayers()
     if (typeof ResizeObserver !== 'undefined') {
-      this.#resizeObserver ??= new ResizeObserver(() => this.#fitIfPending())
+      this.#resizeObserver ??= new ResizeObserver(() => this.#onResize())
       this.#resizeObserver.observe(layers.root)
     }
   }
@@ -343,19 +344,16 @@ export class XhFlowDesigner extends XhReactiveElement {
     return this.#viewport
   }
 
+  /** 设置视口；此后尺寸变化不再自动适配。 */
   setViewport(viewport: Viewport): void {
-    this.#viewport = viewport
-    this.#fitPending = false
-    this.#applyViewport(true)
+    this.#stopAutoFit()
+    this.#moveTo(viewport)
   }
 
-  /** 缩放并平移到让整张图落在视口中央，小图不放大到 100% 以上。 */
+  /** 缩放并平移到让整张图落在视口中央，小图不放大到 100% 以上；此后尺寸变化时重新适配，直到设置视口或在画布上按下指针。 */
   zoomToFit(): void {
-    const bounds = this.#scene?.bounds
-    const size = this.#size()
-    if (!bounds || !size)
-      return
-    this.setViewport(fitRect(bounds, size, { padding: FIT_PADDING }))
+    this.#startAutoFit()
+    this.#fitIfPending()
   }
 
   zoomIn(): void {
@@ -570,12 +568,36 @@ export class XhFlowDesigner extends XhReactiveElement {
     }
   }
 
+  #startAutoFit(): void {
+    this.#autoFit = true
+    this.#fitPending = true
+  }
+
+  #stopAutoFit(): void {
+    this.#autoFit = false
+    this.#fitPending = false
+  }
+
+  #onResize(): void {
+    if (!this.#autoFit)
+      return
+    this.#fitPending = true
+    this.#fitIfPending()
+  }
+
   #fitIfPending(): boolean {
-    if (!this.#fitPending || !this.#scene?.bounds || !this.#size())
+    const bounds = this.#scene?.bounds
+    const size = this.#size()
+    if (!this.#fitPending || !bounds || !size)
       return false
     this.#fitPending = false
-    this.zoomToFit()
+    this.#moveTo(fitRect(bounds, size, { padding: FIT_PADDING }))
     return true
+  }
+
+  #moveTo(viewport: Viewport): void {
+    this.#viewport = viewport
+    this.#applyViewport(true)
   }
 
   #applyViewport(notify: boolean): void {
@@ -663,6 +685,7 @@ export class XhFlowDesigner extends XhReactiveElement {
   readonly #onPointerDown = (event: PointerEvent): void => {
     if (event.button !== 0 || this.#gesture)
       return
+    this.#stopAutoFit()
     const target = event.target instanceof Element ? event.target : undefined
     const additive = event.shiftKey || event.ctrlKey || event.metaKey
     const port = target?.closest<HTMLElement>('[data-part="port"]')
