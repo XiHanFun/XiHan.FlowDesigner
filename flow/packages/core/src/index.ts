@@ -8,7 +8,23 @@
 export type { FlowEdgeEnd, FlowIssue, FlowIssueCode, FlowIssueLocation, FlowIssueSeverity, FlowSchemaIssueCode, FlowValidationIssueCode } from './issues'
 export { appendPointer, cloneJson, encodePointerToken, findJsonViolation, isJsonValue, isPlainObject, jsonEquals } from './json'
 export type { JsonArray, JsonObject, JsonPrimitive, JsonValue } from './json'
+export { evaluateCondition, getDataValue, groupProperties, isFilled, isPropertyVisible, setDataValue } from './properties'
+export type { FlowDataPath, FlowPropertyCondition, FlowPropertyDescriptor, FlowPropertyGroup, FlowPropertyOption } from './properties'
 export { readDocument } from './read'
 export type { FlowReadResult, FlowSchemaExpectation } from './read'
+export { createNode, createNodeTypeRegistry, findPort, getPortPosition, portAllows } from './registry'
+export type {
+  FlowConnectionRule,
+  FlowNodeDefaults,
+  FlowNodeInit,
+  FlowNodeType,
+  FlowNodeTypeDefinition,
+  FlowNodeTypeRegistry,
+  FlowPort,
+  FlowPortDefinition,
+  FlowPortDirection,
+  FlowPortPreset,
+  FlowPortSide,
+} from './registry'
 export { createDocument, FLOW_DOCUMENT_VERSION } from './schema'
 export type { FlowDocument, FlowEdge, FlowEdgeStyle, FlowEndpoint, FlowNode, FlowPoint, FlowRect, FlowSize } from './schema'
