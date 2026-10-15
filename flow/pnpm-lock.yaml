@@ -90,9 +90,15 @@ importers:
       '@xihan-ui/designer-kit':
         specifier: link:../../../../XiHan.UI/ui/packages/features/designer-kit
         version: link:../../../../XiHan.UI/ui/packages/features/designer-kit
+      '@xihan-ui/pointer':
+        specifier: link:../../../../XiHan.UI/ui/packages/engine/pointer
+        version: link:../../../../XiHan.UI/ui/packages/engine/pointer
       '@xihan-ui/viz':
         specifier: link:../../../../XiHan.UI/ui/packages/engine/viz
         version: link:../../../../XiHan.UI/ui/packages/engine/viz
+      '@xihan-ui/web-components':
+        specifier: link:../../../../XiHan.UI/ui/packages/adapters/web-components
+        version: link:../../../../XiHan.UI/ui/packages/adapters/web-components
 
   packages/runtime:
     dependencies:

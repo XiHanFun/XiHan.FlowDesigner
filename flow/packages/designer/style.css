@@ -1,0 +1,197 @@
+/*
+ * Copyright (c) 2021-Present XiHanFun and contributors.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ */
+
+/* <xh-flow-designer> 的样式：只消费 @xihan-ui 设计令牌。宿主给元素定宽高。 */
+
+xh-flow-designer {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  background: var(--xh-bg-canvas);
+  color: var(--xh-fg-default);
+  font-size: var(--xh-font-size-sm);
+}
+
+xh-flow-designer [data-part='viewport'] {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  outline: none;
+  cursor: default;
+  touch-action: none;
+  user-select: none;
+}
+
+xh-flow-designer [data-part='viewport'][data-gesture='pan'] {
+  cursor: grabbing;
+}
+
+xh-flow-designer [data-part='viewport'][data-gesture='move'] {
+  cursor: move;
+}
+
+xh-flow-designer [data-part='viewport'][data-gesture='connect'],
+xh-flow-designer [data-part='viewport'][data-gesture='marquee'] {
+  cursor: crosshair;
+}
+
+xh-flow-designer [data-part='viewport']:focus-visible {
+  box-shadow: inset 0 0 0 var(--xh-ring-width) var(--xh-ring-focus);
+}
+
+xh-flow-designer [data-part='world'] {
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+
+xh-flow-designer [data-part='edges'],
+xh-flow-designer [data-part='overlay'] {
+  position: absolute;
+  overflow: visible;
+}
+
+xh-flow-designer [data-part='overlay'] {
+  pointer-events: none;
+}
+
+xh-flow-designer [data-part='edge-hit'] {
+  fill: none;
+  stroke: transparent;
+  stroke-width: var(--xh-space-3);
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+xh-flow-designer [data-part='edge-line'] {
+  fill: none;
+  stroke: var(--xh-fg-muted);
+  stroke-width: var(--xh-stroke-thin);
+  pointer-events: none;
+}
+
+xh-flow-designer [data-part='edge'][data-dashed] [data-part='edge-line'] {
+  stroke-dasharray: var(--xh-space-2) var(--xh-space-1);
+}
+
+xh-flow-designer [data-part='edge-arrow'] {
+  fill: var(--xh-fg-muted);
+  pointer-events: none;
+}
+
+xh-flow-designer [data-part='edge']:hover [data-part='edge-line'],
+xh-flow-designer [data-part='edge'][data-selected] [data-part='edge-line'] {
+  stroke: var(--xh-fg-brand);
+}
+
+xh-flow-designer [data-part='edge'][data-selected] [data-part='edge-line'] {
+  stroke-width: var(--xh-stroke-thick);
+}
+
+xh-flow-designer [data-part='edge']:hover [data-part='edge-arrow'],
+xh-flow-designer [data-part='edge'][data-selected] [data-part='edge-arrow'] {
+  fill: var(--xh-fg-brand);
+}
+
+xh-flow-designer [data-part='edge-label'] {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 0 var(--xh-space-1);
+  background: var(--xh-bg-canvas);
+  color: var(--xh-fg-muted);
+  font-size: var(--xh-font-size-xs);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+xh-flow-designer [data-part='node'] {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0 var(--xh-space-2);
+  border: var(--xh-stroke-thin) solid var(--xh-border-default);
+  border-radius: var(--xh-radius-md);
+  background: var(--xh-bg-surface);
+  color: var(--xh-fg-default);
+  text-align: center;
+  cursor: move;
+}
+
+xh-flow-designer[data-readonly] [data-part='node'] {
+  cursor: pointer;
+}
+
+xh-flow-designer [data-part='node']:hover {
+  border-color: var(--xh-border-strong);
+}
+
+xh-flow-designer [data-part='node'][data-selected] {
+  border-color: var(--xh-border-control-focus);
+  box-shadow: 0 0 0 var(--xh-stroke-thin) var(--xh-border-control-focus);
+}
+
+xh-flow-designer [data-part='port'] {
+  position: absolute;
+  box-sizing: border-box;
+  width: var(--xh-space-3);
+  height: var(--xh-space-3);
+  margin: calc(var(--xh-space-3) / -2) 0 0 calc(var(--xh-space-3) / -2);
+  border: var(--xh-stroke-thin) solid var(--xh-border-control-focus);
+  border-radius: var(--xh-radius-full);
+  background: var(--xh-bg-surface);
+  opacity: 0;
+  cursor: crosshair;
+}
+
+xh-flow-designer [data-part='port'][data-direction='in'] {
+  cursor: default;
+}
+
+xh-flow-designer [data-part='viewport']:hover [data-part='port'],
+xh-flow-designer [data-part='viewport'][data-gesture='connect'] [data-part='port'] {
+  opacity: 1;
+}
+
+xh-flow-designer[data-readonly] [data-part='port'] {
+  display: none;
+}
+
+xh-flow-designer [data-part='guide'] {
+  fill: none;
+  stroke: var(--xh-fg-brand);
+  stroke-width: var(--xh-stroke-thin);
+  stroke-dasharray: var(--xh-space-1) var(--xh-space-1);
+}
+
+xh-flow-designer [data-part='connect-preview'] {
+  fill: none;
+  stroke: var(--xh-fg-muted);
+  stroke-width: var(--xh-stroke-thin);
+  stroke-dasharray: var(--xh-space-2) var(--xh-space-1);
+}
+
+xh-flow-designer [data-part='connect-preview'][data-valid='true'] {
+  stroke: var(--xh-fg-brand);
+}
+
+xh-flow-designer [data-part='connect-preview'][data-valid='false'] {
+  stroke: var(--xh-fg-danger);
+}
+
+xh-flow-designer [data-part='marquee'] {
+  position: absolute;
+  box-sizing: border-box;
+  border: var(--xh-stroke-thin) solid var(--xh-border-control-focus);
+  background: var(--xh-bg-brand-subtle);
+  pointer-events: none;
+}
+
+xh-flow-designer [data-part='marquee'][hidden] {
+  display: none;
+}
