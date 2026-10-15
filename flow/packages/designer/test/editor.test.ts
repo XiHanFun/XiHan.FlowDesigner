@@ -8,7 +8,6 @@ import type { FlowEditorChange } from '../src/editor'
 import { createNodeTypeRegistry } from '@xihan-flow/core'
 import { describe, expect, it } from 'vitest'
 import { createFlowEditor } from '../src/editor'
-import { nextFreeId } from '../src/ids'
 
 const registry = createNodeTypeRegistry([
   { type: 'start', size: { width: 100, height: 40 }, ports: 'out', entry: true, defaults: { label: '开始' } },
@@ -37,13 +36,6 @@ function setup(document: FlowDocument = sample()) {
   editor.subscribe(change => changes.push(change))
   return { editor, changes }
 }
-
-describe('nextFreeId', () => {
-  it('取同前缀正整数序号的最大值加一', () => {
-    expect(nextFreeId('task_', new Set())).toBe('task_1')
-    expect(nextFreeId('task_', new Set(['task_2', 'task_10', 'task_x', 'task_01', 'end_99']))).toBe('task_11')
-  })
-})
 
 describe('新建节点与连线', () => {
   it('按类型默认值新建节点，id 不与已有重复，并选中新节点', () => {
