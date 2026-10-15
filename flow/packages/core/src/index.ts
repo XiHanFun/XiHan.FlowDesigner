@@ -8,6 +8,17 @@
 export type { FlowEdgeEnd, FlowIssue, FlowIssueCode, FlowIssueLocation, FlowIssueSeverity, FlowSchemaIssueCode, FlowValidationIssueCode } from './issues'
 export { appendPointer, cloneJson, encodePointerToken, findJsonViolation, isJsonValue, isPlainObject, jsonEquals } from './json'
 export type { JsonArray, JsonObject, JsonPrimitive, JsonValue } from './json'
+export { applyOperation, applyOperations, FlowOperationError } from './operations'
+export type {
+  FlowDocumentPatch,
+  FlowEdgePatch,
+  FlowNodePatch,
+  FlowNodePosition,
+  FlowOperation,
+  FlowOperationErrorCode,
+  FlowOperationResult,
+  FlowOperationType,
+} from './operations'
 export { evaluateCondition, getDataValue, groupProperties, isFilled, isPropertyVisible, setDataValue } from './properties'
 export type { FlowDataPath, FlowPropertyCondition, FlowPropertyDescriptor, FlowPropertyGroup, FlowPropertyOption } from './properties'
 export { readDocument } from './read'
