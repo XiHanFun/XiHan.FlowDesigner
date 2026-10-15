@@ -5,4 +5,5 @@
 
 // 导出 @xihan-flow/runtime 的公共接口。
 
-export {}
+export { arrowPath, buildScene, polylinePath } from './scene'
+export type { FlowNodeStatus, FlowScene, FlowSceneEdge, FlowSceneNode, FlowSceneOptions } from './scene'
