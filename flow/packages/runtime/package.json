@@ -25,18 +25,22 @@
     "web-components",
     "xihanfun"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "*.css"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
+    },
+    "./style.css": "./style.css"
   },
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "style.css"
   ],
   "engines": {
     "node": ">=18"
@@ -53,6 +57,10 @@
   "dependencies": {
     "@xihan-flow/core": "workspace:^",
     "@xihan-ui/designer-kit": "catalog:",
-    "@xihan-ui/viz": "catalog:"
+    "@xihan-ui/viz": "catalog:",
+    "@xihan-ui/web-components": "catalog:"
+  },
+  "devDependencies": {
+    "jsdom": "catalog:"
   }
 }
