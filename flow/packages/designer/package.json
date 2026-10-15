@@ -51,6 +51,9 @@
   },
   "dependencies": {
     "@xihan-flow/core": "workspace:^",
-    "@xihan-flow/runtime": "workspace:^"
+    "@xihan-flow/runtime": "workspace:^",
+    "@xihan-ui/core": "catalog:",
+    "@xihan-ui/designer-kit": "catalog:",
+    "@xihan-ui/viz": "catalog:"
   }
 }

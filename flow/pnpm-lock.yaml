@@ -77,6 +77,15 @@ importers:
       '@xihan-flow/runtime':
         specifier: workspace:^
         version: link:../runtime
+      '@xihan-ui/core':
+        specifier: link:../../../../XiHan.UI/ui/packages/engine/core
+        version: link:../../../../XiHan.UI/ui/packages/engine/core
+      '@xihan-ui/designer-kit':
+        specifier: link:../../../../XiHan.UI/ui/packages/features/designer-kit
+        version: link:../../../../XiHan.UI/ui/packages/features/designer-kit
+      '@xihan-ui/viz':
+        specifier: link:../../../../XiHan.UI/ui/packages/engine/viz
+        version: link:../../../../XiHan.UI/ui/packages/engine/viz
 
   packages/runtime:
     dependencies:
