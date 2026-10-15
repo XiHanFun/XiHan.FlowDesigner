@@ -8,9 +8,11 @@
 
 import type { FlowDocument, FlowEdgeRouter, FlowNode, FlowNodeType, FlowNodeTypeRegistry, FlowRect } from '@xihan-flow/core'
 import type { Viewport } from '@xihan-ui/designer-kit'
+import type { PointerSession } from '@xihan-ui/pointer'
 import type { KeyedChildren, PropertyValues } from '@xihan-ui/web-components/authoring'
 import type { FlowNodeStatus, FlowScene, FlowSceneEdge, FlowSceneNode } from './scene'
 import { centerOn, DEFAULT_VIEWPORT, expandRect, fitRect, panBy, revealRect, wheelZoomFactor, zoomBy } from '@xihan-ui/designer-kit'
+import { createPointerSession, resolveSessionDoc, shouldActivate, wheelPixels } from '@xihan-ui/pointer'
 import {
   createGeneratedElement,
   emitEvent,
@@ -59,18 +61,8 @@ export interface FlowViewerEventMap {
 const DEFAULT_TRANSLATIONS: FlowViewerTranslations = { label: 'Flow diagram' }
 const ZOOM_STEP = 1.2
 const PAN_STEP = 48
-const CLICK_SLOP = 4
 const FIT_PADDING = 24
 const EDGE_LAYER_MARGIN = 32
-
-interface PanState {
-  readonly pointerId: number
-  readonly startX: number
-  readonly startY: number
-  lastX: number
-  lastY: number
-  moved: boolean
-}
 
 interface Layers {
   readonly root: HTMLElement
@@ -113,7 +105,7 @@ export class XhFlowViewer extends XhReactiveElement {
   #scene: FlowScene | undefined
   #viewport: Viewport = DEFAULT_VIEWPORT
   #fitPending = true
-  #pan: PanState | undefined
+  #pan: PointerSession | undefined
   #suppressClick = false
   #resizeObserver: ResizeObserver | undefined
 
@@ -129,7 +121,9 @@ export class XhFlowViewer extends XhReactiveElement {
   override disconnectedCallback(): void {
     super.disconnectedCallback()
     this.#resizeObserver?.disconnect()
+    this.#pan?.dispose()
     this.#pan = undefined
+    this.#layers?.root.removeAttribute('data-panning')
   }
 
   protected override update(changed: PropertyValues): void {
@@ -258,9 +252,6 @@ export class XhFlowViewer extends XhReactiveElement {
     root.append(world)
     this.append(root)
     root.addEventListener('pointerdown', this.#onPointerDown)
-    root.addEventListener('pointermove', this.#onPointerMove)
-    root.addEventListener('pointerup', this.#onPointerEnd)
-    root.addEventListener('pointercancel', this.#onPointerEnd)
     root.addEventListener('click', this.#onClick)
     root.addEventListener('contextmenu', this.#onContextMenu)
     root.addEventListener('wheel', this.#onWheel, { passive: false })
@@ -386,37 +377,33 @@ export class XhFlowViewer extends XhReactiveElement {
   readonly #onPointerDown = (event: PointerEvent): void => {
     if (event.button !== 0 || this.#pan)
       return
-    this.#pan = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, lastX: event.clientX, lastY: event.clientY, moved: false }
     this.#suppressClick = false
-  }
-
-  readonly #onPointerMove = (event: PointerEvent): void => {
-    const pan = this.#pan
-    if (!pan || pan.pointerId !== event.pointerId)
-      return
-    if (!pan.moved) {
-      if (Math.hypot(event.clientX - pan.startX, event.clientY - pan.startY) < CLICK_SLOP)
-        return
-      pan.moved = true
-      this.#layers?.root.setPointerCapture?.(event.pointerId)
-      this.#layers?.root.setAttribute('data-panning', '')
-    }
-    const dx = event.clientX - pan.lastX
-    const dy = event.clientY - pan.lastY
-    pan.lastX = event.clientX
-    pan.lastY = event.clientY
-    this.setViewport(panBy(this.#viewport, dx, dy))
-  }
-
-  readonly #onPointerEnd = (event: PointerEvent): void => {
-    const pan = this.#pan
-    if (!pan || pan.pointerId !== event.pointerId)
-      return
-    this.#pan = undefined
-    this.#suppressClick = pan.moved
-    this.#layers?.root.removeAttribute('data-panning')
-    if (this.#layers?.root.hasPointerCapture?.(event.pointerId))
-      this.#layers.root.releasePointerCapture(event.pointerId)
+    const root = this.#layers!.root
+    const start = { x: event.clientX, y: event.clientY }
+    let last = start
+    let panning = false
+    this.#pan = createPointerSession({
+      doc: resolveSessionDoc(this),
+      pointerId: event.pointerId,
+      onMove: ({ point }) => {
+        if (!panning) {
+          if (!shouldActivate({ x: point.clientX - start.x, y: point.clientY - start.y }))
+            return
+          panning = true
+          root.setAttribute('data-panning', '')
+        }
+        const dx = point.clientX - last.x
+        const dy = point.clientY - last.y
+        last = { x: point.clientX, y: point.clientY }
+        this.setViewport(panBy(this.#viewport, dx, dy))
+      },
+      onEnd: () => {
+        this.#pan?.dispose()
+        this.#pan = undefined
+        this.#suppressClick = panning
+        root.removeAttribute('data-panning')
+      },
+    })
   }
 
   readonly #onClick = (event: MouseEvent): void => {
@@ -447,8 +434,8 @@ export class XhFlowViewer extends XhReactiveElement {
       this.setViewport(zoomBy(this.#viewport, wheelZoomFactor(event.deltaY, event.deltaMode), this.#localPoint(event)))
       return
     }
-    const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? (this.#size()?.height ?? 0) : 1
-    this.setViewport(panBy(this.#viewport, -event.deltaX * unit, -event.deltaY * unit))
+    const pixels = wheelPixels(event, { page: this.#size()?.height })
+    this.setViewport(panBy(this.#viewport, -pixels.x, -pixels.y))
   }
 
   readonly #onKeyDown = (event: KeyboardEvent): void => {

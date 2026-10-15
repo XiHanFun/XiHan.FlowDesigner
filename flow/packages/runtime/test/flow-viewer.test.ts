@@ -136,6 +136,41 @@ describe('<xh-flow-viewer>', () => {
     root.dispatchEvent(new WheelEvent('wheel', { deltaY: -100, ctrlKey: true, bubbles: true, cancelable: true }))
     expect(viewer.getViewport().zoom).toBeGreaterThan(2)
     expect(changes).toHaveLength(4)
+    viewer.setViewport({ x: 0, y: 0, zoom: 1 })
+    root.dispatchEvent(new WheelEvent('wheel', { deltaY: 3, deltaMode: 1, bubbles: true, cancelable: true }))
+    expect(viewer.getViewport()).toEqual({ x: 0, y: -48, zoom: 1 })
+  })
+
+  it('拖过激活距离才平移，平移后的那次点击不派发；没拖开时照常点击', async () => {
+    const viewer = await mount()
+    const root = part(viewer, 'viewport')[0]!
+    const node = part(viewer, 'node')[0]!
+    const clicks: string[] = []
+    viewer.addEventListener('node-click', () => clicks.push('node'))
+    const press = (target: Element, x: number, y: number) =>
+      target.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, button: 0, clientX: x, clientY: y, bubbles: true }))
+    const move = (x: number, y: number) =>
+      window.document.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: x, clientY: y }))
+    const release = (x: number, y: number) =>
+      window.document.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: x, clientY: y }))
+
+    viewer.setViewport({ x: 0, y: 0, zoom: 1 })
+    press(node, 10, 10)
+    move(13, 12)
+    expect(viewer.getViewport()).toEqual({ x: 0, y: 0, zoom: 1 })
+    move(30, 10)
+    expect(root.hasAttribute('data-panning')).toBe(true)
+    expect(viewer.getViewport()).toEqual({ x: 20, y: 0, zoom: 1 })
+    release(30, 10)
+    node.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(root.hasAttribute('data-panning')).toBe(false)
+    expect(clicks).toEqual([])
+
+    press(node, 10, 10)
+    move(12, 11)
+    release(12, 11)
+    node.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(clicks).toEqual(['node'])
   })
 
   it('有尺寸时适配视口、居中节点与按需显露', async () => {

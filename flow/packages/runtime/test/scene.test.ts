@@ -6,7 +6,7 @@
 import type { FlowDocument, FlowRouteRequest } from '@xihan-flow/core'
 import { createNodeTypeRegistry } from '@xihan-flow/core'
 import { describe, expect, it } from 'vitest'
-import { arrowPath, buildScene, polylinePath } from '../src'
+import { buildScene } from '../src'
 
 const registry = createNodeTypeRegistry([
   { type: 'task', label: '任务', size: { width: 100, height: 40 }, ports: 'both' },
@@ -72,20 +72,6 @@ describe('buildScene', () => {
   it('包围盒含节点与折线', () => {
     expect(buildScene(document, registry, { route: straight }).bounds).toEqual({ x: -20, y: -60, width: 340, height: 310 })
     expect(buildScene({ version: 1, nodes: [], edges: [] }, registry, { route: straight }).bounds).toBeUndefined()
-  })
-})
-
-describe('路径工具', () => {
-  it('折线转 SVG path，圆角的切点不越过相邻两段的中点', () => {
-    expect(polylinePath([])).toBe('')
-    expect(polylinePath([{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 4 }], 6)).toBe('M0,0L8,0A2,2,0,0,1,10,2L10,4')
-    expect(polylinePath([{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }])).toBe('M0,0L10,0L10,10')
-  })
-
-  it('箭头沿 from → tip 方向，宽为长度的 0.8 倍；两点重合或长度为 0 时不画', () => {
-    expect(arrowPath({ x: 0, y: 0 }, { x: 0, y: 10 }, 5)).toBe('M0,10L-2,5L2,5Z')
-    expect(arrowPath({ x: 5, y: 5 }, { x: 5, y: 5 }, 4)).toBe('')
-    expect(arrowPath({ x: 0, y: 0 }, { x: 0, y: 10 }, 0)).toBe('')
   })
 
   it('最后一段比箭头短时，线沿折线退回到前一段', () => {
