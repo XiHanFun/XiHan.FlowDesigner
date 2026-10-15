@@ -1,5 +1,5 @@
 {
-  "name": "@xihanfun/flow-runtime",
+  "name": "@xihan-flow/runtime",
   "type": "module",
   "version": "0.0.0",
   "description": "XiHan Flow Designer runtime — Web Components for viewing flow graphs and their run state.",
@@ -50,6 +50,6 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@xihanfun/flow-core": "workspace:^"
+    "@xihan-flow/core": "workspace:^"
   }
 }

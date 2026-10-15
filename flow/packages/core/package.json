@@ -1,5 +1,5 @@
 {
-  "name": "@xihanfun/flow-core",
+  "name": "@xihan-flow/core",
   "type": "module",
   "version": "0.0.0",
   "description": "XiHan Flow Designer core — flow graph schema, validation, layout and edit commands; pure TypeScript, no DOM.",

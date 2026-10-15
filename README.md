@@ -44,9 +44,9 @@ XiHan.FlowDesigner is a framework-agnostic flow designer delivered as native Web
 
 | Package | Description |
 | --- | --- |
-| `@xihanfun/flow-core` | Model layer: flow graph schema, validation, layout algorithms and edit commands; pure TypeScript, no DOM |
-| `@xihanfun/flow-runtime` | Runtime: flow graph viewing and run-state display for business pages |
-| `@xihanfun/flow-designer` | Designer: visual flow designer |
+| `@xihan-flow/core` | Model layer: flow graph schema, validation, layout algorithms and edit commands; pure TypeScript, no DOM |
+| `@xihan-flow/runtime` | Runtime: flow graph viewing and run-state display for business pages |
+| `@xihan-flow/designer` | Designer: visual flow designer |
 
 Dependencies point `designer → runtime → core`. Business pages only need the runtime; the designer is loaded only where templates are edited.
 

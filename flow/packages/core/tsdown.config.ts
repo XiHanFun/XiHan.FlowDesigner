@@ -8,7 +8,7 @@ export default defineConfig({
   clean: true,
   treeshake: true,
   deps: {
-    neverBundle: [/^@xihanfun\//, /^@xihan-ui\//],
+    neverBundle: [/^@xihan-flow\//, /^@xihan-ui\//],
   },
   checks: {
     pluginTimings: false,

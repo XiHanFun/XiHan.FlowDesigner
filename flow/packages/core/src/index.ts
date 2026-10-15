@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-// 导出 @xihanfun/flow-core 的公共接口。
+// 导出 @xihan-flow/core 的公共接口。
 
 export type { FlowEdgeEnd, FlowIssue, FlowIssueCode, FlowIssueLocation, FlowIssueSeverity, FlowSchemaIssueCode, FlowValidationIssueCode } from './issues'
 export { appendPointer, cloneJson, encodePointerToken, findJsonViolation, isJsonValue, isPlainObject, jsonEquals } from './json'

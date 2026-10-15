@@ -41,7 +41,7 @@ labels: bug
 
 ## 相关包
 
-<!-- 如 @xihanfun/flow-designer -->
+<!-- 如 @xihan-flow/designer -->
 
 ## 版本
 

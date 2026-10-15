@@ -1,5 +1,5 @@
 {
-  "name": "@xihanfun/flow-designer",
+  "name": "@xihan-flow/designer",
   "type": "module",
   "version": "0.0.0",
   "description": "XiHan Flow Designer — a visual flow designer delivered as Web Components.",
@@ -50,7 +50,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@xihanfun/flow-core": "workspace:^",
-    "@xihanfun/flow-runtime": "workspace:^"
+    "@xihan-flow/core": "workspace:^",
+    "@xihan-flow/runtime": "workspace:^"
   }
 }
