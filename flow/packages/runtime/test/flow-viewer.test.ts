@@ -9,7 +9,7 @@ import type { FlowDocument } from '@xihan-flow/core'
 import type { XhFlowViewer } from '../src'
 import { createNodeTypeRegistry } from '@xihan-flow/core'
 import { setXhConfig } from '@xihan-ui/web-components'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineFlowViewer, FLOW_VIEWER_TAG } from '../src'
 import { flowZhCN } from '../src/locale'
 
@@ -190,6 +190,91 @@ describe('<xh-flow-viewer>', () => {
     expect(viewer.getViewport().zoom).toBeCloseTo(1.2)
     viewer.zoomToActual()
     expect(viewer.getViewport().zoom).toBe(1)
+  })
+
+  describe('自动适配', () => {
+    const observers: FakeResizeObserver[] = []
+
+    class FakeResizeObserver {
+      readonly targets = new Set<Element>()
+      constructor(readonly callback: () => void) {
+        observers.push(this)
+      }
+
+      observe(target: Element): void {
+        this.targets.add(target)
+      }
+
+      disconnect(): void {
+        this.targets.clear()
+      }
+    }
+
+    beforeEach(() => {
+      vi.stubGlobal('ResizeObserver', FakeResizeObserver)
+    })
+
+    afterEach(() => {
+      observers.length = 0
+      vi.unstubAllGlobals()
+    })
+
+    function resize(viewer: XhFlowViewer, width: number, height: number): void {
+      const root = part(viewer, 'viewport')[0] as HTMLElement
+      Object.defineProperty(root, 'clientWidth', { configurable: true, value: width })
+      Object.defineProperty(root, 'clientHeight', { configurable: true, value: height })
+      for (const observer of observers.filter(observer => observer.targets.has(root)))
+        observer.callback()
+    }
+
+    it('首次拿到非零尺寸时适配，之后尺寸变化继续适配', async () => {
+      const viewer = await mount()
+      expect(viewer.getViewport()).toEqual({ x: 0, y: 0, zoom: 1 })
+      resize(viewer, 400, 200)
+      expect(viewer.getViewport()).toEqual({ x: 50, y: 80, zoom: 1 })
+      resize(viewer, 200, 200)
+      expect(viewer.getViewport().zoom).toBeCloseTo(152 / 300)
+      resize(viewer, 0, 0)
+      resize(viewer, 400, 200)
+      expect(viewer.getViewport()).toEqual({ x: 50, y: 80, zoom: 1 })
+    })
+
+    it('宿主设置过视口后不再适配，在尺寸到来之前设置的也算', async () => {
+      const early = await mount(element => element.setViewport({ x: 1, y: 2, zoom: 1 }))
+      resize(early, 400, 200)
+      expect(early.getViewport()).toEqual({ x: 1, y: 2, zoom: 1 })
+
+      const later = await mount()
+      resize(later, 400, 200)
+      later.zoomIn()
+      const zoomed = later.getViewport()
+      resize(later, 200, 200)
+      expect(later.getViewport()).toBe(zoomed)
+    })
+
+    it('在画布上按下指针后不再适配，zoomToFit 重新开启', async () => {
+      const viewer = await mount()
+      resize(viewer, 400, 200)
+      part(viewer, 'node')[0]!.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, button: 0, bubbles: true }))
+      window.document.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1 }))
+      resize(viewer, 200, 200)
+      expect(viewer.getViewport()).toEqual({ x: 50, y: 80, zoom: 1 })
+      viewer.zoomToFit()
+      expect(viewer.getViewport().zoom).toBeCloseTo(152 / 300)
+      resize(viewer, 400, 200)
+      expect(viewer.getViewport()).toEqual({ x: 50, y: 80, zoom: 1 })
+    })
+
+    it('定义从无到有时重新适配', async () => {
+      const viewer = await mount()
+      resize(viewer, 400, 200)
+      viewer.schema = undefined
+      await viewer.updateComplete
+      viewer.setViewport({ x: 1, y: 2, zoom: 1 })
+      viewer.schema = document
+      await viewer.updateComplete
+      expect(viewer.getViewport()).toEqual({ x: 50, y: 80, zoom: 1 })
+    })
   })
 
   it('文案按 defaults < 全局配置 < 元素自己的顺序取', async () => {

@@ -8,7 +8,7 @@
 import type { FlowDocument } from '@xihan-flow/core'
 import type { XhFlowDesigner } from '../src'
 import { createNodeTypeRegistry } from '@xihan-flow/core'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineFlowDesigner, FLOW_DESIGNER_TAG } from '../src'
 
 defineFlowDesigner()
@@ -253,6 +253,86 @@ describe('<xh-flow-designer>', () => {
     expect(kinds).toEqual(['execute', 'load'])
     expect(dirty).toEqual([true, false])
     expect(designer.canUndo).toBe(false)
+  })
+
+  describe('自动适配', () => {
+    const observers: FakeResizeObserver[] = []
+
+    class FakeResizeObserver {
+      readonly targets = new Set<Element>()
+      constructor(readonly callback: () => void) {
+        observers.push(this)
+      }
+
+      observe(target: Element): void {
+        this.targets.add(target)
+      }
+
+      disconnect(): void {
+        this.targets.clear()
+      }
+    }
+
+    beforeEach(() => {
+      vi.stubGlobal('ResizeObserver', FakeResizeObserver)
+    })
+
+    afterEach(() => {
+      observers.length = 0
+      vi.unstubAllGlobals()
+    })
+
+    function resize(designer: XhFlowDesigner, width: number, height: number): void {
+      const root = part(designer, 'viewport')[0]!
+      Object.defineProperty(root, 'clientWidth', { configurable: true, value: width })
+      Object.defineProperty(root, 'clientHeight', { configurable: true, value: height })
+      for (const observer of observers.filter(observer => observer.targets.has(root)))
+        observer.callback()
+    }
+
+    it('首次拿到非零尺寸时适配，之后尺寸变化继续适配，编辑不触发适配', async () => {
+      const designer = await mount()
+      expect(designer.getViewport()).toEqual({ x: 0, y: 0, zoom: 1 })
+      resize(designer, 600, 300)
+      expect(designer.getViewport()).toEqual({ x: 50, y: 30, zoom: 1 })
+      resize(designer, 300, 300)
+      expect(designer.getViewport().zoom).toBeCloseTo(252 / 500)
+      resize(designer, 600, 300)
+      designer.addNode('task', { x: 1000, y: 20 })
+      await designer.updateComplete
+      expect(designer.getViewport()).toEqual({ x: 50, y: 30, zoom: 1 })
+    })
+
+    it('宿主设置过视口后不再适配，在尺寸到来之前设置的也算', async () => {
+      const early = await mount(element => element.setViewport({ x: 1, y: 2, zoom: 1 }))
+      resize(early, 600, 300)
+      expect(early.getViewport()).toEqual({ x: 1, y: 2, zoom: 1 })
+
+      const later = await mount()
+      resize(later, 600, 300)
+      later.zoomOut()
+      const zoomed = later.getViewport()
+      resize(later, 300, 300)
+      expect(later.getViewport()).toBe(zoomed)
+    })
+
+    it('在画布上按下指针后不再适配，zoomToFit 与重新装载都会重新开启', async () => {
+      const designer = await mount()
+      resize(designer, 600, 300)
+      press(nodeElement(designer, 's'), 10, 10)
+      release(10, 10)
+      resize(designer, 300, 300)
+      expect(designer.getViewport()).toEqual({ x: 50, y: 30, zoom: 1 })
+      designer.zoomToFit()
+      expect(designer.getViewport().zoom).toBeCloseTo(252 / 500)
+      resize(designer, 600, 300)
+      expect(designer.getViewport()).toEqual({ x: 50, y: 30, zoom: 1 })
+
+      designer.setViewport({ x: 1, y: 2, zoom: 1 })
+      designer.schema = sample()
+      await designer.updateComplete
+      expect(designer.getViewport()).toEqual({ x: 50, y: 30, zoom: 1 })
+    })
   })
 
   it('定义或节点类型变化后在同一轮里派发一次 issues-change', async () => {

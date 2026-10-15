@@ -78,7 +78,7 @@ export class XhFlowViewer extends XhReactiveElement {
     translations: { attribute: false },
   }
 
-  /** 要显示的流程定义。 */
+  /** 要显示的流程定义；从无到有时重新自动适配。 */
   declare schema: FlowDocument | undefined
   /** 节点类型登记表，决定端口位置与缺省标签。 */
   declare nodeTypes: FlowNodeTypeRegistry | undefined
@@ -99,6 +99,7 @@ export class XhFlowViewer extends XhReactiveElement {
   #defaultRouter: FlowEdgeRouter | undefined
   #scene: FlowScene | undefined
   #viewport: Viewport = DEFAULT_VIEWPORT
+  #autoFit = true
   #fitPending = true
   #pan: PointerSession | undefined
   #suppressClick = false
@@ -108,7 +109,7 @@ export class XhFlowViewer extends XhReactiveElement {
     super.connectedCallback()
     const layers = this.#ensureLayers()
     if (typeof ResizeObserver !== 'undefined') {
-      this.#resizeObserver ??= new ResizeObserver(() => this.#fitIfPending())
+      this.#resizeObserver ??= new ResizeObserver(() => this.#onResize())
       this.#resizeObserver.observe(layers.root)
     }
   }
@@ -121,13 +122,18 @@ export class XhFlowViewer extends XhReactiveElement {
     this.#layers?.root.removeAttribute('data-panning')
   }
 
+  /** 定义从无到有时重新开启自动适配。 */
+  override requestUpdate(name?: PropertyKey, oldValue?: unknown): void {
+    if (name === 'schema' && oldValue === undefined && this.schema !== undefined)
+      this.#startAutoFit()
+    super.requestUpdate(name, oldValue)
+  }
+
   protected override update(changed: PropertyValues): void {
     super.update(changed)
     const layers = this.#ensureLayers()
     const t = this.#config.translations<FlowViewerTranslations>('xh-flow-viewer', DEFAULT_TRANSLATIONS, this.translations)
     layers.root.setAttribute('aria-label', t.label)
-    if (changed.has('schema') && changed.get('schema') === undefined)
-      this.#fitPending = true
     if (!this.#scene || changed.has('schema') || changed.has('nodeTypes') || changed.has('router'))
       this.#scene = this.schema && this.nodeTypes ? buildScene(this.schema, this.nodeTypes, { route: this.#route() }) : undefined
     this.#renderEdges(layers)
@@ -142,20 +148,16 @@ export class XhFlowViewer extends XhReactiveElement {
     return this.#viewport
   }
 
-  /** 设置视口。 */
+  /** 设置视口；此后尺寸变化不再自动适配。 */
   setViewport(viewport: Viewport): void {
-    this.#viewport = viewport
-    this.#fitPending = false
-    this.#applyViewport(true)
+    this.#stopAutoFit()
+    this.#moveTo(viewport)
   }
 
-  /** 缩放并平移到让整张图落在视口中央，小图不放大到 100% 以上。 */
+  /** 缩放并平移到让整张图落在视口中央，小图不放大到 100% 以上；此后尺寸变化时重新适配，直到设置视口或在画布上按下指针。 */
   zoomToFit(): void {
-    const bounds = this.#scene?.bounds
-    const size = this.#size()
-    if (!bounds || !size)
-      return
-    this.setViewport(fitRect(bounds, size, { padding: FIT_PADDING }))
+    this.#startAutoFit()
+    this.#fitIfPending()
   }
 
   /** 以视口中心放大一档。 */
@@ -316,12 +318,36 @@ export class XhFlowViewer extends XhReactiveElement {
       element.textContent = sceneNode.label
   }
 
+  #startAutoFit(): void {
+    this.#autoFit = true
+    this.#fitPending = true
+  }
+
+  #stopAutoFit(): void {
+    this.#autoFit = false
+    this.#fitPending = false
+  }
+
+  #onResize(): void {
+    if (!this.#autoFit)
+      return
+    this.#fitPending = true
+    this.#fitIfPending()
+  }
+
   #fitIfPending(): boolean {
-    if (!this.#fitPending || !this.#scene?.bounds || !this.#size())
+    const bounds = this.#scene?.bounds
+    const size = this.#size()
+    if (!this.#fitPending || !bounds || !size)
       return false
     this.#fitPending = false
-    this.zoomToFit()
+    this.#moveTo(fitRect(bounds, size, { padding: FIT_PADDING }))
     return true
+  }
+
+  #moveTo(viewport: Viewport): void {
+    this.#viewport = viewport
+    this.#applyViewport(true)
   }
 
   #applyViewport(notify: boolean): void {
@@ -372,6 +398,7 @@ export class XhFlowViewer extends XhReactiveElement {
   readonly #onPointerDown = (event: PointerEvent): void => {
     if (event.button !== 0 || this.#pan)
       return
+    this.#stopAutoFit()
     this.#suppressClick = false
     const root = this.#layers!.root
     const start = { x: event.clientX, y: event.clientY }
