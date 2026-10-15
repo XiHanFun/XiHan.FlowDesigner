@@ -3,7 +3,8 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-import type { FlowDocument, FlowEdge, FlowNode, FlowNodeTypeDefinition, FlowNodeTypeRegistry, JsonObject, JsonValue } from '../../src'
+import type { JsonObject, JsonValue } from '@xihan-ui/core/json'
+import type { FlowDocument, FlowEdge, FlowNode, FlowNodeTypeDefinition, FlowNodeTypeRegistry } from '../../src'
 import { createNodeTypeRegistry } from '../../src'
 
 /** 工作流活动节点类型：节点 type 即活动类型，活动属性位于 data.properties。 */

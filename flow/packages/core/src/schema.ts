@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-import type { JsonObject } from './json'
+import type { JsonObject } from '@xihan-ui/core/json'
 
 /** 当前文档 schema 版本。 */
 export const FLOW_DOCUMENT_VERSION = 1

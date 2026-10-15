@@ -50,5 +50,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --passWithNoTests"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@xihan-ui/core": "catalog:"
+  }
 }
