@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-// <xh-flow-viewer>：只读流程图查看器。按文档与节点类型画出节点、连线、箭头与标签，叠加运行状态与高亮；
+// <xh-flow-viewer>：只读流程图查看器。按流程定义与节点类型画出节点、连线、箭头与标签，叠加运行状态与高亮；
 // 拖动平移，Ctrl / ⌘ + 滚轮缩放，滚轮平移；获得焦点后 + / - / 0 缩放、方向键平移。
 
 import type { FlowDocument, FlowEdgeRouter, FlowNode, FlowNodeType, FlowNodeTypeRegistry, FlowRect } from '@xihan-flow/core'
@@ -74,7 +74,7 @@ interface Layers {
 
 export class XhFlowViewer extends XhReactiveElement {
   static override properties = {
-    document: { attribute: false },
+    schema: { attribute: false },
     nodeTypes: { attribute: false },
     statuses: { attribute: false },
     highlighted: { attribute: false },
@@ -83,8 +83,8 @@ export class XhFlowViewer extends XhReactiveElement {
     translations: { attribute: false },
   }
 
-  /** 要显示的流程图文档。 */
-  declare document: FlowDocument | undefined
+  /** 要显示的流程定义。 */
+  declare schema: FlowDocument | undefined
   /** 节点类型登记表，决定端口位置与缺省标签。 */
   declare nodeTypes: FlowNodeTypeRegistry | undefined
   /** 节点 id → 运行状态；null 表示没有状态。 */
@@ -131,10 +131,10 @@ export class XhFlowViewer extends XhReactiveElement {
     const layers = this.#ensureLayers()
     const t = this.#config.translations<FlowViewerTranslations>('xh-flow-viewer', DEFAULT_TRANSLATIONS, this.translations)
     layers.root.setAttribute('aria-label', t.label)
-    if (changed.has('document') && changed.get('document') === undefined)
+    if (changed.has('schema') && changed.get('schema') === undefined)
       this.#fitPending = true
-    if (!this.#scene || changed.has('document') || changed.has('nodeTypes') || changed.has('router'))
-      this.#scene = this.document && this.nodeTypes ? buildScene(this.document, this.nodeTypes, { route: this.#route() }) : undefined
+    if (!this.#scene || changed.has('schema') || changed.has('nodeTypes') || changed.has('router'))
+      this.#scene = this.schema && this.nodeTypes ? buildScene(this.schema, this.nodeTypes, { route: this.#route() }) : undefined
     this.#renderEdges(layers)
     this.#renderLabels(layers)
     this.#renderNodes(layers)
@@ -510,5 +510,11 @@ function toggleData(element: HTMLElement, key: string, value: string | undefined
 declare global {
   interface HTMLElementTagNameMap {
     'xh-flow-viewer': XhFlowViewer
+  }
+}
+
+declare module '@xihan-ui/web-components' {
+  interface XhTranslationOverrides {
+    'xh-flow-viewer'?: Partial<FlowViewerTranslations>
   }
 }
