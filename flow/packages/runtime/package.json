@@ -57,6 +57,7 @@
   "dependencies": {
     "@xihan-flow/core": "workspace:^",
     "@xihan-ui/designer-kit": "catalog:",
+    "@xihan-ui/pointer": "catalog:",
     "@xihan-ui/viz": "catalog:",
     "@xihan-ui/web-components": "catalog:"
   },

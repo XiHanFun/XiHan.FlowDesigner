@@ -8,7 +8,7 @@
 import type { FlowDocument, FlowEdge, FlowEdgeRouter, FlowNode, FlowNodeType, FlowNodeTypeRegistry, FlowPoint, FlowRect } from '@xihan-flow/core'
 import { computeEdgeGeometry } from '@xihan-flow/core'
 import { unionRects } from '@xihan-ui/designer-kit'
-import { arrowHead, createSvgPath, polylinePointAt, shortenPolyline } from '@xihan-ui/viz'
+import { arrowHeadPath, polylinePointAt, roundedPolylinePath, shortenPolyline } from '@xihan-ui/viz'
 
 /** 节点运行状态；内置样式覆盖 running / completed / faulted / waiting / canceled / compensated，其余取值由使用方自行着色。 */
 export type FlowNodeStatus = string
@@ -87,60 +87,14 @@ export function buildScene(document: FlowDocument, registry: FlowNodeTypeRegistr
       edge,
       anchored,
       points,
-      path: drawable ? polylinePath(line, cornerRadius) : '',
-      arrow: drawable ? arrowPath(line[line.length - 1]!, points[points.length - 1]!, arrowSize) : '',
+      path: drawable ? roundedPolylinePath(line, cornerRadius) : '',
+      arrow: drawable ? arrowHeadPath(line[line.length - 1]!, points[points.length - 1]!, { length: arrowSize }) : '',
       label: edge.label || undefined,
       labelPoint: drawable ? polylinePointAt(points, 0.5) : undefined,
       dashed: edge.style?.dashed === true,
     }
   })
   return { nodes, edges, bounds: sceneBounds(nodes, edges) }
-}
-
-/** 把折线写成 SVG path：拐角处倒圆弧，切点不越过相邻两段各自的中点。 */
-export function polylinePath(points: readonly FlowPoint[], radius = 0): string {
-  if (points.length === 0)
-    return ''
-  const path = createSvgPath()
-  path.moveTo(points[0]!.x, points[0]!.y)
-  for (let i = 1; i < points.length; i++) {
-    const current = points[i]!
-    const next = points[i + 1]
-    if (next && radius > 0)
-      path.arcTo(current.x, current.y, next.x, next.y, cornerRadius(points[i - 1]!, current, next, radius))
-    else
-      path.lineTo(current.x, current.y)
-  }
-  return path.toString()
-}
-
-/** 终点箭头：尖端在 tip，沿 from → tip 的方向，长 size；两点重合或 size 不为正时为空串。 */
-export function arrowPath(from: FlowPoint, tip: FlowPoint, size: number): string {
-  if (size <= 0 || (from.x === tip.x && from.y === tip.y))
-    return ''
-  const [head, left, right] = arrowHead(from, tip, { length: size }).points
-  const path = createSvgPath()
-  path.moveTo(head!.x, head!.y)
-  path.lineTo(left!.x, left!.y)
-  path.lineTo(right!.x, right!.y)
-  path.closePath()
-  return path.toString()
-}
-
-/** 圆角半径：切点到拐点的距离不超过相邻两段各自长度的一半。 */
-function cornerRadius(previous: FlowPoint, corner: FlowPoint, next: FlowPoint, radius: number): number {
-  const inX = previous.x - corner.x
-  const inY = previous.y - corner.y
-  const outX = next.x - corner.x
-  const outY = next.y - corner.y
-  const inLength = Math.hypot(inX, inY)
-  const outLength = Math.hypot(outX, outY)
-  if (inLength === 0 || outLength === 0)
-    return 0
-  const cos = Math.max(-1, Math.min(1, (inX * outX + inY * outY) / (inLength * outLength)))
-  const halfAngle = Math.acos(cos) / 2
-  const reach = Math.min(inLength, outLength) / 2
-  return Math.min(radius, reach * Math.tan(halfAngle))
 }
 
 /** 包住全部节点框与连线折线上各点的矩形。 */
