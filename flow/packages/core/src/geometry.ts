@@ -3,8 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-// 连线几何：端点落在哪个端口、从哪一边离开，连线的折线（有折点时穿过折点，否则交给注入的路由器），
-// 以及折线上标签的位置。
+// 连线几何：端点落在哪个端口、从哪一边离开，连线的折线（有折点时穿过折点，否则交给注入的路由器）。
 
 import type { FlowEdgeEnd } from './issues'
 import type { FlowNodeTypeRegistry, FlowPortSide } from './registry'
@@ -74,31 +73,6 @@ export function computeEdgeGeometry(
       : route({ edge, source, target, obstacles })
     return { id: edge.id, index, anchored: true, points }
   })
-}
-
-/** 折线总长一半处的点，用作标签位置；空折线返回 undefined。 */
-export function polylineMidpoint(points: readonly FlowPoint[]): FlowPoint | undefined {
-  if (points.length === 0)
-    return undefined
-  const lengths: number[] = []
-  let total = 0
-  for (let i = 1; i < points.length; i++) {
-    const length = Math.hypot(points[i]!.x - points[i - 1]!.x, points[i]!.y - points[i - 1]!.y)
-    lengths.push(length)
-    total += length
-  }
-  let remaining = total / 2
-  for (let i = 1; i < points.length; i++) {
-    const length = lengths[i - 1]!
-    if (remaining <= length && length > 0) {
-      const t = remaining / length
-      const a = points[i - 1]!
-      const b = points[i]!
-      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
-    }
-    remaining -= length
-  }
-  return points[points.length - 1]
 }
 
 function nodeRect(node: FlowNode): FlowRect {

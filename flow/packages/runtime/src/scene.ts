@@ -6,9 +6,9 @@
 // 查看器的场景：把文档、节点类型与运行状态算成可直接绘制的节点框、连线路径、箭头与标签位置，不碰 DOM。
 
 import type { FlowDocument, FlowEdge, FlowEdgeRouter, FlowNode, FlowNodeType, FlowNodeTypeRegistry, FlowPoint, FlowRect } from '@xihan-flow/core'
-import { computeEdgeGeometry, polylineMidpoint } from '@xihan-flow/core'
+import { computeEdgeGeometry } from '@xihan-flow/core'
 import { unionRects } from '@xihan-ui/designer-kit'
-import { createSvgPath } from '@xihan-ui/viz'
+import { arrowHead, createSvgPath, polylinePointAt, shortenPolyline } from '@xihan-ui/viz'
 
 /** 节点运行状态；内置样式覆盖 running / completed / faulted / waiting / canceled / compensated，其余取值由使用方自行着色。 */
 export type FlowNodeStatus = string
@@ -81,15 +81,16 @@ export function buildScene(document: FlowDocument, registry: FlowNodeTypeRegistr
   const edges: FlowSceneEdge[] = document.edges.map((edge, index) => {
     const { anchored, points } = geometry[index]!
     const drawable = anchored && points.length >= 2
+    const line = drawable ? shortenPolyline(points, { end: arrowSize }) : []
     return {
       id: edge.id,
       edge,
       anchored,
       points,
-      path: drawable ? polylinePath(trimEnd(points, arrowSize), cornerRadius) : '',
-      arrow: drawable ? arrowPath(points, arrowSize) : '',
+      path: drawable ? polylinePath(line, cornerRadius) : '',
+      arrow: drawable ? arrowPath(line[line.length - 1]!, points[points.length - 1]!, arrowSize) : '',
       label: edge.label || undefined,
-      labelPoint: drawable ? polylineMidpoint(points) : undefined,
+      labelPoint: drawable ? polylinePointAt(points, 0.5) : undefined,
       dashed: edge.style?.dashed === true,
     }
   })
@@ -113,22 +114,15 @@ export function polylinePath(points: readonly FlowPoint[], radius = 0): string {
   return path.toString()
 }
 
-/** 终点箭头：尖端在折线终点，沿最后一段方向，长 size、宽 size。 */
-export function arrowPath(points: readonly FlowPoint[], size: number): string {
-  const tip = points[points.length - 1]
-  const from = lastDistinct(points)
-  if (!tip || !from || size <= 0)
+/** 终点箭头：尖端在 tip，沿 from → tip 的方向，长 size；两点重合或 size 不为正时为空串。 */
+export function arrowPath(from: FlowPoint, tip: FlowPoint, size: number): string {
+  if (size <= 0 || (from.x === tip.x && from.y === tip.y))
     return ''
-  const length = Math.hypot(tip.x - from.x, tip.y - from.y)
-  const ux = (tip.x - from.x) / length
-  const uy = (tip.y - from.y) / length
-  const baseX = tip.x - ux * size
-  const baseY = tip.y - uy * size
-  const half = size / 2
+  const [head, left, right] = arrowHead(from, tip, { length: size }).points
   const path = createSvgPath()
-  path.moveTo(tip.x, tip.y)
-  path.lineTo(baseX - uy * half, baseY + ux * half)
-  path.lineTo(baseX + uy * half, baseY - ux * half)
+  path.moveTo(head!.x, head!.y)
+  path.lineTo(left!.x, left!.y)
+  path.lineTo(right!.x, right!.y)
   path.closePath()
   return path.toString()
 }
@@ -147,30 +141,6 @@ function cornerRadius(previous: FlowPoint, corner: FlowPoint, next: FlowPoint, r
   const halfAngle = Math.acos(cos) / 2
   const reach = Math.min(inLength, outLength) / 2
   return Math.min(radius, reach * Math.tan(halfAngle))
-}
-
-/** 把折线终点沿最后一段往回收 amount，供箭头占位；最后一段不够长时收到它的起点为止。 */
-function trimEnd(points: readonly FlowPoint[], amount: number): FlowPoint[] {
-  const tip = points[points.length - 1]!
-  const from = lastDistinct(points)
-  if (!from || amount <= 0)
-    return [...points]
-  const length = Math.hypot(tip.x - from.x, tip.y - from.y)
-  const keep = Math.max(0, length - amount) / length
-  return [...points.slice(0, -1), { x: from.x + (tip.x - from.x) * keep, y: from.y + (tip.y - from.y) * keep }]
-}
-
-/** 终点之前最后一个与终点不重合的点。 */
-function lastDistinct(points: readonly FlowPoint[]): FlowPoint | undefined {
-  const tip = points[points.length - 1]
-  if (!tip)
-    return undefined
-  for (let i = points.length - 2; i >= 0; i--) {
-    const point = points[i]!
-    if (point.x !== tip.x || point.y !== tip.y)
-      return point
-  }
-  return undefined
 }
 
 /** 包住全部节点框与连线折线上各点的矩形。 */

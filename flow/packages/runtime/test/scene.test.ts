@@ -50,7 +50,7 @@ describe('buildScene', () => {
     const ab = scene.edges[0]!
     expect(ab.points).toEqual([{ x: 100, y: 20 }, { x: 200, y: 20 }])
     expect(ab.path).toBe('M100,20L190,20')
-    expect(ab.arrow).toBe('M200,20L190,25L190,15Z')
+    expect(ab.arrow).toBe('M200,20L190,24L190,16Z')
     expect([ab.label, ab.dashed]).toEqual(['同意', true])
     expect(ab.labelPoint).toEqual({ x: 150, y: 20 })
   })
@@ -82,8 +82,16 @@ describe('路径工具', () => {
     expect(polylinePath([{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }])).toBe('M0,0L10,0L10,10')
   })
 
-  it('箭头沿最后一段方向，忽略与终点重合的点', () => {
-    expect(arrowPath([{ x: 0, y: 0 }, { x: 0, y: 10 }, { x: 0, y: 10 }], 4)).toBe('M0,10L-2,6L2,6Z')
-    expect(arrowPath([{ x: 5, y: 5 }], 4)).toBe('')
+  it('箭头沿 from → tip 方向，宽为长度的 0.8 倍；两点重合或长度为 0 时不画', () => {
+    expect(arrowPath({ x: 0, y: 0 }, { x: 0, y: 10 }, 5)).toBe('M0,10L-2,5L2,5Z')
+    expect(arrowPath({ x: 5, y: 5 }, { x: 5, y: 5 }, 4)).toBe('')
+    expect(arrowPath({ x: 0, y: 0 }, { x: 0, y: 10 }, 0)).toBe('')
+  })
+
+  it('最后一段比箭头短时，线沿折线退回到前一段', () => {
+    const hooked = (request: FlowRouteRequest) => [request.source.point, { x: 195, y: 20 }, { x: 195, y: 23 }, { x: 200, y: 23 }]
+    const ab = buildScene(document, registry, { route: hooked, arrowSize: 8 }).edges[0]!
+    expect(ab.path).toBe('M100,20L195,20')
+    expect(ab.arrow.startsWith('M200,23L')).toBe(true)
   })
 })
