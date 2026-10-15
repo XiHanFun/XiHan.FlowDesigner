@@ -1,0 +1,56 @@
+{
+  "name": "@xihanfun/flow-designer",
+  "type": "module",
+  "version": "0.0.0",
+  "description": "XiHan Flow Designer — a visual flow designer delivered as Web Components.",
+  "author": {
+    "name": "XiHanFun",
+    "url": "https://github.com/XiHanFun"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/XiHanFun/XiHan.FlowDesigner#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/XiHanFun/XiHan.FlowDesigner.git",
+    "directory": "flow/packages/designer"
+  },
+  "bugs": {
+    "url": "https://github.com/XiHanFun/XiHan.FlowDesigner/issues"
+  },
+  "keywords": [
+    "flow",
+    "flow-designer",
+    "workflow",
+    "diagram",
+    "web-components",
+    "xihanfun"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@xihanfun/flow-core": "workspace:^",
+    "@xihanfun/flow-runtime": "workspace:^"
+  }
+}
