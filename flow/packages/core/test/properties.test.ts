@@ -6,48 +6,7 @@
 import type { JsonObject } from '@xihan-ui/core/json'
 import type { FlowPropertyDescriptor } from '../src'
 import { describe, expect, it } from 'vitest'
-import { evaluateCondition, getDataValue, groupProperties, isFilled, isPropertyVisible, setDataValue } from '../src'
-
-describe('getDataValue', () => {
-  const data: JsonObject = { properties: { Url: 'https://x', list: [1] }, flag: false }
-
-  it('按路径读取', () => {
-    expect(getDataValue(data, ['properties', 'Url'])).toBe('https://x')
-    expect(getDataValue(data, ['flag'])).toBe(false)
-    expect(getDataValue(data, [])).toBe(data)
-  })
-
-  it('路径不存在或中途不是对象时返回 undefined', () => {
-    expect(getDataValue(data, ['properties', 'Method'])).toBeUndefined()
-    expect(getDataValue(data, ['flag', 'x'])).toBeUndefined()
-    expect(getDataValue(data, ['properties', 'list', '0'])).toBeUndefined()
-    expect(getDataValue(undefined, ['a'])).toBeUndefined()
-    expect(getDataValue({}, ['toString'])).toBeUndefined()
-  })
-})
-
-describe('setDataValue', () => {
-  it('返回新对象且不修改原对象，未改动的分支共享引用', () => {
-    const data: JsonObject = { properties: { Url: 'a' }, other: { keep: true } }
-    const next = setDataValue(data, ['properties', 'Method'], 'GET')
-    expect(next).toEqual({ properties: { Url: 'a', Method: 'GET' }, other: { keep: true } })
-    expect(data).toEqual({ properties: { Url: 'a' }, other: { keep: true } })
-    expect(next.other).toBe(data.other)
-  })
-
-  it('补齐缺失的中间层', () => {
-    expect(setDataValue(undefined, ['a', 'b', 'c'], 1)).toEqual({ a: { b: { c: 1 } } })
-  })
-
-  it('value 为 undefined 时删除键', () => {
-    expect(setDataValue({ a: { b: 1, c: 2 } }, ['a', 'b'], undefined)).toEqual({ a: { c: 2 } })
-  })
-
-  it('中间层不是对象或路径为空时抛错', () => {
-    expect(() => setDataValue({ a: [1] }, ['a', 'b'], 1)).toThrow(/non-object at "a"/)
-    expect(() => setDataValue({}, [], 1)).toThrow(/non-empty path/)
-  })
-})
+import { evaluateCondition, groupProperties, isFilled, isPropertyVisible } from '../src'
 
 describe('isFilled', () => {
   it('空值判定', () => {

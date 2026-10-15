@@ -6,6 +6,7 @@
 import type { JsonObject, JsonValue } from '@xihan-ui/core/json'
 import type { FlowDocument, FlowEdge, FlowEdgeStyle, FlowEndpoint, FlowNode, FlowPoint } from './schema'
 import { jsonEquals } from '@xihan-ui/core/json'
+import { applyInSequence } from '@xihan-ui/designer-kit'
 
 /** 节点的新位置。 */
 export interface FlowNodePosition {
@@ -118,14 +119,7 @@ export function applyOperation(document: FlowDocument, operation: FlowOperation)
  * 依次应用一组操作；逆操作为各操作逆操作按反序拼接。任一操作失败时抛错，输入文档保持不变。
  */
 export function applyOperations(document: FlowDocument, operations: readonly FlowOperation[]): FlowOperationResult {
-  let current = document
-  const inverses: (readonly FlowOperation[])[] = []
-  for (const operation of operations) {
-    const result = applyOperation(current, operation)
-    current = result.document
-    inverses.push(result.inverse)
-  }
-  return { document: current, inverse: inverses.reverse().flat() }
+  return applyInSequence(applyOperation, document, operations)
 }
 
 function addNode(document: FlowDocument, operation: Op<'addNode'>): FlowOperationResult {

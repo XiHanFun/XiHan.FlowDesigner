@@ -21,8 +21,8 @@ import type {
 import type { JsonObject, JsonValue } from '@xihan-ui/core/json'
 import type { AlignMode, DistributeAxis, ExecuteOptions, History, HistoryChangeKind, Point } from '@xihan-ui/designer-kit'
 import type { LayeredDirection } from '@xihan-ui/viz/graph'
-import { applyOperation, checkConnection, createNode, getDataValue, setDataValue, validateDocument } from '@xihan-flow/core'
-import { jsonEquals } from '@xihan-ui/core/json'
+import { applyOperation, checkConnection, createNode, validateDocument } from '@xihan-flow/core'
+import { getJsonAt, jsonEquals, setJsonAt } from '@xihan-ui/core/json'
 import { alignRects, createHistory, distributeRects, unionRects } from '@xihan-ui/designer-kit'
 import { layered } from '@xihan-ui/viz/graph'
 import { nextFreeId } from './ids'
@@ -357,9 +357,9 @@ export function createFlowEditor(options: FlowEditorOptions): FlowEditor {
       const node = nodeById(id)
       if (!node)
         throw new Error(`[flow-designer] node "${id}" does not exist`)
-      if (jsonEquals(getDataValue(node.data, path), value))
+      if (jsonEquals(getJsonAt(node.data, path), value))
         return
-      const data = setDataValue(node.data, path, value)
+      const data = setJsonAt(node.data ?? {}, path, value, { createMissing: true }).root
       history.execute(
         [{ type: 'updateNode', id, patch: { data: Object.keys(data).length === 0 ? null : data } }],
         { merge: `data:${id}:${JSON.stringify(path)}`, ...executeOptions },

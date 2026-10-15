@@ -19,7 +19,7 @@ export type {
   FlowOperationResult,
   FlowOperationType,
 } from './operations'
-export { evaluateCondition, getDataValue, groupProperties, isFilled, isPropertyVisible, setDataValue } from './properties'
+export { evaluateCondition, groupProperties, isFilled, isPropertyVisible } from './properties'
 export type { FlowDataPath, FlowPropertyCondition, FlowPropertyDescriptor, FlowPropertyGroup, FlowPropertyOption } from './properties'
 export { readDocument } from './read'
 export type { FlowReadResult, FlowSchemaExpectation } from './read'

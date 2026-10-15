@@ -6,8 +6,9 @@
 import type { JsonObject } from '@xihan-ui/core/json'
 import type { FlowDocument } from '../src'
 import type { WorkflowDefinitionJson } from './fixtures/workflow'
+import { setJsonAt } from '@xihan-ui/core/json'
 import { describe, expect, it } from 'vitest'
-import { groupProperties, readDocument, setDataValue, validateDocument } from '../src'
+import { groupProperties, readDocument, validateDocument } from '../src'
 import { approvalDefinition, fromDefinition, toDefinition, workflowRegistry } from './fixtures/workflow'
 
 function normalize(definition: WorkflowDefinitionJson): unknown {
@@ -48,7 +49,7 @@ describe('工作流定义的表达', () => {
       ...document,
       nodes: [
         ...document.nodes.slice(0, 1),
-        { ...approve, data: setDataValue(approve.data, ['properties', 'AssigneeRules'], []) },
+        { ...approve, data: setJsonAt(approve.data ?? {}, ['properties', 'AssigneeRules'], []).root },
         ...document.nodes.slice(2),
         { id: 'start2', type: 'Start', x: 0, y: 300, width: 160, height: 48 },
         { id: 'http', type: 'Http', x: 300, y: 300, width: 200, height: 64, data: { properties: { Url: 'https://x' } } },

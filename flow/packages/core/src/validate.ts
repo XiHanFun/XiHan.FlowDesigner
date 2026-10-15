@@ -4,10 +4,13 @@
  */
 
 import type { JsonObject } from '@xihan-ui/core/json'
+import type { GraphLink } from '@xihan-ui/viz/graph'
 import type { FlowEdgeEnd, FlowIssue, FlowIssueLocation, FlowIssueSeverity, FlowValidationIssueCode } from './issues'
 import type { FlowNodeType, FlowNodeTypeRegistry, FlowPort } from './registry'
 import type { FlowDocument, FlowEndpoint, FlowNode } from './schema'
-import { getDataValue, isFilled, isPropertyVisible } from './properties'
+import { getJsonAt } from '@xihan-ui/core/json'
+import { reachableFrom } from '@xihan-ui/viz/graph'
+import { isFilled, isPropertyVisible } from './properties'
 import { portAllows } from './registry'
 
 /** 各问题码的缺省严重程度。 */
@@ -193,7 +196,7 @@ export function validateDocument(
 
   const incoming = document.nodes.map(() => 0)
   const outgoing = document.nodes.map(() => 0)
-  const successors = document.nodes.map((): number[] => [])
+  const links: GraphLink[] = []
   const portLoad = new Map<FlowPort, Map<number, number>>()
   const addPortLoad = (port: FlowPort, index: number): void => {
     const loads = portLoad.get(port) ?? new Map<number, number>()
@@ -233,7 +236,7 @@ export function validateDocument(
       incoming[target]!++
     if (source === undefined || target === undefined)
       return
-    successors[source]!.push(target)
+    links.push({ source, target })
     for (const problem of pairProblems(document.nodes[source], document.nodes[target], types[source], types[target]))
       report(problem.code, edgeAt(index, problem.end), problem.params)
   })
@@ -287,18 +290,9 @@ export function validateDocument(
     .map((_, index) => index)
     .filter(index => connectable(index) && types[index]!.entry === true)
   if (entries.length > 0) {
-    const reached = new Set<number>(entries)
-    const queue = [...entries]
-    while (queue.length > 0) {
-      for (const next of successors[queue.shift()!]!) {
-        if (!reached.has(next)) {
-          reached.add(next)
-          queue.push(next)
-        }
-      }
-    }
+    const reached = reachableFrom(document.nodes.length, links, entries)
     document.nodes.forEach((_, index) => {
-      if (connectable(index) && !isolated(index) && !reached.has(index))
+      if (connectable(index) && !isolated(index) && !reached[index])
         report('node.unreachable', nodeAt(index))
     })
   }
@@ -308,7 +302,7 @@ export function validateDocument(
     if (!nodeType || !primary(index))
       return
     for (const descriptor of nodeType.properties ?? []) {
-      if (descriptor.required && isPropertyVisible(descriptor, node.data) && !isFilled(getDataValue(node.data, descriptor.path)))
+      if (descriptor.required && isPropertyVisible(descriptor, node.data) && !isFilled(getJsonAt(node.data, descriptor.path)))
         report('node.property-required', nodeAt(index), { path: [...descriptor.path] })
     }
   })
