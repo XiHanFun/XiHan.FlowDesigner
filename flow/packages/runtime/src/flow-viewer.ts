@@ -11,6 +11,7 @@ import type { Viewport } from '@xihan-ui/designer-kit'
 import type { PointerSession } from '@xihan-ui/pointer'
 import type { KeyedChildren, PropertyValues } from '@xihan-ui/web-components/authoring'
 import type { FlowNodeStatus, FlowScene, FlowSceneEdge, FlowSceneNode } from './scene'
+import type { FlowViewerTranslations } from './translations'
 import { centerOn, DEFAULT_VIEWPORT, expandRect, fitRect, panBy, revealRect, wheelZoomFactor, zoomBy } from '@xihan-ui/designer-kit'
 import { createPointerSession, resolveSessionDoc, shouldActivate, wheelPixels } from '@xihan-ui/pointer'
 import {
@@ -28,12 +29,6 @@ import { buildScene } from './scene'
 
 /** 查看器的标签名。 */
 export const FLOW_VIEWER_TAG = 'xh-flow-viewer'
-
-/** 查看器的文案。 */
-export interface FlowViewerTranslations {
-  /** 视口区域的可访问名。 */
-  readonly label: string
-}
 
 /** 自定义节点内容时拿到的上下文。 */
 export interface FlowNodeRenderContext {
@@ -510,11 +505,5 @@ function toggleData(element: HTMLElement, key: string, value: string | undefined
 declare global {
   interface HTMLElementTagNameMap {
     'xh-flow-viewer': XhFlowViewer
-  }
-}
-
-declare module '@xihan-ui/web-components' {
-  interface XhTranslationOverrides {
-    'xh-flow-viewer'?: Partial<FlowViewerTranslations>
   }
 }
