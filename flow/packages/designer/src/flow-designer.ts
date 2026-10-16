@@ -3,7 +3,8 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-// <xh-flow-designer>：流程设计器。顶部工具栏、左侧物料面板、中间画布、右侧属性面板与底部问题列表；画布上点选、Shift 点选追加、
+// <xh-flow-designer>：流程设计器。顶部工具栏、左侧物料面板、中间画布（右下角小地图）、右侧属性面板与底部问题列表；
+// 画布上点选、Shift 点选追加、
 // 拖动节点（吸附网格与对齐线，一次拖动记一步撤销）、Shift 拖空白框选、拖空白平移、从端口拖出连线，
 // 物料拖进画布新建节点；Ctrl / ⌘ + 滚轮缩放，键盘删除、撤销重做、复制粘贴与微移。
 // 面板用 @xihan-ui/web-components 的元素，defineFlowDesigner() 会一并注册它们。
@@ -66,6 +67,7 @@ import {
 import { defineXhElements } from '@xihan-ui/web-components/define'
 import { createFlowEditor } from './editor'
 import { IssuesPanel } from './panels/issues'
+import { MinimapPanel } from './panels/minimap'
 import { PalettePanel } from './panels/palette'
 import { DEFAULT_EDGE_PROPERTIES, PropertiesPanel } from './panels/properties'
 import { ToolbarPanel } from './panels/toolbar'
@@ -98,6 +100,7 @@ export interface FlowDesignerPanels {
   readonly palette?: boolean
   readonly properties?: boolean
   readonly issues?: boolean
+  readonly minimap?: boolean
 }
 
 const EMPTY_SCHEMA: FlowDocument = { version: 1, nodes: [], edges: [] }
@@ -124,6 +127,7 @@ interface Layers {
   readonly palette: PalettePanel
   readonly properties: PropertiesPanel
   readonly issues: IssuesPanel
+  readonly minimap: MinimapPanel
 }
 
 interface Gesture {
@@ -560,7 +564,18 @@ export class XhFlowDesigner extends XhReactiveElement {
     dropPreview.hidden = true
     world.append(edges, labels, nodes, ports, overlay, marquee, dropPreview)
     root.append(world)
-    canvas.append(root)
+    const minimap = new MinimapPanel({
+      ownerDocument: doc,
+      scene: () => this.#scene,
+      viewport: () => this.#viewport,
+      canvasSize: () => this.#size(),
+      centerAt: (point) => {
+        const size = this.#size()
+        if (size)
+          this.setViewport(centerOn(this.#viewport, point, size))
+      },
+    })
+    canvas.append(root, minimap.element)
     const toolbar = new ToolbarPanel(this)
     const palette = new PalettePanel({
       ownerDocument: doc,
@@ -595,7 +610,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     root.addEventListener('contextmenu', this.#onContextMenu)
     root.addEventListener('wheel', this.#onWheel, { passive: false })
     root.addEventListener('keydown', this.#onKeyDown)
-    this.#layers = { canvas, root, world, edges, labels, nodes, ports, overlay, marquee, dropPreview, toolbar, palette, properties, issues }
+    this.#layers = { canvas, root, world, edges, labels, nodes, ports, overlay, marquee, dropPreview, toolbar, palette, properties, issues, minimap }
     return this.#layers
   }
 
@@ -700,6 +715,8 @@ export class XhFlowDesigner extends XhReactiveElement {
     layers.palette.element.hidden = panels.palette === false
     layers.properties.element.hidden = panels.properties === false
     layers.issues.element.hidden = panels.issues === false
+    if (panels.minimap === false)
+      layers.minimap.element.hidden = true
     if (!layers.toolbar.element.hidden)
       layers.toolbar.update(t)
     if (!layers.palette.element.hidden)
@@ -708,6 +725,8 @@ export class XhFlowDesigner extends XhReactiveElement {
       layers.properties.update(t)
     if (!layers.issues.element.hidden)
       layers.issues.update(t)
+    if (panels.minimap !== false)
+      layers.minimap.update()
   }
 
   #startAutoFit(): void {
@@ -743,10 +762,12 @@ export class XhFlowDesigner extends XhReactiveElement {
   }
 
   #applyViewport(notify: boolean): void {
-    const world = this.#layers?.world
-    if (world) {
+    const layers = this.#layers
+    if (layers) {
       const { x, y, zoom } = this.#viewport
-      world.style.transform = `translate(${x}px, ${y}px) scale(${zoom})`
+      layers.world.style.transform = `translate(${x}px, ${y}px) scale(${zoom})`
+      if (this.panels?.minimap !== false)
+        layers.minimap.update()
     }
     if (notify)
       emitEvent(this, 'viewport-change', { viewport: this.#viewport })
