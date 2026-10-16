@@ -65,12 +65,12 @@ function press(target: Element, x: number, y: number, init: PointerEventInit = {
   target.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, button: 0, clientX: x, clientY: y, bubbles: true, ...init }))
 }
 
-function move(x: number, y: number): void {
-  window.document.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: x, clientY: y }))
+function move(x: number, y: number, init: PointerEventInit = {}): void {
+  window.document.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: x, clientY: y, ...init }))
 }
 
-function release(x: number, y: number): void {
-  window.document.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: x, clientY: y }))
+function release(x: number, y: number, init: PointerEventInit = {}): void {
+  window.document.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: x, clientY: y, ...init }))
 }
 
 /** 剪贴板事件的数据：按类型存取的文本。 */
@@ -162,6 +162,43 @@ describe('<xh-flow-designer>', () => {
     release(60, 60)
     expect(designer.schema).toEqual(sample())
     expect(designer.canUndo).toBe(false)
+  })
+
+  it('按住 Alt 拖动节点松手时复制一份到落点，原节点不动，记为一步', async () => {
+    const designer = await mount((element) => {
+      element.grid = false
+      element.snap = false
+    })
+    press(nodeElement(designer, 't'), 210, 10)
+    move(250, 70, { altKey: true })
+    release(250, 70, { altKey: true })
+    expect(designer.schema.nodes.find(node => node.id === 't')).toMatchObject({ x: 200, y: 0 })
+    const copy = designer.schema.nodes.at(-1)!
+    expect([copy.id, copy.type, copy.x, copy.y]).toEqual(['task_1', 'task', 240, 60])
+    expect(designer.getSelection().nodes).toEqual(['task_1'])
+    designer.undo()
+    expect(designer.schema).toEqual(sample())
+  })
+
+  it('移动时对齐其余节点，对齐线由覆盖层画出，松手后收起', async () => {
+    const designer = await mount(element => element.grid = false)
+    const overlay = designer.querySelector<HTMLElement & { updateComplete: Promise<unknown> }>('xh-designer-transform')!
+    press(nodeElement(designer, 's'), 10, 10)
+    move(40, 13)
+    await overlay.updateComplete
+    expect(designer.schema.nodes[0]).toMatchObject({ x: 30, y: 0 })
+    expect(overlay.querySelectorAll('[data-part="guide"]').length).toBeGreaterThan(0)
+    release(40, 13)
+    await overlay.updateComplete
+    expect(overlay.querySelectorAll('[data-part="guide"]')).toHaveLength(0)
+  })
+
+  it('覆盖层拖到画布边缘时请求平移，视口跟着移', async () => {
+    const designer = await mount()
+    designer.setViewport({ x: 0, y: 0, zoom: 1 })
+    const overlay = designer.querySelector('xh-designer-transform')!
+    overlay.dispatchEvent(new CustomEvent('pan-request', { detail: { dx: 8, dy: 0 }, bubbles: true }))
+    expect(designer.getViewport()).toEqual({ x: -8, y: 0, zoom: 1 })
   })
 
   it('从出口拖到节点上新建连线，违反约束时派发 connect-reject', async () => {

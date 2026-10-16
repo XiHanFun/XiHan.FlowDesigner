@@ -146,8 +146,8 @@ export interface FlowEditor {
    * 给了 clipboard 时它成为剪贴板内容，与当前内容相同则接着累加偏移。
    */
   readonly paste: (clipboard?: FlowClipboard, options?: ExecuteOptions & { readonly offset?: number }) => FlowSelection
-  /** 复制选中内容并立即粘贴，不改动剪贴板。 */
-  readonly duplicate: (options?: ExecuteOptions & { readonly offset?: number }) => FlowSelection
+  /** 复制选中内容并立即粘贴，不改动剪贴板；offset 是一个数时横纵同偏移，也可分别给出。 */
+  readonly duplicate: (options?: ExecuteOptions & { readonly offset?: number | Point }) => FlowSelection
   /** 对齐选中的节点；少于两个时什么都不做。 */
   readonly align: (mode: AlignMode, options?: ExecuteOptions) => void
   /** 等距分布选中的节点；少于三个时什么都不做。 */
@@ -229,14 +229,14 @@ export function createFlowEditor(options: FlowEditorOptions): FlowEditor {
     }], executeOptions)
   }
 
-  const pasteInto = (source: FlowClipboard, offset: number, executeOptions: ExecuteOptions | undefined): FlowSelection => {
+  const pasteInto = (source: FlowClipboard, offset: Point, executeOptions: ExecuteOptions | undefined): FlowSelection => {
     if (source.nodes.length === 0)
       return EMPTY_SELECTION
     const nodeIds = new Set<string>()
     const edgeIds = new Set<string>()
     const types = new Map(source.nodes.map(node => [node.id, node.type]))
     const remap = remapIds(types.keys(), id => allocate('node', types.get(id), nodeIds))
-    const nodes = source.nodes.map((node): FlowNode => ({ ...node, id: remap.get(node.id)!, x: node.x + offset, y: node.y + offset }))
+    const nodes = source.nodes.map((node): FlowNode => ({ ...node, id: remap.get(node.id)!, x: node.x + offset.x, y: node.y + offset.y }))
     const kept = source.edges.filter(edge => remap.has(edge.source.node) && remap.has(edge.target.node))
     const edgeRemap = remapIds(kept.map(edge => edge.id), () => allocate('edge', undefined, edgeIds))
     const edges = kept
@@ -245,7 +245,7 @@ export function createFlowEditor(options: FlowEditorOptions): FlowEditor {
         id: edgeRemap.get(edge.id)!,
         source: { ...edge.source, node: remap.get(edge.source.node)! },
         target: { ...edge.target, node: remap.get(edge.target.node)! },
-        ...(edge.vertices === undefined ? {} : { vertices: edge.vertices.map(point => ({ x: point.x + offset, y: point.y + offset })) }),
+        ...(edge.vertices === undefined ? {} : { vertices: edge.vertices.map(point => ({ x: point.x + offset.x, y: point.y + offset.y })) }),
       }))
     history.execute([
       ...nodes.map((node): FlowOperation => ({ type: 'addNode', node })),
@@ -432,14 +432,16 @@ export function createFlowEditor(options: FlowEditorOptions): FlowEditor {
       if (!clipboard)
         return EMPTY_SELECTION
       pasteCount++
-      return pasteInto(clipboard, (pasteOptions.offset ?? DEFAULT_PASTE_OFFSET) * pasteCount, pasteOptions)
+      const step = (pasteOptions.offset ?? DEFAULT_PASTE_OFFSET) * pasteCount
+      return pasteInto(clipboard, { x: step, y: step }, pasteOptions)
     },
 
     duplicate(pasteOptions = {}) {
       const copied = snapshot()
       if (!copied)
         return EMPTY_SELECTION
-      return pasteInto(copied, pasteOptions.offset ?? DEFAULT_PASTE_OFFSET, pasteOptions)
+      const offset = pasteOptions.offset ?? DEFAULT_PASTE_OFFSET
+      return pasteInto(copied, typeof offset === 'number' ? { x: offset, y: offset } : offset, pasteOptions)
     },
 
     align(mode, executeOptions) {

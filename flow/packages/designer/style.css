@@ -240,13 +240,6 @@ xh-flow-designer[data-readonly] [data-part='port'] {
   display: none;
 }
 
-xh-flow-designer [data-part='guide'] {
-  fill: none;
-  stroke: var(--xh-fg-brand);
-  stroke-width: var(--xh-stroke-thin);
-  stroke-dasharray: var(--xh-space-1) var(--xh-space-1);
-}
-
 xh-flow-designer [data-part='connect-preview'] {
   fill: none;
   stroke: var(--xh-fg-muted);
@@ -260,18 +253,6 @@ xh-flow-designer [data-part='connect-preview'][data-valid='true'] {
 
 xh-flow-designer [data-part='connect-preview'][data-valid='false'] {
   stroke: var(--xh-fg-danger);
-}
-
-xh-flow-designer [data-part='marquee'] {
-  position: absolute;
-  box-sizing: border-box;
-  border: var(--xh-stroke-thin) solid var(--xh-border-control-focus);
-  background: var(--xh-bg-brand-subtle);
-  pointer-events: none;
-}
-
-xh-flow-designer [data-part='marquee'][hidden] {
-  display: none;
 }
 
 xh-flow-designer [data-part='drop-preview'] {
