@@ -124,6 +124,8 @@ export interface FlowEditor {
    * 其余路径抛错；value 为 undefined 时删除。同一连线同一路径的连续写入不论停顿多久都合并为一步，seal() 后另起一步。
    */
   readonly setEdgeProperty: (id: string, path: JsonPath, value: JsonValue | undefined, options?: ExecuteOptions) => void
+  /** 剪贴板里有内容，可以粘贴。 */
+  readonly hasClipboard: boolean
   /** 复制选中的节点与两端都被选中的连线；没有选中节点时返回 undefined。 */
   readonly copy: () => FlowClipboard | undefined
   /** 粘贴剪贴板内容并选中粘贴出的对象；缺省用最近一次 copy 的内容，每次粘贴比上一次多偏移 offset。 */
@@ -256,6 +258,9 @@ export function createFlowEditor(options: FlowEditorOptions): FlowEditor {
     history,
     get selection() {
       return selection
+    },
+    get hasClipboard() {
+      return clipboard !== undefined
     },
 
     setRegistry(next) {

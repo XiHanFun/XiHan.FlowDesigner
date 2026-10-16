@@ -319,7 +319,23 @@ xh-flow-designer [data-part='viewport'][data-gesture='marquee'] {
   cursor: crosshair;
 }
 
-xh-flow-designer [data-part='viewport']:focus-visible {
+xh-flow-designer [data-part='canvas'] > xh-context-menu {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+xh-flow-designer [data-flow-menu-root],
+xh-flow-designer [data-flow-canvas] {
+  position: absolute;
+  inset: 0;
+}
+
+xh-flow-designer [data-flow-canvas] {
+  outline: none;
+}
+
+xh-flow-designer [data-flow-canvas]:focus-visible {
   box-shadow: inset 0 0 0 var(--xh-ring-width) var(--xh-ring-focus);
 }
 

@@ -249,3 +249,88 @@ describe('小地图', () => {
     expect(part(designer, 'minimap')[0]!.hidden).toBe(true)
   })
 })
+
+describe('右键菜单', () => {
+  function rightClick(target: Element, x = 10, y = 10): MouseEvent {
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: x, clientY: y })
+    target.dispatchEvent(event)
+    return event
+  }
+
+  // 菜单打开后内容会搬进浮层落点，挂载时先记下内容节点
+  let content: HTMLElement
+
+  async function mountMenu(setup?: (designer: XhFlowDesigner) => void): Promise<XhFlowDesigner> {
+    const designer = await mount(setup)
+    content = designer.querySelector<HTMLElement>('xh-context-menu [data-xh-part="content"]')!
+    return designer
+  }
+
+  function items(): string[] {
+    return Array.from(content.querySelectorAll<HTMLElement>('[data-xh-part="item"]'))
+      .map(item => `${item.getAttribute('value')}${item.getAttribute('aria-disabled') === 'true' ? '(x)' : ''}`)
+  }
+
+  function menuRoot(designer: Element): HTMLElement {
+    return designer.querySelector<HTMLElement>('[data-flow-menu-root]')!
+  }
+
+  it('右键节点、连线与空白处换上对应条目，多选节点时加上对齐与分布', async () => {
+    const designer = await mountMenu()
+    rightClick(designer.querySelector('[data-part="node"][data-node-id="t"]')!)
+    await designer.updateComplete
+    expect(designer.getSelection().nodes).toEqual(['t'])
+    expect(items()).toEqual(['duplicate', 'copy', 'delete'])
+
+    designer.select({ nodes: ['s', 't', 'e'] })
+    rightClick(designer.querySelector('[data-part="node"][data-node-id="t"]')!)
+    expect(items()).toEqual(['duplicate', 'copy', 'delete', 'align-left', 'align-center', 'align-right', 'align-top', 'align-middle', 'align-bottom', 'distribute-horizontal', 'distribute-vertical'])
+
+    rightClick(part(designer, 'edge-hit')[0]!)
+    expect(items()).toEqual(['delete'])
+
+    rightClick(part(designer, 'viewport')[0]!, 600, 600)
+    expect(items()).toEqual(['paste(x)', 'select-all', 'auto-layout', 'zoom-to-fit'])
+  })
+
+  it('选中条目执行命令，禁用的条目不执行', async () => {
+    const designer = await mountMenu()
+    rightClick(designer.querySelector('[data-part="node"][data-node-id="t"]')!)
+    const menu = designer.querySelector('xh-context-menu')!
+    menu.dispatchEvent(new CustomEvent('select', { detail: { value: 'copy' } }))
+    rightClick(part(designer, 'viewport')[0]!, 600, 600)
+    expect(items()[0]).toBe('paste')
+    menu.dispatchEvent(new CustomEvent('select', { detail: { value: 'paste' } }))
+    expect(designer.schema.nodes).toHaveLength(4)
+
+    designer.readonly = true
+    await designer.updateComplete
+    rightClick(designer.querySelector('[data-part="node"][data-node-id="t"]')!)
+    expect(items()).toEqual(['duplicate(x)', 'copy', 'delete(x)'])
+    menu.dispatchEvent(new CustomEvent('select', { detail: { value: 'delete' } }))
+    expect(designer.schema.nodes).toHaveLength(4)
+  })
+
+  it('宿主取消 *-contextmenu 时不弹内置菜单，也拦下浏览器菜单', async () => {
+    const designer = await mountMenu()
+    designer.addEventListener('node-contextmenu', event => event.preventDefault())
+    const event = rightClick(designer.querySelector('[data-part="node"][data-node-id="t"]')!)
+    await designer.updateComplete
+    expect(event.defaultPrevented).toBe(true)
+    expect(menuRoot(designer).dataset.state).not.toBe('open')
+    const blank = rightClick(part(designer, 'viewport')[0]!, 600, 600)
+    await designer.updateComplete
+    expect(blank.defaultPrevented).toBe(true)
+    expect(menuRoot(designer).dataset.state).toBe('open')
+  })
+
+  it('画布的焦点与可访问名在触发区上，Shift+F10 按当前选择换条目', async () => {
+    const designer = await mountMenu()
+    const trigger = designer.querySelector<HTMLElement>('[data-flow-canvas]')!
+    expect([trigger.getAttribute('role'), trigger.getAttribute('aria-label'), trigger.tabIndex]).toEqual(['region', 'Flow designer', 0])
+    expect(part(designer, 'viewport')[0]!.hasAttribute('tabindex')).toBe(false)
+    designer.select({ edges: ['st'] })
+    trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'F10', shiftKey: true, bubbles: true, cancelable: true }))
+    expect(items()).toEqual(['delete'])
+  })
+})
