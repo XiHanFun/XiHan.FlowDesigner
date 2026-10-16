@@ -201,3 +201,51 @@ describe('问题列表', () => {
     expect(part(designer, 'issues')[0]!.hidden).toBe(true)
   })
 })
+
+describe('小地图', () => {
+  function sizeMinimap(designer: XhFlowDesigner, width: number, height: number): HTMLElement {
+    const minimap = part(designer, 'minimap')[0]!
+    Object.defineProperty(minimap, 'clientWidth', { configurable: true, value: width })
+    Object.defineProperty(minimap, 'clientHeight', { configurable: true, value: height })
+    minimap.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, right: width, bottom: height, width, height, toJSON: () => ({}) })
+    return minimap
+  }
+
+  it('按比例画出节点、连线与视口框，视口变化时视口框跟着走', async () => {
+    const designer = await mount()
+    placeCanvas(designer, 600, 300)
+    sizeMinimap(designer, 150, 100)
+    designer.setViewport({ x: 0, y: 0, zoom: 1 })
+    expect(part(designer, 'minimap-node')).toHaveLength(3)
+    expect(part(designer, 'minimap-edge')).toHaveLength(1)
+    const frame = part(designer, 'minimap-frame')[0]!
+    const box = (): number[] => ['x', 'y', 'width', 'height'].map(name => Number(frame.getAttribute(name)))
+    expect(box().map(value => Math.round(value * 10) / 10)).toEqual([6, 15.5, 138, 69])
+    designer.setViewport({ x: -300, y: 0, zoom: 1 })
+    expect(box()[0]).toBeGreaterThan(6)
+  })
+
+  it('在小地图上按下即把视口中心移过去，拖动时跟着走', async () => {
+    const designer = await mount()
+    placeCanvas(designer, 600, 300)
+    const minimap = sizeMinimap(designer, 150, 100)
+    designer.setViewport({ x: 0, y: 0, zoom: 1 })
+    press(minimap, 40, 30)
+    expect(designer.getViewport().x).toBeCloseTo(300 - 34 / 0.23)
+    expect(designer.getViewport().y).toBeCloseTo(150 - 14.5 / 0.23)
+    move(75, 50)
+    expect(designer.getViewport().x).toBeCloseTo(0)
+    release(75, 50)
+  })
+
+  it('没有节点或 panels.minimap 为 false 时收起', async () => {
+    const designer = await mount(element => element.schema = { version: 1, nodes: [], edges: [] })
+    expect(part(designer, 'minimap')[0]!.hidden).toBe(true)
+    designer.schema = { version: 1, nodes: [{ id: 'a', type: 'task', x: 0, y: 0, width: 100, height: 40 }], edges: [] }
+    await designer.updateComplete
+    expect(part(designer, 'minimap')[0]!.hidden).toBe(false)
+    designer.panels = { minimap: false }
+    await designer.updateComplete
+    expect(part(designer, 'minimap')[0]!.hidden).toBe(true)
+  })
+})

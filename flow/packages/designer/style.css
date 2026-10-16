@@ -510,3 +510,50 @@ xh-flow-designer [data-part='drop-preview'][hidden] {
 xh-flow-designer [data-part='viewport'][data-gesture='drop'] {
   cursor: copy;
 }
+
+xh-flow-designer [data-part='minimap'] {
+  position: absolute;
+  inset-block-end: var(--xh-space-3);
+  inset-inline-end: var(--xh-space-3);
+  box-sizing: border-box;
+  inline-size: var(--xh-layout-col-min-xs);
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  border: var(--xh-stroke-thin) solid var(--xh-border-default);
+  border-radius: var(--xh-shape-surface);
+  background: var(--xh-bg-surface);
+  box-shadow: var(--xh-shadow-sm);
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+
+xh-flow-designer [data-part='minimap'][hidden] {
+  display: none;
+}
+
+xh-flow-designer [data-part='minimap'] > svg {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+xh-flow-designer [data-part='minimap-node'] {
+  fill: var(--xh-bg-muted);
+  stroke: var(--xh-border-strong);
+  stroke-width: var(--xh-stroke-thin);
+  vector-effect: non-scaling-stroke;
+}
+
+xh-flow-designer [data-part='minimap-edge'] {
+  fill: none;
+  stroke: var(--xh-fg-subtle);
+  stroke-width: var(--xh-stroke-thin);
+  vector-effect: non-scaling-stroke;
+}
+
+xh-flow-designer [data-part='minimap-frame'] {
+  fill: var(--xh-bg-brand-subtle);
+  stroke: var(--xh-border-control-focus);
+  stroke-width: var(--xh-stroke-thin);
+}
