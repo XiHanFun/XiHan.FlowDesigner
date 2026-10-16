@@ -7,6 +7,7 @@
 // 画布上点选、Shift 点选追加、
 // 拖动节点（吸附网格与对齐线，一次拖动记一步撤销）、Shift 拖空白框选、拖空白平移、从端口拖出连线，
 // 物料拖进画布新建节点；Ctrl / ⌘ + 滚轮缩放，键盘删除、撤销重做、复制粘贴与微移。
+// 右键节点、连线或空白处弹出内置菜单，宿主取消对应的 *-contextmenu 事件即不弹。
 // 面板用 @xihan-ui/web-components 的元素，defineFlowDesigner() 会一并注册它们。
 
 import type {
@@ -66,6 +67,7 @@ import {
 } from '@xihan-ui/web-components/authoring'
 import { defineXhElements } from '@xihan-ui/web-components/define'
 import { createFlowEditor } from './editor'
+import { ContextMenuPanel } from './panels/context-menu'
 import { IssuesPanel } from './panels/issues'
 import { MinimapPanel } from './panels/minimap'
 import { PalettePanel } from './panels/palette'
@@ -128,6 +130,7 @@ interface Layers {
   readonly properties: PropertiesPanel
   readonly issues: IssuesPanel
   readonly minimap: MinimapPanel
+  readonly menu: ContextMenuPanel
 }
 
 interface Gesture {
@@ -281,6 +284,11 @@ export class XhFlowDesigner extends XhReactiveElement {
     return this.#editor.history.canRedo
   }
 
+  /** 剪贴板里有内容，paste() 能贴出东西。 */
+  get canPaste(): boolean {
+    return this.#editor.hasClipboard
+  }
+
   /** 有未保存的修改。 */
   get dirty(): boolean {
     return this.#editor.history.dirty
@@ -304,8 +312,8 @@ export class XhFlowDesigner extends XhReactiveElement {
   protected override update(changed: PropertyValues): void {
     super.update(changed)
     const layers = this.#ensureLayers()
-    const t = this.#config.translations<FlowDesignerTranslations>(FLOW_DESIGNER_TAG, DEFAULT_TRANSLATIONS, this.translations)
-    layers.root.setAttribute('aria-label', t.label)
+    const t = this.#translations()
+    layers.menu.trigger.setAttribute('aria-label', t.label)
     if (changed.has('nodeTypes')) {
       this.#editor.setRegistry(this.nodeTypes ?? createNodeTypeRegistry([]))
       this.#sceneStale = true
@@ -544,8 +552,6 @@ export class XhFlowDesigner extends XhReactiveElement {
     canvas.dataset.part = 'canvas'
     const root = createGeneratedElement(doc, 'div')
     root.dataset.part = 'viewport'
-    root.setAttribute('role', 'region')
-    root.tabIndex = 0
     const world = createGeneratedElement(doc, 'div')
     world.dataset.part = 'world'
     const edges = svgLayer(doc, 'edges')
@@ -575,7 +581,10 @@ export class XhFlowDesigner extends XhReactiveElement {
           this.setViewport(centerOn(this.#viewport, point, size))
       },
     })
-    canvas.append(root, minimap.element)
+    const menu = new ContextMenuPanel(this, root)
+    menu.prepare('blank', this.#translations())
+    menu.trigger.addEventListener('keydown', this.#onKeyDown)
+    canvas.append(menu.element, minimap.element)
     const toolbar = new ToolbarPanel(this)
     const palette = new PalettePanel({
       ownerDocument: doc,
@@ -609,8 +618,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     root.addEventListener('dblclick', this.#onDoubleClick)
     root.addEventListener('contextmenu', this.#onContextMenu)
     root.addEventListener('wheel', this.#onWheel, { passive: false })
-    root.addEventListener('keydown', this.#onKeyDown)
-    this.#layers = { canvas, root, world, edges, labels, nodes, ports, overlay, marquee, dropPreview, toolbar, palette, properties, issues, minimap }
+    this.#layers = { canvas, root, world, edges, labels, nodes, ports, overlay, marquee, dropPreview, toolbar, palette, properties, issues, minimap, menu }
     return this.#layers
   }
 
@@ -1078,8 +1086,16 @@ export class XhFlowDesigner extends XhReactiveElement {
     const proceed = target
       ? emitEvent(this, `${target.kind}-contextmenu`, { id: target.id, ...position }, { cancelable: true })
       : emitEvent(this, 'blank-contextmenu', position, { cancelable: true })
-    if (!proceed)
+    if (!proceed) {
       event.preventDefault()
+      event.stopPropagation()
+      return
+    }
+    this.#layers?.menu.prepare(target?.kind ?? 'blank', this.#translations())
+  }
+
+  #translations(): FlowDesignerTranslations {
+    return this.#config.translations<FlowDesignerTranslations>(FLOW_DESIGNER_TAG, DEFAULT_TRANSLATIONS, this.translations)
   }
 
   readonly #onWheel = (event: WheelEvent): void => {
@@ -1094,6 +1110,11 @@ export class XhFlowDesigner extends XhReactiveElement {
   }
 
   readonly #onKeyDown = (event: KeyboardEvent): void => {
+    if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) {
+      const { nodes, edges } = this.#editor.selection
+      this.#layers?.menu.prepare(nodes.length > 0 ? 'node' : edges.length > 0 ? 'edge' : 'blank', this.#translations())
+      return
+    }
     if (event.key === 'Escape' && this.#gesture) {
       this.#cancelGesture()
       event.preventDefault()

@@ -23,6 +23,9 @@ export interface FlowDesignerTranslations {
   readonly redo: string
   readonly delete: string
   readonly duplicate: string
+  readonly copy: string
+  readonly paste: string
+  readonly selectAll: string
   readonly alignLeft: string
   /** 各自的中心落到同一条竖直中线上。 */
   readonly alignCenter: string
