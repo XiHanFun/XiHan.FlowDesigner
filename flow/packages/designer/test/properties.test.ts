@@ -232,7 +232,7 @@ describe('属性面板', () => {
     expect(designer.validate().map(issue => `${issue.code}@${issue.target?.id}`)).toContain('required@st')
   })
 
-  it('只读时字段只读、写入无效；panels.properties 为 false 时收起', async () => {
+  it('只读时字段只读、写入无效；panels 里没列属性面板时收起', async () => {
     const designer = await mountTyped(element => element.readonly = true)
     designer.select({ nodes: ['t'] })
     await designer.updateComplete
@@ -240,7 +240,7 @@ describe('属性面板', () => {
     expect(field.hasAttribute('read-only')).toBe(true)
     emit(field, 'value-change', { value: 'x' })
     expect(task(designer)).not.toHaveProperty('label')
-    designer.panels = { properties: false }
+    designer.panels = 'toolbar palette issues'
     await designer.updateComplete
     expect(part(designer, 'properties')[0]!.hidden).toBe(true)
   })

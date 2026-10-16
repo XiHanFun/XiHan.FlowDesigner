@@ -98,14 +98,8 @@ export interface FlowDesignerEventMap {
   'save': CustomEvent<Record<string, never>>
 }
 
-/** 各面板是否显示；缺省全部显示，写 false 关闭该面板。 */
-export interface FlowDesignerPanels {
-  readonly toolbar?: boolean
-  readonly palette?: boolean
-  readonly properties?: boolean
-  readonly issues?: boolean
-  readonly minimap?: boolean
-}
+/** 可以开关的面板。 */
+export type FlowDesignerPanel = 'toolbar' | 'palette' | 'properties' | 'issues' | 'minimap'
 
 const EMPTY_SCHEMA: FlowDocument = { version: 1, nodes: [], edges: [] }
 const ZOOM_STEP = 1.2
@@ -156,7 +150,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     readonly: { type: Boolean },
     grid: { attribute: false },
     snap: { attribute: false },
-    panels: { attribute: false },
+    panels: { converter: { fromAttribute: (value: string | null) => value ?? undefined } },
     paletteGroupOrder: { attribute: false },
     paletteGroupLabels: { attribute: false },
     propertyEditors: { attribute: false },
@@ -177,8 +171,11 @@ export class XhFlowDesigner extends XhReactiveElement {
   declare grid: number | false
   /** 拖动时吸附其它节点并显示对齐线；缺省 true。 */
   declare snap: boolean
-  /** 各面板是否显示；缺省全部显示。 */
-  declare panels: FlowDesignerPanels | undefined
+  /**
+   * 要显示的面板，空格分隔：toolbar palette properties issues minimap。不写即全部显示，写空串则全部收起；
+   * 同名 attribute。
+   */
+  declare panels: string | undefined
   /** 物料面板里先列出的类别及其顺序，其余类别按登记顺序排在后面。 */
   declare paletteGroupOrder: readonly string[] | undefined
   /** 物料面板的类别标题，缺省直接显示 category。 */
@@ -762,13 +759,17 @@ export class XhFlowDesigner extends XhReactiveElement {
     placeBox(layers.dropPreview, this.#dropPreview)
   }
 
+  /** panels 里列出了这个面板，或没有写 panels。 */
+  #shows(panel: FlowDesignerPanel): boolean {
+    return this.panels === undefined || this.panels.split(/\s+/).includes(panel)
+  }
+
   #renderPanels(layers: Layers, t: FlowDesignerTranslations): void {
-    const panels = this.panels ?? {}
-    layers.toolbar.element.hidden = panels.toolbar === false
-    layers.palette.element.hidden = panels.palette === false
-    layers.properties.element.hidden = panels.properties === false
-    layers.issues.element.hidden = panels.issues === false
-    if (panels.minimap === false)
+    layers.toolbar.element.hidden = !this.#shows('toolbar')
+    layers.palette.element.hidden = !this.#shows('palette')
+    layers.properties.element.hidden = !this.#shows('properties')
+    layers.issues.element.hidden = !this.#shows('issues')
+    if (!this.#shows('minimap'))
       layers.minimap.element.hidden = true
     if (!layers.toolbar.element.hidden)
       layers.toolbar.update(t)
@@ -778,7 +779,7 @@ export class XhFlowDesigner extends XhReactiveElement {
       layers.properties.update(t)
     if (!layers.issues.element.hidden)
       layers.issues.update(t)
-    if (panels.minimap !== false)
+    if (this.#shows('minimap'))
       layers.minimap.update()
   }
 
@@ -820,7 +821,7 @@ export class XhFlowDesigner extends XhReactiveElement {
       const { x, y, zoom } = this.#viewport
       layers.world.style.transform = `translate(${x}px, ${y}px) scale(${zoom})`
       layers.world.style.setProperty('--xh-flow-designer-zoom', String(zoom))
-      if (this.panels?.minimap !== false)
+      if (this.#shows('minimap'))
         layers.minimap.update()
     }
     if (notify)
