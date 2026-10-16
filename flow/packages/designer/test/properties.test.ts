@@ -263,8 +263,10 @@ describe('属性面板', () => {
     expect(row(designer, 'label').querySelector('xh-field')!.hasAttribute('read-only')).toBe(true)
     emit(row(designer, 'label').querySelector('xh-text-field')!, 'value-change', { value: 'x' })
     expect(task(designer)).not.toHaveProperty('label')
+    const element = panel(designer)
     designer.panels = 'toolbar palette issues'
     await designer.updateComplete
-    expect(panel(designer).hidden).toBe(true)
+    await designer.querySelector<HTMLElement & { updateComplete: Promise<unknown> }>('xh-designer-frame')!.updateComplete
+    expect(element.isConnected).toBe(false)
   })
 })

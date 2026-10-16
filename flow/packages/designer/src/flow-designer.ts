@@ -29,7 +29,7 @@ import type {
 import type { FlowDesignerTranslations, FlowNodeRenderer, FlowScene, FlowSceneEdge, FlowSceneNode } from '@xihan-flow/runtime'
 import type { AlignMode, DistributeAxis, ExecuteOptions, Viewport } from '@xihan-ui/designer-kit'
 import type { PropertyEditorTable } from '@xihan-ui/designer-kit/properties'
-import type { DesignerSnapOptions, DesignerTransformEventMap, DropOver, PanRequestDetail, XhDesignerTransformElement } from '@xihan-ui/designer-shell'
+import type { DesignerFrameRegion, DesignerSnapOptions, DesignerTransformEventMap, DropOver, PanRequestDetail, XhDesignerFrameElement, XhDesignerTransformElement } from '@xihan-ui/designer-shell'
 import type { PointerSession } from '@xihan-ui/pointer'
 import type { KeyedChildren, PropertyValues } from '@xihan-ui/web-components/authoring'
 import type { FlowAutoLayoutOptions, FlowClipboard, FlowEditor, FlowSelection } from './editor'
@@ -52,7 +52,7 @@ import {
   wheelZoomFactor,
   zoomBy,
 } from '@xihan-ui/designer-kit'
-import { defineDesignerShell, registerDropTarget } from '@xihan-ui/designer-shell'
+import { defineDesignerShell, DESIGNER_FRAME_REGIONS, parseDesignerPanels, registerDropTarget } from '@xihan-ui/designer-shell'
 import { createPointerSession, resolveSessionDoc, shouldActivate, wheelPixels } from '@xihan-ui/pointer'
 import {
   createGeneratedElement,
@@ -112,6 +112,7 @@ const HANDLE_SELECTOR = '[data-part="edge-handle"], [data-part="vertex-handle"],
 const CLIPBOARD_EVENTS = ['copy', 'cut', 'paste'] as const
 
 interface Layers {
+  readonly frame: XhDesignerFrameElement
   readonly canvas: HTMLElement
   readonly root: HTMLElement
   readonly world: HTMLElement
@@ -200,6 +201,8 @@ export class XhFlowDesigner extends XhReactiveElement {
   declare translations: Partial<FlowDesignerTranslations> | undefined
 
   readonly #config = new XhConfigController(this)
+  #frameRegionsKey = ''
+  #frameRegionList: readonly DesignerFrameRegion[] = DESIGNER_FRAME_REGIONS
   readonly #keys: KeyedChildren = new WeakMap()
   readonly #editor: FlowEditor = createFlowEditor({ document: EMPTY_SCHEMA, registry: createNodeTypeRegistry([]) })
   #layers: Layers | undefined
@@ -565,7 +568,7 @@ export class XhFlowDesigner extends XhReactiveElement {
   }
 
   #ensureLayers(): Layers {
-    if (this.#layers?.canvas.isConnected && this.#layers.canvas.parentElement === this)
+    if (this.#layers?.frame.isConnected && this.#layers.frame.parentElement === this)
       return this.#layers
     const doc = this.ownerDocument
     const canvas = createGeneratedElement(doc, 'div')
@@ -638,12 +641,19 @@ export class XhFlowDesigner extends XhReactiveElement {
       edgeProperties: () => this.edgeProperties ?? DEFAULT_EDGE_PROPERTIES,
       locate: issue => this.#locate(issue),
     })
-    this.append(toolbar.element, palette.element, canvas, properties.element, issues.element)
+    const frame = createGeneratedElement(doc, 'xh-designer-frame', { 'data-part': 'frame' })
+    toolbar.element.slot = 'toolbar'
+    palette.element.slot = 'palette'
+    canvas.slot = 'canvas'
+    properties.element.slot = 'properties'
+    issues.element.slot = 'issues'
+    frame.append(toolbar.element, palette.element, canvas, properties.element, issues.element)
+    this.append(frame)
     root.addEventListener('pointerdown', this.#onPointerDown)
     root.addEventListener('dblclick', this.#onDoubleClick)
     root.addEventListener('contextmenu', this.#onContextMenu)
     root.addEventListener('wheel', this.#onWheel, { passive: false })
-    this.#layers = { canvas, root, world, edges, labels, nodes, ports, handles, overlay, dropPreview, transform, toolbar, palette, properties, issues, minimap, menu }
+    this.#layers = { frame, canvas, root, world, edges, labels, nodes, ports, handles, overlay, dropPreview, transform, toolbar, palette, properties, issues, minimap, menu }
     return this.#layers
   }
 
@@ -776,22 +786,38 @@ export class XhFlowDesigner extends XhReactiveElement {
 
   /** panels 里列出了这个面板，或没有写 panels。 */
   #shows(panel: FlowDesignerPanel): boolean {
-    return this.panels === undefined || this.panels.split(/\s+/).includes(panel)
+    const shown = parseDesignerPanels(this.panels)
+    return shown === undefined || shown.has(panel)
+  }
+
+  /** 外框的命名区，带上本地化的区名，分隔条的无障碍名称要用。 */
+  #frameRegions(t: FlowDesignerTranslations): readonly DesignerFrameRegion[] {
+    const labels: Readonly<Record<string, string>> = {
+      toolbar: t.toolbar,
+      palette: t.palette,
+      canvas: t.label,
+      properties: this.#config.translations<{ title: string }>('xh-designer-properties', { title: 'Properties' }).title,
+      issues: this.#config.translations<{ title: string }>('xh-designer-issues', { title: 'Problems' }).title,
+    }
+    const key = JSON.stringify(labels)
+    if (key !== this.#frameRegionsKey) {
+      this.#frameRegionsKey = key
+      this.#frameRegionList = DESIGNER_FRAME_REGIONS.map(region => ({ ...region, label: labels[region.name] ?? region.name }))
+    }
+    return this.#frameRegionList
   }
 
   #renderPanels(layers: Layers, t: FlowDesignerTranslations): void {
-    layers.toolbar.element.hidden = !this.#shows('toolbar')
-    layers.palette.element.hidden = !this.#shows('palette')
-    layers.properties.element.hidden = !this.#shows('properties')
-    layers.issues.element.hidden = !this.#shows('issues')
+    layers.frame.panels = this.panels
+    layers.frame.regions = this.#frameRegions(t)
     layers.minimap.element.hidden = !this.#shows('minimap')
-    if (!layers.toolbar.element.hidden)
+    if (this.#shows('toolbar'))
       layers.toolbar.update(t)
-    if (!layers.palette.element.hidden)
+    if (this.#shows('palette'))
       layers.palette.update(this.#editor.registry, { order: this.paletteGroupOrder, labels: this.paletteGroupLabels }, t)
-    if (!layers.properties.element.hidden)
+    if (this.#shows('properties'))
       layers.properties.update(t)
-    if (!layers.issues.element.hidden)
+    if (this.#shows('issues'))
       layers.issues.update(t)
     if (this.#shows('minimap'))
       layers.minimap.update()

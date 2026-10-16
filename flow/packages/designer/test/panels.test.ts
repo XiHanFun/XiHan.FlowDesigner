@@ -19,6 +19,12 @@ afterEach(() => {
   setXhConfig({})
 })
 
+/** 设计器更新后外框再排一轮。 */
+async function settleFrame(designer: XhFlowDesigner): Promise<void> {
+  await designer.updateComplete
+  await designer.querySelector<HTMLElement & { updateComplete: Promise<unknown> }>('xh-designer-frame')!.updateComplete
+}
+
 function toolbarItem(designer: Element, command: string): HTMLButtonElement {
   return designer.querySelector<HTMLButtonElement>(`[data-part="toolbar"] button[value="${command}"]`)!
 }
@@ -65,13 +71,14 @@ describe('工具栏', () => {
 
   it('panels 里没列工具栏时收起，文案跟着全局配置变', async () => {
     const designer = await mount(element => element.setAttribute('panels', 'palette properties'))
-    expect(part(designer, 'toolbar')[0]!.hidden).toBe(true)
-    expect(part(designer, 'palette')[0]!.hidden).toBe(false)
-    expect(part(designer, 'issues')[0]!.hidden).toBe(true)
+    await settleFrame(designer)
+    expect(part(designer, 'toolbar')).toHaveLength(0)
+    expect(part(designer, 'palette')).toHaveLength(1)
+    expect(part(designer, 'issues')).toHaveLength(0)
     designer.removeAttribute('panels')
     setXhConfig({ translations: { 'xh-flow-designer': { undo: '撤销' } } })
-    await designer.updateComplete
-    expect(part(designer, 'toolbar')[0]!.hidden).toBe(false)
+    await settleFrame(designer)
+    expect(part(designer, 'toolbar')).toHaveLength(1)
     expect(toolbarItem(designer, 'undo').textContent).toBe('撤销')
   })
 })
@@ -185,9 +192,13 @@ describe('物料面板', () => {
     expect(Array.from(palette(designer).querySelectorAll('button[data-part="item"]')).every(button => button.getAttribute('aria-disabled') === 'true')).toBe(true)
     item(designer, 'task').click()
     expect(designer.schema.nodes).toHaveLength(3)
+    const element = palette(designer)
     designer.panels = 'toolbar  properties\tissues minimap'
-    await designer.updateComplete
-    expect(palette(designer).hidden).toBe(true)
+    await settleFrame(designer)
+    expect(element.isConnected).toBe(false)
+    designer.panels = undefined
+    await settleFrame(designer)
+    expect(element.isConnected).toBe(true)
   })
 })
 
@@ -254,9 +265,12 @@ describe('问题列表', () => {
     expect(rows(designer)).toHaveLength(0)
     const empty = list(designer).querySelector<HTMLElement>('[data-part="empty"]')!
     expect([empty.hidden, empty.textContent]).toEqual([false, 'No problems'])
+    const panels = ['toolbar', 'palette', 'properties', 'issues'].map(name => part(designer, name)[0]!)
     designer.panels = ''
-    await designer.updateComplete
-    expect(['toolbar', 'palette', 'properties', 'issues', 'minimap'].map(name => part(designer, name)[0]!.hidden)).toEqual([true, true, true, true, true])
+    await settleFrame(designer)
+    expect(panels.map(element => element.isConnected)).toEqual([false, false, false, false])
+    expect(part(designer, 'minimap')[0]!.hidden).toBe(true)
+    expect(designer.querySelector('[data-region="canvas"] > [data-part="canvas"]')).not.toBeNull()
   })
 })
 

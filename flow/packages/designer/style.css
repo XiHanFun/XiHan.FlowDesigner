@@ -6,54 +6,27 @@
 /* <xh-flow-designer> 的样式：只消费 @xihan-ui 设计令牌。宿主给元素定宽高。 */
 
 xh-flow-designer {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  grid-template-areas:
-    'toolbar toolbar toolbar'
-    'palette canvas properties'
-    'palette issues properties';
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   background: var(--xh-bg-surface);
   color: var(--xh-fg-default);
   font-size: var(--xh-font-size-sm);
 }
 
-xh-flow-designer > [hidden] {
-  display: none;
+xh-flow-designer > [data-part='frame'] {
+  flex: 1 1 auto;
+  min-block-size: 0;
 }
 
-xh-flow-designer > [data-part='toolbar'] {
-  grid-area: toolbar;
+xh-flow-designer [data-part='toolbar'] {
   contain: inline-size;
   padding: var(--xh-space-1) var(--xh-space-2);
-  border-block-end: var(--xh-stroke-thin) solid var(--xh-border-subtle);
 }
 
-xh-flow-designer > [data-part='palette'] {
-  grid-area: palette;
-  inline-size: var(--xh-layout-col-min-xs);
-  min-block-size: 0;
-  border-inline-end: var(--xh-stroke-thin) solid var(--xh-border-subtle);
-}
-
-xh-flow-designer > [data-part='properties'] {
-  grid-area: properties;
-  inline-size: var(--xh-layout-col-min-md);
-  min-block-size: 0;
-  border-inline-start: var(--xh-stroke-thin) solid var(--xh-border-subtle);
-}
-
-xh-flow-designer > [data-part='issues'] {
-  grid-area: issues;
-  max-block-size: var(--xh-viewport-h-sm);
-  min-inline-size: 0;
-  border-block-start: var(--xh-stroke-thin) solid var(--xh-border-subtle);
-}
-
-xh-flow-designer > [data-part='canvas'] {
-  grid-area: canvas;
+xh-flow-designer [data-region='canvas'] > [data-part='canvas'] {
   position: relative;
+  flex: 1 1 auto;
   min-block-size: 0;
   overflow: hidden;
   background: var(--xh-bg-canvas);
