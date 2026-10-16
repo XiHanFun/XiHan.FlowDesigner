@@ -91,6 +91,7 @@ export const DEFAULT_TRANSLATIONS: FlowDesignerTranslations = {
   distributeHorizontal: 'Distribute horizontally',
   distributeVertical: 'Distribute vertically',
   autoLayout: 'Auto layout',
+  clearVertices: 'Reset route',
   zoomIn: 'Zoom in',
   zoomOut: 'Zoom out',
   zoomToFit: 'Fit',

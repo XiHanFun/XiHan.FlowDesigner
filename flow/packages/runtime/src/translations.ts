@@ -37,6 +37,8 @@ export interface FlowDesignerTranslations {
   readonly distributeHorizontal: string
   readonly distributeVertical: string
   readonly autoLayout: string
+  /** 去掉连线的手动拐点，交回自动路由。 */
+  readonly clearVertices: string
   readonly zoomIn: string
   readonly zoomOut: string
   readonly zoomToFit: string

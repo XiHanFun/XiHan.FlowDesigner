@@ -68,7 +68,7 @@ export class ContextMenuPanel {
 
 function entries(subject: ContextMenuSubject, selectedNodes: number): (FlowCommand | typeof SEPARATOR)[] {
   if (subject === 'edge')
-    return ['delete']
+    return ['delete', 'clear-vertices']
   if (subject === 'blank')
     return ['paste', 'select-all', SEPARATOR, 'auto-layout', 'zoom-to-fit']
   const list: (FlowCommand | typeof SEPARATOR)[] = ['duplicate', 'copy', 'delete']

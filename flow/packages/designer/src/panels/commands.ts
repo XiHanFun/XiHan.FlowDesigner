@@ -26,6 +26,7 @@ export type FlowCommand
     | 'distribute-horizontal'
     | 'distribute-vertical'
     | 'auto-layout'
+    | 'clear-vertices'
     | 'zoom-out'
     | 'zoom-in'
     | 'zoom-to-fit'
@@ -43,6 +44,8 @@ export interface CommandState {
   readonly nodes: number
   readonly selectedNodes: number
   readonly selectedEdges: number
+  /** 选中的连线里有带手动拐点的。 */
+  readonly selectedVertices: boolean
 }
 
 export interface CommandSpec {
@@ -72,6 +75,16 @@ export const COMMANDS: Readonly<Record<FlowCommand, CommandSpec>> = {
   'distribute-horizontal': { label: 'distributeHorizontal', run: d => d.distribute('horizontal'), enabled: editable(s => s.selectedNodes >= 3) },
   'distribute-vertical': { label: 'distributeVertical', run: d => d.distribute('vertical'), enabled: editable(s => s.selectedNodes >= 3) },
   'auto-layout': { label: 'autoLayout', run: d => d.autoLayout(), enabled: editable(s => s.nodes > 0) },
+  'clear-vertices': {
+    label: 'clearVertices',
+    run: (d) => {
+      const selected = new Set(d.getSelection().edges)
+      d.execute(d.schema.edges
+        .filter(edge => selected.has(edge.id) && edge.vertices !== undefined)
+        .map(edge => ({ type: 'updateEdge', id: edge.id, patch: { vertices: null } })))
+    },
+    enabled: editable(s => s.selectedVertices),
+  },
   'zoom-out': { label: 'zoomOut', run: d => d.zoomOut(), enabled: always },
   'zoom-in': { label: 'zoomIn', run: d => d.zoomIn(), enabled: always },
   'zoom-to-fit': { label: 'zoomToFit', run: d => d.zoomToFit(), enabled: always },
@@ -86,6 +99,7 @@ export function isCommand(value: string): value is FlowCommand {
 /** 读出判断命令可用要看的状态。 */
 export function commandState(designer: XhFlowDesigner): CommandState {
   const selection = designer.getSelection()
+  const selectedEdges = new Set(selection.edges)
   return {
     readonly: designer.readonly,
     canUndo: designer.canUndo,
@@ -94,5 +108,6 @@ export function commandState(designer: XhFlowDesigner): CommandState {
     nodes: designer.schema.nodes.length,
     selectedNodes: selection.nodes.length,
     selectedEdges: selection.edges.length,
+    selectedVertices: designer.schema.edges.some(edge => selectedEdges.has(edge.id) && edge.vertices !== undefined),
   }
 }

@@ -95,6 +95,7 @@ export const flowZhCN: XhConfig = {
       distributeHorizontal: '水平等距',
       distributeVertical: '垂直等距',
       autoLayout: '自动布局',
+      clearVertices: '清除拐点',
       zoomIn: '放大',
       zoomOut: '缩小',
       zoomToFit: '适配',
