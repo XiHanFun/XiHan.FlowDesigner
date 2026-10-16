@@ -60,14 +60,8 @@ export interface FlowDesignerTranslations {
   readonly issue: (issue: FlowIssue, names: FlowIssueNames) => string
   /** 落在某个属性上的问题：属性名与问题说明拼在一起。 */
   readonly propertyIssue: (property: string, message: string) => string
-  /** 问题列表的标题。 */
-  readonly issues: string
   /** 没有问题时问题列表里的提示。 */
   readonly issuesEmpty: string
-  readonly errorCount: (count: number) => string
-  readonly warningCount: (count: number) => string
-  readonly severityError: string
-  readonly severityWarning: string
   /** 不落在节点或连线上的问题（如节点个数）所属的对象名。 */
   readonly flow: string
 }
