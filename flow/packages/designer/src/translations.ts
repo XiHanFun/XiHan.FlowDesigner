@@ -105,11 +105,6 @@ export const DEFAULT_TRANSLATIONS: FlowDesignerTranslations = {
   propertyLabel: key => Object.hasOwn(PROPERTY_LABELS, key) ? PROPERTY_LABELS[key]! : key,
   issue: issueText,
   propertyIssue: (property, message) => `${property}: ${message}`,
-  issues: 'Problems',
   issuesEmpty: 'No problems',
-  errorCount: count => `${count} ${count === 1 ? 'error' : 'errors'}`,
-  warningCount: count => `${count} ${count === 1 ? 'warning' : 'warnings'}`,
-  severityError: 'Error',
-  severityWarning: 'Warning',
   flow: 'Flow',
 }

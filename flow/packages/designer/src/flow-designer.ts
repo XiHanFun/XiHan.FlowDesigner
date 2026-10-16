@@ -630,7 +630,6 @@ export class XhFlowDesigner extends XhReactiveElement {
     })
     const issues = new IssuesPanel({
       ownerDocument: doc,
-      nextId: () => this.#ids.scopeId(),
       document: () => this.#editor.document,
       registry: () => this.#editor.registry,
       issues: () => this.#issues,
@@ -788,8 +787,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     layers.palette.element.hidden = !this.#shows('palette')
     layers.properties.element.hidden = !this.#shows('properties')
     layers.issues.element.hidden = !this.#shows('issues')
-    if (!this.#shows('minimap'))
-      layers.minimap.element.hidden = true
+    layers.minimap.element.hidden = !this.#shows('minimap')
     if (!layers.toolbar.element.hidden)
       layers.toolbar.update(t)
     if (!layers.palette.element.hidden)

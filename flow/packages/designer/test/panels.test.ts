@@ -154,24 +154,34 @@ describe('问题列表', () => {
     { type: 'single', size: { width: 100, height: 40 }, ports: 'none', minCount: 1 },
   ])
 
-  async function settle(designer: XhFlowDesigner): Promise<void> {
-    await designer.updateComplete
-    await Promise.resolve()
-    await designer.updateComplete
+  function list(designer: Element): HTMLElement & { updateComplete: Promise<unknown> } {
+    return designer.querySelector('xh-designer-issues')!
   }
 
-  it('列出问题与错误、警告数，落在属性上的带属性名，节点上标出最严重的一级', async () => {
+  async function settle(designer: XhFlowDesigner): Promise<void> {
+    for (let round = 0; round < 3; round++) {
+      await designer.updateComplete
+      await list(designer).updateComplete
+      await Promise.resolve()
+    }
+  }
+
+  function rows(designer: Element): HTMLElement[] {
+    return Array.from(list(designer).querySelectorAll<HTMLElement>('[data-part="issue"]'))
+  }
+
+  it('列出问题与错误、警告数，错误在前；落在属性上的带属性名，节点上标出最严重的一级', async () => {
     const designer = await mount(element => element.nodeTypes = typed)
     await settle(designer)
-    const rows = part(designer, 'issue').map(item => [item.tagName, item.dataset.severity, item.querySelector('[data-part="issue-subject"]')!.textContent, item.querySelector('[data-part="issue-message"]')!.textContent])
-    expect(rows).toEqual([
+    expect(rows(designer).map(item => [item.tagName, item.dataset.severity, item.querySelector('[data-part="issue-subject"]')!.textContent, item.querySelector('[data-part="issue-message"]')!.textContent])).toEqual([
       ['DIV', 'error', 'Flow', 'At least 1 single required, found 0'],
+      ['BUTTON', 'error', '任务', '负责人: Required'],
       ['BUTTON', 'warning', '任务', 'No outgoing connection'],
       ['BUTTON', 'warning', '结束', 'Not connected'],
-      ['BUTTON', 'error', '任务', '负责人: Required'],
     ])
-    expect(part(designer, 'issues-danger')[0]!.textContent).toBe('2 errors')
-    expect(part(designer, 'issues-warning')[0]!.textContent).toBe('2 warnings')
+    const filter = list(designer).querySelector('[data-part="filter"]')!
+    expect(filter.querySelector('button[value="error"]')!.textContent).toBe('2 errors')
+    expect(filter.querySelector('button[value="warning"]')!.textContent).toBe('2 warnings')
     expect(designer.querySelector<HTMLElement>('[data-part="node"][data-node-id="t"]')!.dataset.issue).toBe('error')
     expect(designer.querySelector<HTMLElement>('[data-part="node"][data-node-id="e"]')!.dataset.issue).toBe('warning')
     expect(designer.querySelector<HTMLElement>('[data-part="node"][data-node-id="s"]')!.dataset.issue).toBeUndefined()
@@ -182,11 +192,13 @@ describe('问题列表', () => {
     placeCanvas(designer, 200, 100)
     designer.setViewport({ x: -1000, y: -1000, zoom: 1 })
     await settle(designer)
-    const owner = part(designer, 'issue').find(item => item.textContent!.includes('负责人'))!
+    const owner = rows(designer).find(item => item.textContent!.includes('负责人'))!
     owner.click()
     expect(designer.getSelection()).toEqual({ nodes: ['t'], edges: [] })
     expect(designer.getViewport()).not.toEqual({ x: -1000, y: -1000, zoom: 1 })
     await settle(designer)
+    await designer.querySelector<HTMLElement & { updateComplete: Promise<unknown> }>('xh-designer-properties')!.updateComplete
+    await Promise.resolve()
     expect(document.activeElement).toBe(designer.querySelector('[data-part="property"][data-path="data.owner"] input'))
   })
 
@@ -195,9 +207,9 @@ describe('问题列表', () => {
       element.validateOptions = { severity: { 'node.isolated': 'off', 'node.missing-outgoing': 'off', 'node.missing-incoming': 'off' } }
     })
     await settle(designer)
-    expect(part(designer, 'issue')).toHaveLength(0)
-    expect(part(designer, 'issues-empty')[0]!.hidden).toBe(false)
-    expect(part(designer, 'issues-danger')[0]!.hidden).toBe(true)
+    expect(rows(designer)).toHaveLength(0)
+    const empty = list(designer).querySelector<HTMLElement>('[data-part="empty"]')!
+    expect([empty.hidden, empty.textContent]).toEqual([false, 'No problems'])
     designer.panels = ''
     await designer.updateComplete
     expect(['toolbar', 'palette', 'properties', 'issues', 'minimap'].map(name => part(designer, name)[0]!.hidden)).toEqual([true, true, true, true, true])
@@ -205,8 +217,8 @@ describe('问题列表', () => {
 })
 
 describe('小地图', () => {
-  function sizeMinimap(designer: XhFlowDesigner, width: number, height: number): HTMLElement {
-    const minimap = part(designer, 'minimap')[0]!
+  function sizeMinimap(designer: XhFlowDesigner, width: number, height: number): HTMLElement & { updateComplete: Promise<unknown> } {
+    const minimap = designer.querySelector<HTMLElement & { updateComplete: Promise<unknown> }>('xh-designer-minimap')!
     Object.defineProperty(minimap, 'clientWidth', { configurable: true, value: width })
     Object.defineProperty(minimap, 'clientHeight', { configurable: true, value: height })
     minimap.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, right: width, bottom: height, width, height, toJSON: () => ({}) })
@@ -216,14 +228,16 @@ describe('小地图', () => {
   it('按比例画出节点、连线与视口框，视口变化时视口框跟着走', async () => {
     const designer = await mount()
     placeCanvas(designer, 600, 300)
-    sizeMinimap(designer, 150, 100)
+    const minimap = sizeMinimap(designer, 150, 100)
     designer.setViewport({ x: 0, y: 0, zoom: 1 })
-    expect(part(designer, 'minimap-node')).toHaveLength(3)
-    expect(part(designer, 'minimap-edge')).toHaveLength(1)
-    const frame = part(designer, 'minimap-frame')[0]!
+    await minimap.updateComplete
+    expect(minimap.querySelectorAll('rect[data-part="rect"]')).toHaveLength(3)
+    expect(minimap.querySelectorAll('path[data-part="path"]')).toHaveLength(1)
+    const frame = minimap.querySelector('rect[data-part="frame"]')!
     const box = (): number[] => ['x', 'y', 'width', 'height'].map(name => Number(frame.getAttribute(name)))
     expect(box().map(value => Math.round(value * 10) / 10)).toEqual([6, 15.5, 138, 69])
     designer.setViewport({ x: -300, y: 0, zoom: 1 })
+    await minimap.updateComplete
     expect(box()[0]).toBeGreaterThan(6)
   })
 
@@ -232,6 +246,7 @@ describe('小地图', () => {
     placeCanvas(designer, 600, 300)
     const minimap = sizeMinimap(designer, 150, 100)
     designer.setViewport({ x: 0, y: 0, zoom: 1 })
+    await minimap.updateComplete
     press(minimap, 40, 30)
     expect(designer.getViewport().x).toBeCloseTo(300 - 34 / 0.23)
     expect(designer.getViewport().y).toBeCloseTo(150 - 14.5 / 0.23)
@@ -240,15 +255,18 @@ describe('小地图', () => {
     release(75, 50)
   })
 
-  it('没有节点或 panels 里没列小地图时收起', async () => {
+  it('没有节点时收起，panels 里没列小地图时也收起', async () => {
     const designer = await mount(element => element.schema = { version: 1, nodes: [], edges: [] })
-    expect(part(designer, 'minimap')[0]!.hidden).toBe(true)
+    const minimap = designer.querySelector<HTMLElement & { updateComplete: Promise<unknown> }>('xh-designer-minimap')!
+    await minimap.updateComplete
+    expect(minimap.hasAttribute('data-empty')).toBe(true)
     designer.schema = { version: 1, nodes: [{ id: 'a', type: 'task', x: 0, y: 0, width: 100, height: 40 }], edges: [] }
     await designer.updateComplete
-    expect(part(designer, 'minimap')[0]!.hidden).toBe(false)
+    await minimap.updateComplete
+    expect([minimap.hasAttribute('data-empty'), minimap.hidden]).toEqual([false, false])
     designer.panels = 'toolbar palette'
     await designer.updateComplete
-    expect(part(designer, 'minimap')[0]!.hidden).toBe(true)
+    expect(minimap.hidden).toBe(true)
   })
 })
 
