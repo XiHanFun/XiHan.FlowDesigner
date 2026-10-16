@@ -29,13 +29,13 @@ import type {
 import type { FlowDesignerTranslations, FlowNodeRenderer, FlowScene, FlowSceneEdge, FlowSceneNode } from '@xihan-flow/runtime'
 import type { AlignMode, DistributeAxis, ExecuteOptions, SnapGuide, Viewport } from '@xihan-ui/designer-kit'
 import type { PropertyEditorTable } from '@xihan-ui/designer-kit/properties'
+import type { DropOver, PanRequestDetail } from '@xihan-ui/designer-shell'
 import type { PointerSession } from '@xihan-ui/pointer'
 import type { KeyedChildren, PropertyValues } from '@xihan-ui/web-components/authoring'
 import type { FlowAutoLayoutOptions, FlowClipboard, FlowEditor, FlowSelection } from './editor'
 import type { FlowPropertyEditor } from './panels/properties'
 import { createNodeTypeRegistry, getPortPosition, portAllows } from '@xihan-flow/core'
 import { buildScene, createOrthogonalRouter } from '@xihan-flow/runtime'
-import { createCounterIdGenerator } from '@xihan-ui/core'
 import {
   centerOn,
   DEFAULT_VIEWPORT,
@@ -55,7 +55,7 @@ import {
   wheelZoomFactor,
   zoomBy,
 } from '@xihan-ui/designer-kit'
-import { defineDesignerShell } from '@xihan-ui/designer-shell'
+import { defineDesignerShell, registerDropTarget } from '@xihan-ui/designer-shell'
 import { createPointerSession, resolveSessionDoc, shouldActivate, wheelPixels } from '@xihan-ui/pointer'
 import {
   createGeneratedElement,
@@ -73,7 +73,7 @@ import { createFlowEditor } from './editor'
 import { ContextMenuPanel } from './panels/context-menu'
 import { IssuesPanel } from './panels/issues'
 import { MinimapPanel } from './panels/minimap'
-import { PalettePanel } from './panels/palette'
+import { paletteNodeType, PalettePanel } from './panels/palette'
 import { DEFAULT_EDGE_PROPERTIES, PropertiesPanel } from './panels/properties'
 import { ToolbarPanel } from './panels/toolbar'
 import { DEFAULT_TRANSLATIONS } from './translations'
@@ -136,7 +136,7 @@ interface Layers {
 }
 
 interface Gesture {
-  readonly kind: 'pan' | 'move' | 'marquee' | 'connect' | 'drop' | 'vertex'
+  readonly kind: 'pan' | 'move' | 'marquee' | 'connect' | 'vertex'
   readonly session: PointerSession
   active: boolean
 }
@@ -205,7 +205,6 @@ export class XhFlowDesigner extends XhReactiveElement {
 
   readonly #config = new XhConfigController(this)
   readonly #keys: KeyedChildren = new WeakMap()
-  readonly #ids = createCounterIdGenerator('xh-flow')
   readonly #editor: FlowEditor = createFlowEditor({ document: EMPTY_SCHEMA, registry: createNodeTypeRegistry([]) })
   #layers: Layers | undefined
   #defaultRouter: FlowEdgeRouter | undefined
@@ -614,10 +613,14 @@ export class XhFlowDesigner extends XhReactiveElement {
     const palette = new PalettePanel({
       ownerDocument: doc,
       isReadonly: () => this.readonly,
-      nextId: () => this.#ids.scopeId(),
       addNode: type => this.addNode(type),
-      startDrag: (event, type, onEnd) => this.#startDrop(event, type, onEnd),
     })
+    registerDropTarget(root, {
+      over: (point, payload) => this.#dropOver(point, payload),
+      drop: (_point, payload) => this.#dropAt(payload),
+      leave: () => this.#clearDrop(),
+    })
+    root.addEventListener('pan-request', this.#onPanRequest)
     const properties = new PropertiesPanel({
       ownerDocument: doc,
       editor: this.#editor,
@@ -1120,36 +1123,45 @@ export class XhFlowDesigner extends XhReactiveElement {
     return { x: sceneNode.rect.x + sceneNode.rect.width / 2, y: sceneNode.rect.y + sceneNode.rect.height / 2 }
   }
 
-  /** 从物料面板拖出一个节点类型：指针在画布上时显示落点，松手在画布上即在落点新建节点。 */
-  #startDrop(event: PointerEvent, type: string, onEnd: (dragged: boolean) => void): boolean {
-    const nodeType = this.#editor.registry.get(type)
-    if (this.readonly || this.#gesture || !nodeType)
-      return false
+  /** 物料拖到画布上：按节点类型的尺寸在指针处画落点（吸附网格）；只读或不是物料时不接受。 */
+  #dropOver(point: FlowPoint, payload: unknown): DropOver {
+    const type = paletteNodeType(payload)
+    const nodeType = type === undefined ? undefined : this.#editor.registry.get(type)
+    if (this.readonly || !nodeType) {
+      this.#clearDrop()
+      return { accept: false }
+    }
     const { width, height } = nodeType.size
-    this.#track(event, 'drop', {
-      onMove: (client) => {
-        const box = this.#ensureLayers().root.getBoundingClientRect()
-        const inside = client.x >= box.left && client.x <= box.right && client.y >= box.top && client.y <= box.bottom
-        if (inside) {
-          const center = this.clientToWorld(client.x, client.y)
-          const topLeft = this.#snapToGrid({ x: center.x - width / 2, y: center.y - height / 2 })
-          this.#dropPreview = { ...topLeft, width, height }
-        }
-        else {
-          this.#dropPreview = undefined
-        }
-        this.requestUpdate()
-      },
-      onEnd: (active) => {
-        const target = this.#dropPreview
-        this.#dropPreview = undefined
-        this.requestUpdate()
-        onEnd(active)
-        if (active && target)
-          this.#editor.addNode(type, { x: target.x, y: target.y })
-      },
-    })
-    return true
+    const center = this.clientToWorld(point.x, point.y)
+    this.#dropPreview = { ...this.#snapToGrid({ x: center.x - width / 2, y: center.y - height / 2 }), width, height }
+    this.#ensureLayers().root.dataset.gesture = 'drop'
+    this.requestUpdate()
+    return { accept: true, ghost: 'hide' }
+  }
+
+  /** 在落点新建拖进来的节点类型。 */
+  #dropAt(payload: unknown): void {
+    const type = paletteNodeType(payload)
+    const target = this.#dropPreview
+    this.#clearDrop()
+    if (type !== undefined && target)
+      this.#editor.addNode(type, { x: target.x, y: target.y })
+  }
+
+  #clearDrop(): void {
+    const root = this.#layers?.root
+    if (root?.dataset.gesture === 'drop')
+      delete root.dataset.gesture
+    if (!this.#dropPreview)
+      return
+    this.#dropPreview = undefined
+    this.requestUpdate()
+  }
+
+  /** 拖到画布边缘时平移视口，让视口外的落点够得着。 */
+  readonly #onPanRequest = (event: Event): void => {
+    const { dx, dy } = (event as CustomEvent<PanRequestDetail>).detail
+    this.setViewport(panBy(this.#viewport, -dx, -dy))
   }
 
   #startMarquee(event: PointerEvent, additive: boolean): void {
