@@ -227,7 +227,9 @@ describe('属性面板', () => {
     designer.select({ nodes: ['t'] })
     await settle(designer)
     expect(row(designer, 'data.who').querySelector('[data-control="custom"] [data-custom]')).not.toBeNull()
-    expect(row(designer, 'data.who').querySelector('[data-xh-part="label"]')!.textContent).toBe('受理人')
+    // 宿主编辑器没标 control 时整行按一组控件接线：标签是 property-label，名称经 aria-labelledby 接到整行
+    const whoRow = row(designer, 'data.who')
+    expect([whoRow.getAttribute('role'), whoRow.querySelector('[data-part="property-label"]')!.textContent]).toEqual(['group', '受理人'])
     expect(row(designer, 'data.color').querySelector('xh-color-field')).toBeNull()
     const who = contexts.find(context => context.descriptor.path.at(-1) === 'who')!
     const targets = who.target as readonly FlowPropertyTarget[]
