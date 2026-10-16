@@ -7,8 +7,7 @@
 
 import type { FlowNodeType, FlowNodeTypeRegistry } from '@xihan-flow/core'
 import type { FlowDesignerTranslations } from '@xihan-flow/runtime'
-import { createGeneratedElement } from '@xihan-ui/web-components/authoring'
-import { h, setText } from '../dom'
+import { createAuthoredElement, createGeneratedElement, setText } from '@xihan-ui/web-components/authoring'
 
 /** 物料面板需要设计器提供的能力。 */
 export interface PaletteHost {
@@ -50,8 +49,8 @@ export class PalettePanel {
     this.element = createGeneratedElement(doc, 'div')
     this.element.dataset.part = 'palette'
     this.element.setAttribute('role', 'region')
-    this.#title = h(doc, 'div', { 'data-part': 'palette-title', 'id': host.nextId() })
-    this.#body = h(doc, 'div', { 'data-part': 'palette-body' })
+    this.#title = createAuthoredElement(doc, 'div', { 'data-part': 'palette-title', 'id': host.nextId() })
+    this.#body = createAuthoredElement(doc, 'div', { 'data-part': 'palette-body' })
     this.element.setAttribute('aria-labelledby', this.#title.id)
     this.element.append(this.#title, this.#body)
     this.#body.addEventListener('pointerdown', this.#onPointerDown)
@@ -81,13 +80,13 @@ export class PalettePanel {
     const { order = [], labels = {} } = this.#grouping
     this.#body.replaceChildren(...groupTypes(registry.types, order).map((group) => {
       const text = group.category === undefined ? this.#uncategorized : Object.hasOwn(labels, group.category) ? labels[group.category]! : group.category
-      const label = h(doc, 'div', { 'data-part': 'palette-group-label', 'id': this.#host.nextId() }, [text])
-      const items = group.types.map(nodeType => h(doc, 'button', {
+      const label = createAuthoredElement(doc, 'div', { 'data-part': 'palette-group-label', 'id': this.#host.nextId() }, [text])
+      const items = group.types.map(nodeType => createAuthoredElement(doc, 'button', {
         'data-part': 'palette-item',
         'type': 'button',
         'data-node-type': nodeType.type,
       }, [nodeType.label ?? nodeType.type]))
-      return h(doc, 'div', { 'data-part': 'palette-group', 'role': 'group', 'aria-labelledby': label.id }, [label, ...items])
+      return createAuthoredElement(doc, 'div', { 'data-part': 'palette-group', 'role': 'group', 'aria-labelledby': label.id }, [label, ...items])
     }))
   }
 
