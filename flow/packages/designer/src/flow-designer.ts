@@ -3,8 +3,10 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-// <xh-flow-designer>：流程设计器。画布上点选、Shift 点选追加、拖动节点（吸附网格与对齐线，一次拖动记一步撤销）、
-// Shift 拖空白框选、拖空白平移、从端口拖出连线；Ctrl / ⌘ + 滚轮缩放，键盘删除、撤销重做、复制粘贴与微移。
+// <xh-flow-designer>：流程设计器。顶部工具栏、左侧物料面板与中间画布；画布上点选、Shift 点选追加、
+// 拖动节点（吸附网格与对齐线，一次拖动记一步撤销）、Shift 拖空白框选、拖空白平移、从端口拖出连线，
+// 物料拖进画布新建节点；Ctrl / ⌘ + 滚轮缩放，键盘删除、撤销重做、复制粘贴与微移。
+// 面板用 @xihan-ui/web-components 的元素，defineFlowDesigner() 会一并注册它们。
 
 import type {
   FlowConnectionProblem,
@@ -25,6 +27,7 @@ import type { KeyedChildren, PropertyValues } from '@xihan-ui/web-components/aut
 import type { FlowAutoLayoutOptions, FlowClipboard, FlowEditor, FlowSelection } from './editor'
 import { createNodeTypeRegistry, getPortPosition, portAllows } from '@xihan-flow/core'
 import { buildScene, createOrthogonalRouter } from '@xihan-flow/runtime'
+import { createCounterIdGenerator } from '@xihan-ui/core'
 import {
   centerOn,
   DEFAULT_VIEWPORT,
@@ -55,7 +58,10 @@ import {
   XhConfigController,
   XhReactiveElement,
 } from '@xihan-ui/web-components/authoring'
+import { defineXhElements } from '@xihan-ui/web-components/define'
 import { createFlowEditor } from './editor'
+import { PalettePanel } from './panels/palette'
+import { ToolbarPanel } from './panels/toolbar'
 
 /** 设计器的标签名。 */
 export const FLOW_DESIGNER_TAG = 'xh-flow-designer'
@@ -78,7 +84,35 @@ export interface FlowDesignerEventMap {
   'save': CustomEvent<Record<string, never>>
 }
 
-const DEFAULT_TRANSLATIONS: FlowDesignerTranslations = { label: 'Flow designer' }
+/** 各面板是否显示；缺省全部显示，写 false 关闭该面板。 */
+export interface FlowDesignerPanels {
+  readonly toolbar?: boolean
+  readonly palette?: boolean
+}
+
+const DEFAULT_TRANSLATIONS: FlowDesignerTranslations = {
+  label: 'Flow designer',
+  toolbar: 'Designer tools',
+  undo: 'Undo',
+  redo: 'Redo',
+  delete: 'Delete',
+  duplicate: 'Duplicate',
+  alignLeft: 'Align left',
+  alignCenter: 'Align center',
+  alignRight: 'Align right',
+  alignTop: 'Align top',
+  alignMiddle: 'Align middle',
+  alignBottom: 'Align bottom',
+  distributeHorizontal: 'Distribute horizontally',
+  distributeVertical: 'Distribute vertically',
+  autoLayout: 'Auto layout',
+  zoomIn: 'Zoom in',
+  zoomOut: 'Zoom out',
+  zoomToFit: 'Fit',
+  zoomToActual: '100%',
+  palette: 'Nodes',
+  paletteUncategorized: 'Other',
+}
 const EMPTY_SCHEMA: FlowDocument = { version: 1, nodes: [], edges: [] }
 const ZOOM_STEP = 1.2
 const PAN_STEP = 48
@@ -89,6 +123,7 @@ const SNAP_DISTANCE = 6
 const PORT_HIT_DISTANCE = 12
 
 interface Layers {
+  readonly canvas: HTMLElement
   readonly root: HTMLElement
   readonly world: HTMLElement
   readonly edges: SVGSVGElement
@@ -97,10 +132,13 @@ interface Layers {
   readonly ports: HTMLElement
   readonly overlay: SVGSVGElement
   readonly marquee: HTMLElement
+  readonly dropPreview: HTMLElement
+  readonly toolbar: ToolbarPanel
+  readonly palette: PalettePanel
 }
 
 interface Gesture {
-  readonly kind: 'pan' | 'move' | 'marquee' | 'connect'
+  readonly kind: 'pan' | 'move' | 'marquee' | 'connect' | 'drop'
   readonly session: PointerSession
   active: boolean
 }
@@ -117,6 +155,9 @@ export class XhFlowDesigner extends XhReactiveElement {
     readonly: { type: Boolean },
     grid: { attribute: false },
     snap: { attribute: false },
+    panels: { attribute: false },
+    paletteGroupOrder: { attribute: false },
+    paletteGroupLabels: { attribute: false },
     renderNode: { attribute: false },
     router: { attribute: false },
     translations: { attribute: false },
@@ -130,6 +171,12 @@ export class XhFlowDesigner extends XhReactiveElement {
   declare grid: number | false
   /** 拖动时吸附其它节点并显示对齐线；缺省 true。 */
   declare snap: boolean
+  /** 各面板是否显示；缺省全部显示。 */
+  declare panels: FlowDesignerPanels | undefined
+  /** 物料面板里先列出的类别及其顺序，其余类别按登记顺序排在后面。 */
+  declare paletteGroupOrder: readonly string[] | undefined
+  /** 物料面板的类别标题，缺省直接显示 category。 */
+  declare paletteGroupLabels: Readonly<Record<string, string>> | undefined
   /** 自定义节点内容。 */
   declare renderNode: FlowNodeRenderer | undefined
   /** 连线路由器，缺省为直角路由。 */
@@ -139,6 +186,7 @@ export class XhFlowDesigner extends XhReactiveElement {
 
   readonly #config = new XhConfigController(this)
   readonly #keys: KeyedChildren = new WeakMap()
+  readonly #ids = createCounterIdGenerator('xh-flow')
   readonly #editor: FlowEditor = createFlowEditor({ document: EMPTY_SCHEMA, registry: createNodeTypeRegistry([]) })
   #layers: Layers | undefined
   #defaultRouter: FlowEdgeRouter | undefined
@@ -151,6 +199,7 @@ export class XhFlowDesigner extends XhReactiveElement {
   #guides: readonly SnapGuide[] = []
   #preview: ConnectPreview | undefined
   #marquee: FlowRect | undefined
+  #dropPreview: FlowRect | undefined
   #transactionOperations: FlowOperation[] = []
   #dirty = false
   #issuesScheduled = false
@@ -264,6 +313,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     this.#renderNodes(layers, new Set(selection.nodes))
     this.#renderPorts(layers)
     this.#renderOverlay(layers)
+    this.#renderPanels(layers, t)
     if (!this.#fitIfPending())
       this.#applyViewport(false)
   }
@@ -436,9 +486,11 @@ export class XhFlowDesigner extends XhReactiveElement {
   }
 
   #ensureLayers(): Layers {
-    if (this.#layers?.root.isConnected && this.#layers.root.parentElement === this)
+    if (this.#layers?.canvas.isConnected && this.#layers.canvas.parentElement === this)
       return this.#layers
     const doc = this.ownerDocument
+    const canvas = createGeneratedElement(doc, 'div')
+    canvas.dataset.part = 'canvas'
     const root = createGeneratedElement(doc, 'div')
     root.dataset.part = 'viewport'
     root.setAttribute('role', 'region')
@@ -456,15 +508,27 @@ export class XhFlowDesigner extends XhReactiveElement {
     const marquee = createGeneratedElement(doc, 'div')
     marquee.dataset.part = 'marquee'
     marquee.hidden = true
-    world.append(edges, labels, nodes, ports, overlay, marquee)
+    const dropPreview = createGeneratedElement(doc, 'div')
+    dropPreview.dataset.part = 'drop-preview'
+    dropPreview.hidden = true
+    world.append(edges, labels, nodes, ports, overlay, marquee, dropPreview)
     root.append(world)
-    this.append(root)
+    canvas.append(root)
+    const toolbar = new ToolbarPanel(this)
+    const palette = new PalettePanel({
+      ownerDocument: doc,
+      isReadonly: () => this.readonly,
+      nextId: () => this.#ids.scopeId(),
+      addNode: type => this.addNode(type),
+      startDrag: (event, type, onEnd) => this.#startDrop(event, type, onEnd),
+    })
+    this.append(toolbar.element, palette.element, canvas)
     root.addEventListener('pointerdown', this.#onPointerDown)
     root.addEventListener('dblclick', this.#onDoubleClick)
     root.addEventListener('contextmenu', this.#onContextMenu)
     root.addEventListener('wheel', this.#onWheel, { passive: false })
     root.addEventListener('keydown', this.#onKeyDown)
-    this.#layers = { root, world, edges, labels, nodes, ports, overlay, marquee }
+    this.#layers = { canvas, root, world, edges, labels, nodes, ports, overlay, marquee, dropPreview, toolbar, palette }
     return this.#layers
   }
 
@@ -558,14 +622,18 @@ export class XhFlowDesigner extends XhReactiveElement {
         path.setAttribute('data-valid', String(shape.valid))
       return path
     })
-    const marquee = this.#marquee
-    layers.marquee.hidden = marquee === undefined
-    if (marquee) {
-      layers.marquee.style.left = `${marquee.x}px`
-      layers.marquee.style.top = `${marquee.y}px`
-      layers.marquee.style.width = `${marquee.width}px`
-      layers.marquee.style.height = `${marquee.height}px`
-    }
+    placeBox(layers.marquee, this.#marquee)
+    placeBox(layers.dropPreview, this.#dropPreview)
+  }
+
+  #renderPanels(layers: Layers, t: FlowDesignerTranslations): void {
+    const panels = this.panels ?? {}
+    layers.toolbar.element.hidden = panels.toolbar === false
+    layers.palette.element.hidden = panels.palette === false
+    if (!layers.toolbar.element.hidden)
+      layers.toolbar.update(t)
+    if (!layers.palette.element.hidden)
+      layers.palette.update(this.#editor.registry, { order: this.paletteGroupOrder, labels: this.paletteGroupLabels }, t)
   }
 
   #startAutoFit(): void {
@@ -821,6 +889,38 @@ export class XhFlowDesigner extends XhReactiveElement {
     return { x: sceneNode.rect.x + sceneNode.rect.width / 2, y: sceneNode.rect.y + sceneNode.rect.height / 2 }
   }
 
+  /** 从物料面板拖出一个节点类型：指针在画布上时显示落点，松手在画布上即在落点新建节点。 */
+  #startDrop(event: PointerEvent, type: string, onEnd: (dragged: boolean) => void): boolean {
+    const nodeType = this.#editor.registry.get(type)
+    if (this.readonly || this.#gesture || !nodeType)
+      return false
+    const { width, height } = nodeType.size
+    this.#track(event, 'drop', {
+      onMove: (client) => {
+        const box = this.#ensureLayers().root.getBoundingClientRect()
+        const inside = client.x >= box.left && client.x <= box.right && client.y >= box.top && client.y <= box.bottom
+        if (inside) {
+          const center = this.clientToWorld(client.x, client.y)
+          const topLeft = this.#snapToGrid({ x: center.x - width / 2, y: center.y - height / 2 })
+          this.#dropPreview = { ...topLeft, width, height }
+        }
+        else {
+          this.#dropPreview = undefined
+        }
+        this.requestUpdate()
+      },
+      onEnd: (active) => {
+        const target = this.#dropPreview
+        this.#dropPreview = undefined
+        this.requestUpdate()
+        onEnd(active)
+        if (active && target)
+          this.#editor.addNode(type, { x: target.x, y: target.y })
+      },
+    })
+    return true
+  }
+
   #startMarquee(event: PointerEvent, additive: boolean): void {
     const start = this.clientToWorld(event.clientX, event.clientY)
     const before = this.#editor.selection.nodes
@@ -982,7 +1082,18 @@ export class XhFlowDesigner extends XhReactiveElement {
 
 /** 注册 <xh-flow-designer>；重复调用不报错。 */
 export function defineFlowDesigner(): void {
+  defineXhElements()
   registerElement(FLOW_DESIGNER_TAG, XhFlowDesigner)
+}
+
+function placeBox(element: HTMLElement, rect: FlowRect | undefined): void {
+  element.hidden = rect === undefined
+  if (!rect)
+    return
+  element.style.left = `${rect.x}px`
+  element.style.top = `${rect.y}px`
+  element.style.width = `${rect.width}px`
+  element.style.height = `${rect.height}px`
 }
 
 function svgLayer(doc: Document, part: string): SVGSVGElement {

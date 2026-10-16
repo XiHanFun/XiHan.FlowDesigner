@@ -15,6 +15,31 @@ export interface FlowViewerTranslations {
 export interface FlowDesignerTranslations {
   /** 画布区域的可访问名。 */
   readonly label: string
+  /** 工具栏的可访问名。 */
+  readonly toolbar: string
+  readonly undo: string
+  readonly redo: string
+  readonly delete: string
+  readonly duplicate: string
+  readonly alignLeft: string
+  /** 各自的中心落到同一条竖直中线上。 */
+  readonly alignCenter: string
+  readonly alignRight: string
+  readonly alignTop: string
+  /** 各自的中心落到同一条水平中线上。 */
+  readonly alignMiddle: string
+  readonly alignBottom: string
+  readonly distributeHorizontal: string
+  readonly distributeVertical: string
+  readonly autoLayout: string
+  readonly zoomIn: string
+  readonly zoomOut: string
+  readonly zoomToFit: string
+  readonly zoomToActual: string
+  /** 物料面板的标题。 */
+  readonly palette: string
+  /** 没有类别的节点类型所在分组的标题。 */
+  readonly paletteUncategorized: string
 }
 
 declare module '@xihan-ui/web-components' {
