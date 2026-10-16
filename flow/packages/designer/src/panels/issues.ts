@@ -8,8 +8,7 @@
 import type { FlowDocument, FlowIssue, FlowNodeTypeRegistry, FlowPropertyDescriptor } from '@xihan-flow/core'
 import type { FlowDesignerTranslations } from '@xihan-flow/runtime'
 import { formatJsonPath } from '@xihan-ui/core/json'
-import { createGeneratedElement } from '@xihan-ui/web-components/authoring'
-import { h, setText } from '../dom'
+import { createAuthoredElement, createGeneratedElement, setText } from '@xihan-ui/web-components/authoring'
 
 /** 问题列表需要设计器提供的能力。 */
 export interface IssuesHost {
@@ -41,13 +40,13 @@ export class IssuesPanel {
     this.element = createGeneratedElement(doc, 'div')
     this.element.dataset.part = 'issues'
     this.element.setAttribute('role', 'region')
-    this.#title = h(doc, 'span', { 'data-part': 'issues-title', 'id': host.nextId() })
+    this.#title = createAuthoredElement(doc, 'span', { 'data-part': 'issues-title', 'id': host.nextId() })
     this.#errors = tag(doc, 'danger')
     this.#warnings = tag(doc, 'warning')
-    this.#list = h(doc, 'ul', { 'data-part': 'issues-list', 'role': 'list' })
-    this.#empty = h(doc, 'p', { 'data-part': 'issues-empty' })
+    this.#list = createAuthoredElement(doc, 'ul', { 'data-part': 'issues-list', 'role': 'list' })
+    this.#empty = createAuthoredElement(doc, 'p', { 'data-part': 'issues-empty' })
     this.element.setAttribute('aria-labelledby', this.#title.id)
-    this.element.append(h(doc, 'div', { 'data-part': 'issues-header' }, [this.#title, this.#errors, this.#warnings]), this.#list, this.#empty)
+    this.element.append(createAuthoredElement(doc, 'div', { 'data-part': 'issues-header' }, [this.#title, this.#errors, this.#warnings]), this.#list, this.#empty)
     this.#list.addEventListener('click', this.#onClick)
   }
 
@@ -73,14 +72,14 @@ export class IssuesPanel {
     const doc = this.#host.ownerDocument
     const severity = issue.severity ?? 'error'
     const children = [
-      h(doc, 'span', { 'data-part': 'issue-severity' }, [severity === 'error' ? t.severityError : t.severityWarning]),
-      h(doc, 'span', { 'data-part': 'issue-subject' }, [this.#subject(issue, t)]),
-      h(doc, 'span', { 'data-part': 'issue-message' }, [this.#message(issue, t)]),
+      createAuthoredElement(doc, 'span', { 'data-part': 'issue-severity' }, [severity === 'error' ? t.severityError : t.severityWarning]),
+      createAuthoredElement(doc, 'span', { 'data-part': 'issue-subject' }, [this.#subject(issue, t)]),
+      createAuthoredElement(doc, 'span', { 'data-part': 'issue-message' }, [this.#message(issue, t)]),
     ]
     const body = issue.target === undefined
-      ? h(doc, 'div', { 'data-part': 'issue', 'data-severity': severity }, children)
-      : h(doc, 'button', { 'data-part': 'issue', 'data-severity': severity, 'type': 'button', 'data-index': index }, children)
-    return h(doc, 'li', {}, [body])
+      ? createAuthoredElement(doc, 'div', { 'data-part': 'issue', 'data-severity': severity }, children)
+      : createAuthoredElement(doc, 'button', { 'data-part': 'issue', 'data-severity': severity, 'type': 'button', 'data-index': index }, children)
+    return createAuthoredElement(doc, 'li', {}, [body])
   }
 
   #subject(issue: FlowIssue, t: FlowDesignerTranslations): string {
@@ -129,8 +128,8 @@ export class IssuesPanel {
 }
 
 function tag(doc: Document, tone: string): HTMLElement {
-  return h(doc, 'xh-tag', { 'tone': tone, 'variant': 'subtle', 'size': 'sm', 'data-part': `issues-${tone}` }, [
-    h(doc, 'span', { 'data-xh-part': 'root' }, [h(doc, 'span', { 'data-xh-part': 'label' })]),
+  return createAuthoredElement(doc, 'xh-tag', { 'tone': tone, 'variant': 'subtle', 'size': 'sm', 'data-part': `issues-${tone}` }, [
+    createAuthoredElement(doc, 'span', { 'data-xh-part': 'root' }, [createAuthoredElement(doc, 'span', { 'data-xh-part': 'label' })]),
   ])
 }
 

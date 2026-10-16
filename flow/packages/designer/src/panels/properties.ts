@@ -15,8 +15,7 @@ import type { FlowEditor } from '../editor'
 import type { FieldContext, FlowPropertyEditor, FlowPropertyEditorContext, FlowPropertyEditorInstance, FlowPropertyTarget } from './property-editors'
 import { formatJsonPath, getJsonAt } from '@xihan-ui/core/json'
 import { groupProperties, resolvePropertyEditor } from '@xihan-ui/designer-kit/properties'
-import { createGeneratedElement } from '@xihan-ui/web-components/authoring'
-import { h, setText } from '../dom'
+import { createAuthoredElement, createGeneratedElement, setText } from '@xihan-ui/web-components/authoring'
 import { builtinEditor } from './property-editors'
 
 /** 连线缺省可编辑的属性：标签与虚线。 */
@@ -74,11 +73,11 @@ export class PropertiesPanel {
     this.element = createGeneratedElement(doc, 'div')
     this.element.dataset.part = 'properties'
     this.element.setAttribute('role', 'region')
-    this.#title = h(doc, 'div', { 'data-part': 'properties-title', 'id': host.nextId() })
-    this.#subject = h(doc, 'div', { 'data-part': 'properties-subject' })
-    this.#body = h(doc, 'div', { 'data-part': 'properties-body' })
+    this.#title = createAuthoredElement(doc, 'div', { 'data-part': 'properties-title', 'id': host.nextId() })
+    this.#subject = createAuthoredElement(doc, 'div', { 'data-part': 'properties-subject' })
+    this.#body = createAuthoredElement(doc, 'div', { 'data-part': 'properties-body' })
     this.element.setAttribute('aria-labelledby', this.#title.id)
-    this.element.append(h(doc, 'div', { 'data-part': 'properties-header' }, [this.#title, this.#subject]), this.#body)
+    this.element.append(createAuthoredElement(doc, 'div', { 'data-part': 'properties-header' }, [this.#title, this.#subject]), this.#body)
   }
 
   update(t: FlowDesignerTranslations): void {
@@ -151,7 +150,7 @@ export class PropertiesPanel {
       return
     this.#structure = structure
     this.#clear()
-    this.#body.append(h(this.#host.ownerDocument, 'p', { 'data-part': 'properties-empty' }, [text]))
+    this.#body.append(createAuthoredElement(this.#host.ownerDocument, 'p', { 'data-part': 'properties-empty' }, [text]))
   }
 
   #clear(): void {
@@ -169,12 +168,12 @@ export class PropertiesPanel {
     for (const group of groups) {
       const rows = group.properties.map(descriptor => this.#createRow(selected, descriptor, t))
       if (group.group === undefined) {
-        this.#body.append(h(doc, 'div', { 'data-part': 'property-group' }, rows.map(row => row.element)))
+        this.#body.append(createAuthoredElement(doc, 'div', { 'data-part': 'property-group' }, rows.map(row => row.element)))
         continue
       }
       const title = Object.hasOwn(labels, group.group) ? labels[group.group]! : group.group
-      const label = h(doc, 'div', { 'data-part': 'property-group-label', 'id': this.#host.nextId() }, [title])
-      this.#body.append(h(doc, 'div', {
+      const label = createAuthoredElement(doc, 'div', { 'data-part': 'property-group-label', 'id': this.#host.nextId() }, [title])
+      this.#body.append(createAuthoredElement(doc, 'div', {
         'data-part': 'property-group',
         'role': 'group',
         'aria-labelledby': label.id,
@@ -187,12 +186,12 @@ export class PropertiesPanel {
     const kindOfTarget = selected.kind === 'node' ? selected.target.type : 'edge'
     const custom = resolvePropertyEditor(this.#host.editors() ?? { byControl: {} }, kindOfTarget, descriptor)
     const builtin = custom === undefined ? builtinEditor(descriptor.control.kind) : undefined
-    const error = h(doc, 'p', { 'data-part': 'property-error', 'hidden': true })
+    const error = createAuthoredElement(doc, 'p', { 'data-part': 'property-error', 'hidden': true })
     const hintText = descriptor.meta !== undefined && typeof descriptor.meta.description === 'string' ? descriptor.meta.description : undefined
     const children: HTMLElement[] = []
     const row: Row = {
       descriptor,
-      element: h(doc, 'div', { 'data-part': 'property', 'data-path': formatJsonPath(descriptor.path) }),
+      element: createAuthoredElement(doc, 'div', { 'data-part': 'property', 'data-path': formatJsonPath(descriptor.path) }),
       error,
       instance: {},
       localError: undefined,
@@ -206,16 +205,16 @@ export class PropertiesPanel {
     else if (custom) {
       const created: FlowPropertyEditorInstance = custom(plainContext(context))
       row.instance = { update: next => created.update?.(plainContext(next)), destroy: created.destroy }
-      children.push(h(doc, 'div', { 'data-part': 'property-label' }, [this.#label(descriptor, t)]), created.element)
+      children.push(createAuthoredElement(doc, 'div', { 'data-part': 'property-label' }, [this.#label(descriptor, t)]), created.element)
     }
     else {
       children.push(
-        h(doc, 'div', { 'data-part': 'property-label' }, [this.#label(descriptor, t)]),
-        h(doc, 'p', { 'data-part': 'property-unsupported' }, [descriptor.control.kind]),
+        createAuthoredElement(doc, 'div', { 'data-part': 'property-label' }, [this.#label(descriptor, t)]),
+        createAuthoredElement(doc, 'p', { 'data-part': 'property-unsupported' }, [descriptor.control.kind]),
       )
     }
     if (hintText !== undefined)
-      children.push(h(doc, 'p', { 'data-part': 'property-hint' }, [hintText]))
+      children.push(createAuthoredElement(doc, 'p', { 'data-part': 'property-hint' }, [hintText]))
     children.push(error)
     row.element.append(...children)
     this.#rows.push(row)

@@ -8,7 +8,7 @@
 import type { FlowDesignerTranslations } from '@xihan-flow/runtime'
 import type { XhFlowDesigner } from '../flow-designer'
 import type { FlowCommand } from './commands'
-import { h } from '../dom'
+import { createAuthoredElement } from '@xihan-ui/web-components/authoring'
 import { COMMANDS, commandState, isCommand } from './commands'
 
 /** 右键落在哪类对象上。 */
@@ -29,12 +29,12 @@ export class ContextMenuPanel {
   constructor(designer: XhFlowDesigner, viewport: HTMLElement) {
     this.#designer = designer
     const doc = designer.ownerDocument
-    this.trigger = h(doc, 'div', { 'data-xh-part': 'trigger', 'data-flow-canvas': '', 'role': 'region' }, [viewport])
-    this.#content = h(doc, 'div', { 'data-xh-part': 'content' })
-    this.element = h(doc, 'xh-context-menu', { size: 'sm' }, [
-      h(doc, 'div', { 'data-xh-part': 'root', 'data-flow-menu-root': '' }, [
+    this.trigger = createAuthoredElement(doc, 'div', { 'data-xh-part': 'trigger', 'data-flow-canvas': '', 'role': 'region' }, [viewport])
+    this.#content = createAuthoredElement(doc, 'div', { 'data-xh-part': 'content' })
+    this.element = createAuthoredElement(doc, 'xh-context-menu', { size: 'sm' }, [
+      createAuthoredElement(doc, 'div', { 'data-xh-part': 'root', 'data-flow-menu-root': '' }, [
         this.trigger,
-        h(doc, 'div', { 'data-xh-part': 'positioner' }, [this.#content]),
+        createAuthoredElement(doc, 'div', { 'data-xh-part': 'positioner' }, [this.#content]),
       ]),
     ])
     this.element.addEventListener('select', this.#onSelect)
@@ -46,13 +46,13 @@ export class ContextMenuPanel {
     const state = commandState(this.#designer)
     this.#content.replaceChildren(...entries(subject, state.selectedNodes).map((entry) => {
       if (entry === SEPARATOR)
-        return h(doc, 'div', { 'data-xh-part': 'separator' })
+        return createAuthoredElement(doc, 'div', { 'data-xh-part': 'separator' })
       const spec = COMMANDS[entry]
-      return h(doc, 'div', {
+      return createAuthoredElement(doc, 'div', {
         'data-xh-part': 'item',
         'value': entry,
         'aria-disabled': spec.enabled(state) ? undefined : 'true',
-      }, [h(doc, 'span', { 'data-xh-part': 'item-text' }, [t[spec.label]])])
+      }, [createAuthoredElement(doc, 'span', { 'data-xh-part': 'item-text' }, [t[spec.label]])])
     }))
   }
 

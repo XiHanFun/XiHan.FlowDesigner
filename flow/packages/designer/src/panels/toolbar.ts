@@ -8,8 +8,7 @@
 import type { FlowDesignerTranslations } from '@xihan-flow/runtime'
 import type { XhFlowDesigner } from '../flow-designer'
 import type { FlowCommand } from './commands'
-import { createGeneratedElement } from '@xihan-ui/web-components/authoring'
-import { h, setText } from '../dom'
+import { createAuthoredElement, createGeneratedElement, setText } from '@xihan-ui/web-components/authoring'
 import { COMMANDS, commandState, isCommand } from './commands'
 
 const GROUPS: readonly (readonly FlowCommand[])[] = [
@@ -32,18 +31,18 @@ export class ToolbarPanel {
     const children: HTMLElement[] = []
     GROUPS.forEach((group, index) => {
       if (index > 0)
-        children.push(h(doc, 'div', { 'data-xh-part': 'separator' }))
-      children.push(h(doc, 'div', { 'data-xh-part': 'group' }, group.map((command) => {
-        const item = h(doc, 'button', { 'data-xh-part': 'item', 'type': 'button', 'value': command })
+        children.push(createAuthoredElement(doc, 'div', { 'data-xh-part': 'separator' }))
+      children.push(createAuthoredElement(doc, 'div', { 'data-xh-part': 'group' }, group.map((command) => {
+        const item = createAuthoredElement(doc, 'button', { 'data-xh-part': 'item', 'type': 'button', 'value': command })
         this.#items.set(command, item)
         return item
       })))
     })
-    children.push(h(doc, 'button', { 'data-xh-part': 'overflow-trigger', 'type': 'button' }))
-    this.#root = h(doc, 'div', { 'data-xh-part': 'root' }, children)
+    children.push(createAuthoredElement(doc, 'button', { 'data-xh-part': 'overflow-trigger', 'type': 'button' }))
+    this.#root = createAuthoredElement(doc, 'div', { 'data-xh-part': 'root' }, children)
     this.element = createGeneratedElement(doc, 'div')
     this.element.dataset.part = 'toolbar'
-    this.element.append(h(doc, 'xh-toolbar', { size: 'sm' }, [this.#root]))
+    this.element.append(createAuthoredElement(doc, 'xh-toolbar', { size: 'sm' }, [this.#root]))
     this.#root.addEventListener('click', this.#onClick)
   }
 
