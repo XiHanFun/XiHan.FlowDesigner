@@ -287,7 +287,7 @@ describe('右键菜单', () => {
     expect(items()).toEqual(['duplicate', 'copy', 'delete', 'align-left', 'align-center', 'align-right', 'align-top', 'align-middle', 'align-bottom', 'distribute-horizontal', 'distribute-vertical'])
 
     rightClick(part(designer, 'edge-hit')[0]!)
-    expect(items()).toEqual(['delete'])
+    expect(items()).toEqual(['delete', 'clear-vertices(x)'])
 
     rightClick(part(designer, 'viewport')[0]!, 600, 600)
     expect(items()).toEqual(['paste(x)', 'select-all', 'auto-layout', 'zoom-to-fit'])
@@ -331,6 +331,81 @@ describe('右键菜单', () => {
     expect(part(designer, 'viewport')[0]!.hasAttribute('tabindex')).toBe(false)
     designer.select({ edges: ['st'] })
     trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'F10', shiftKey: true, bubbles: true, cancelable: true }))
-    expect(items()).toEqual(['delete'])
+    expect(items()).toEqual(['delete', 'clear-vertices(x)'])
+  })
+})
+
+describe('连线编辑', () => {
+  function handle(designer: Element, part: string, key?: string): HTMLElement {
+    const all = Array.from(designer.querySelectorAll<HTMLElement>(`[data-part="${part}"]`))
+    return key === undefined ? all[0]! : all.find(item => item.dataset.end === key || item.dataset.index === key)!
+  }
+
+  it('选中一条连线时画出端点柄与加点柄，多选、只读时不画', async () => {
+    const designer = await mount()
+    designer.select({ edges: ['st'] })
+    await designer.updateComplete
+    expect(part(designer, 'edge-handle').map(item => [item.dataset.end, item.style.left, item.style.top])).toEqual([['source', '100px', '20px'], ['target', '200px', '20px']])
+    expect(part(designer, 'segment-handle')).toHaveLength(1)
+    designer.select({ nodes: ['s'], edges: ['st'] })
+    await designer.updateComplete
+    expect(part(designer, 'edge-handle')).toHaveLength(0)
+    designer.select({ edges: ['st'] })
+    designer.readonly = true
+    await designer.updateComplete
+    expect(part(designer, 'edge-handle')).toHaveLength(0)
+  })
+
+  it('拖终点柄改连到别的节点，违反约束时派发 connect-reject 且不改', async () => {
+    const designer = await mount()
+    const rejects: unknown[] = []
+    designer.addEventListener('connect-reject', event => rejects.push((event as CustomEvent).detail))
+    designer.select({ edges: ['st'] })
+    await designer.updateComplete
+    press(handle(designer, 'edge-handle', 'target'), 200, 20)
+    move(300, 120)
+    move(400, 220)
+    await designer.updateComplete
+    expect(part(designer, 'connect-preview')[0]!.getAttribute('data-valid')).toBe('true')
+    release(400, 220)
+    expect(designer.schema.edges[0]!.target).toEqual({ node: 'e', port: 'in' })
+
+    await designer.updateComplete
+    press(handle(designer, 'edge-handle', 'target'), 400, 220)
+    move(300, 120)
+    move(100, 20)
+    release(100, 20)
+    expect(designer.schema.edges[0]!.target).toEqual({ node: 'e', port: 'in' })
+    expect(rejects).toHaveLength(1)
+    designer.undo()
+    expect(designer.schema.edges[0]!.target).toEqual({ node: 't' })
+  })
+
+  it('拖加点柄加一个拐点、拖拐点挪动，各记一步撤销；双击拐点与「清除拐点」交回路由', async () => {
+    const designer = await mount()
+    designer.select({ edges: ['st'] })
+    await designer.updateComplete
+    press(handle(designer, 'segment-handle'), 150, 20)
+    move(150, 50)
+    move(150, 80)
+    release(150, 80)
+    expect(designer.schema.edges[0]!.vertices).toEqual([{ x: 144, y: 80 }])
+    await designer.updateComplete
+    press(handle(designer, 'vertex-handle', '0'), 144, 80)
+    move(160, 100)
+    move(176, 112)
+    release(176, 112)
+    expect(designer.schema.edges[0]!.vertices).toEqual([{ x: 176, y: 112 }])
+    designer.undo()
+    expect(designer.schema.edges[0]!.vertices).toEqual([{ x: 144, y: 80 }])
+    await designer.updateComplete
+    handle(designer, 'vertex-handle', '0').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
+    expect(designer.schema.edges[0]).not.toHaveProperty('vertices')
+
+    designer.undo()
+    await designer.updateComplete
+    const menu = designer.querySelector('xh-context-menu')!
+    menu.dispatchEvent(new CustomEvent('select', { detail: { value: 'clear-vertices' } }))
+    expect(designer.schema.edges[0]).not.toHaveProperty('vertices')
   })
 })

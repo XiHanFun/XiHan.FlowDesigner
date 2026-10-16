@@ -6,6 +6,7 @@
 // <xh-flow-designer>：流程设计器。顶部工具栏、左侧物料面板、中间画布（右下角小地图）、右侧属性面板与底部问题列表；
 // 画布上点选、Shift 点选追加、
 // 拖动节点（吸附网格与对齐线，一次拖动记一步撤销）、Shift 拖空白框选、拖空白平移、从端口拖出连线，
+// 选中一条连线后拖端点改连、拖拐点挪动、拖线段中点加拐点、双击拐点删掉它，
 // 物料拖进画布新建节点；Ctrl / ⌘ + 滚轮缩放，键盘删除、撤销重做、复制粘贴与微移。
 // 右键节点、连线或空白处弹出内置菜单，宿主取消对应的 *-contextmenu 事件即不弹。
 // 面板用 @xihan-ui/web-components 的元素，defineFlowDesigner() 会一并注册它们。
@@ -13,6 +14,7 @@
 import type {
   FlowConnectionProblem,
   FlowDocument,
+  FlowEdgeEnd,
   FlowEdgeRouter,
   FlowEndpoint,
   FlowIssue,
@@ -113,6 +115,8 @@ const EDGE_LAYER_MARGIN = 32
 /** 吸附与端口命中的屏幕距离（像素）。 */
 const SNAP_DISTANCE = 6
 const PORT_HIT_DISTANCE = 12
+/** 连线控制柄。 */
+const HANDLE_SELECTOR = '[data-part="edge-handle"], [data-part="vertex-handle"], [data-part="segment-handle"]'
 
 interface Layers {
   readonly canvas: HTMLElement
@@ -122,6 +126,7 @@ interface Layers {
   readonly labels: HTMLElement
   readonly nodes: HTMLElement
   readonly ports: HTMLElement
+  readonly handles: HTMLElement
   readonly overlay: SVGSVGElement
   readonly marquee: HTMLElement
   readonly dropPreview: HTMLElement
@@ -134,7 +139,7 @@ interface Layers {
 }
 
 interface Gesture {
-  readonly kind: 'pan' | 'move' | 'marquee' | 'connect' | 'drop'
+  readonly kind: 'pan' | 'move' | 'marquee' | 'connect' | 'drop' | 'vertex'
   readonly session: PointerSession
   active: boolean
 }
@@ -336,6 +341,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     this.#renderLabels(layers)
     this.#renderNodes(layers, new Set(selection.nodes))
     this.#renderPorts(layers)
+    this.#renderHandles(layers)
     this.#renderOverlay(layers)
     this.#renderPanels(layers, t)
     if (!this.#fitIfPending())
@@ -561,6 +567,8 @@ export class XhFlowDesigner extends XhReactiveElement {
     nodes.dataset.part = 'nodes'
     const ports = createGeneratedElement(doc, 'div')
     ports.dataset.part = 'ports'
+    const handles = createGeneratedElement(doc, 'div')
+    handles.dataset.part = 'handles'
     const overlay = svgLayer(doc, 'overlay')
     const marquee = createGeneratedElement(doc, 'div')
     marquee.dataset.part = 'marquee'
@@ -568,7 +576,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     const dropPreview = createGeneratedElement(doc, 'div')
     dropPreview.dataset.part = 'drop-preview'
     dropPreview.hidden = true
-    world.append(edges, labels, nodes, ports, overlay, marquee, dropPreview)
+    world.append(edges, labels, nodes, ports, handles, overlay, marquee, dropPreview)
     root.append(world)
     const minimap = new MinimapPanel({
       ownerDocument: doc,
@@ -618,7 +626,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     root.addEventListener('dblclick', this.#onDoubleClick)
     root.addEventListener('contextmenu', this.#onContextMenu)
     root.addEventListener('wheel', this.#onWheel, { passive: false })
-    this.#layers = { canvas, root, world, edges, labels, nodes, ports, overlay, marquee, dropPreview, toolbar, palette, properties, issues, minimap, menu }
+    this.#layers = { canvas, root, world, edges, labels, nodes, ports, handles, overlay, marquee, dropPreview, toolbar, palette, properties, issues, minimap, menu }
     return this.#layers
   }
 
@@ -684,6 +692,43 @@ export class XhFlowDesigner extends XhReactiveElement {
       element.dataset.nodeId = item.sceneNode.id
       element.dataset.portId = item.port.id
       element.dataset.direction = item.port.direction
+      element.style.left = `${item.at.x}px`
+      element.style.top = `${item.at.y}px`
+      return element
+    })
+  }
+
+  /** 唯一选中且画得出的那条连线；只读时没有。 */
+  #editableEdge(): FlowSceneEdge | undefined {
+    const { nodes, edges } = this.#editor.selection
+    if (this.readonly || nodes.length > 0 || edges.length !== 1)
+      return undefined
+    const edge = this.#scene?.edges.find(item => item.id === edges[0])
+    return edge && edge.anchored && edge.points.length >= 2 ? edge : undefined
+  }
+
+  /** 选中连线的控制柄：两端的端点柄、每个拐点的拐点柄与每段中点的加点柄。 */
+  #renderHandles(layers: Layers): void {
+    const edge = this.#editableEdge()
+    const items: { key: string, part: string, at: FlowPoint, end?: FlowEdgeEnd, index?: number }[] = []
+    if (edge) {
+      const points = edge.points
+      items.push({ key: 'source', part: 'edge-handle', end: 'source', at: points[0]! })
+      items.push({ key: 'target', part: 'edge-handle', end: 'target', at: points.at(-1)! })
+      points.slice(1, -1).forEach((at, index) => items.push({ key: `vertex-${index}`, part: 'vertex-handle', index, at }))
+      for (let index = 0; index < points.length - 1; index++) {
+        const from = points[index]!
+        const to = points[index + 1]!
+        items.push({ key: `segment-${index}`, part: 'segment-handle', index, at: { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 } })
+      }
+    }
+    const doc = this.ownerDocument
+    reconcile(layers.handles, items, this.#keys, item => item.key, (item, reuse) => {
+      const element = (reuse as HTMLElement | undefined) ?? createGeneratedElement(doc, 'div')
+      element.dataset.part = item.part
+      element.dataset.edgeId = edge!.id
+      toggleData(element, 'end', item.end)
+      toggleData(element, 'index', item.index === undefined ? undefined : String(item.index))
       element.style.left = `${item.at.x}px`
       element.style.top = `${item.at.y}px`
       return element
@@ -774,6 +819,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     if (layers) {
       const { x, y, zoom } = this.#viewport
       layers.world.style.transform = `translate(${x}px, ${y}px) scale(${zoom})`
+      layers.world.style.setProperty('--xh-flow-designer-zoom', String(zoom))
       if (this.panels?.minimap !== false)
         layers.minimap.update()
     }
@@ -859,6 +905,15 @@ export class XhFlowDesigner extends XhReactiveElement {
     this.#stopAutoFit()
     const target = event.target instanceof Element ? event.target : undefined
     const additive = event.shiftKey || event.ctrlKey || event.metaKey
+    const handle = target?.closest<HTMLElement>(HANDLE_SELECTOR)
+    if (handle && this.contains(handle) && !this.readonly) {
+      const edgeId = handle.dataset.edgeId!
+      if (handle.dataset.part === 'edge-handle')
+        this.#startReconnect(event, edgeId, handle.dataset.end as FlowEdgeEnd)
+      else
+        this.#startVertexDrag(event, edgeId, handle.dataset.part === 'vertex-handle' ? 'move' : 'insert', Number(handle.dataset.index))
+      return
+    }
     const port = target?.closest<HTMLElement>('[data-part="port"]')
     if (port && this.contains(port) && !this.readonly) {
       this.#startConnect(event, port.dataset.nodeId!, port.dataset.portId!)
@@ -961,14 +1016,69 @@ export class XhFlowDesigner extends XhReactiveElement {
     })
   }
 
-  /** 世界坐标处的连接终点：靠近某个端口（起点那个端口除外）时取该端口，否则取指针下的节点；都没有时为 undefined。 */
-  #endpointAt(world: FlowPoint, source: FlowEndpoint): FlowEndpoint | undefined {
+  /** 拖连线的一端改连：指针下有端口或节点时显示能不能连，松手时改连，违反约束时派发 connect-reject。 */
+  #startReconnect(event: PointerEvent, edgeId: string, end: FlowEdgeEnd): void {
+    const edge = this.#editor.document.edges.find(item => item.id === edgeId)
+    const points = this.#scene?.edges.find(item => item.id === edgeId)?.points
+    if (!edge || !points || points.length < 2)
+      return
+    const fixed = end === 'source' ? points.at(-1)! : points[0]!
+    const pair = (endpoint: FlowEndpoint): { source: FlowEndpoint, target: FlowEndpoint } =>
+      end === 'source' ? { source: endpoint, target: edge.target } : { source: edge.source, target: endpoint }
+    let endpoint: FlowEndpoint | undefined
+    this.#track(event, 'connect', {
+      onMove: (client) => {
+        const world = this.clientToWorld(client.x, client.y)
+        endpoint = this.#endpointAt(world)
+        const { source, target } = endpoint ? pair(endpoint) : pair(edge[end])
+        const valid = endpoint ? this.#editor.checkConnect(source, target, edgeId).length === 0 : undefined
+        const at = endpoint ? this.#anchorOf(endpoint) ?? world : world
+        this.#preview = end === 'source' ? { from: at, to: fixed, valid } : { from: fixed, to: at, valid }
+        this.requestUpdate()
+      },
+      onEnd: (active) => {
+        this.#preview = undefined
+        this.requestUpdate()
+        if (!active || !endpoint)
+          return
+        const result = this.#editor.reconnect(edgeId, end, endpoint)
+        if (!result.ok)
+          emitEvent(this, 'connect-reject', { ...pair(endpoint), problems: result.problems })
+      },
+    })
+  }
+
+  /** 拖拐点挪动它，或拖线段中点在那里加一个拐点；位置吸附网格，一次拖动记一步撤销。没有手动拐点的连线以路由出的折点为起点。 */
+  #startVertexDrag(event: PointerEvent, edgeId: string, mode: 'move' | 'insert', index: number): void {
+    const points = this.#scene?.edges.find(item => item.id === edgeId)?.points
+    if (!points)
+      return
+    const interior = points.slice(1, -1)
+    this.#track(event, 'vertex', {
+      onActivate: () => this.#editor.history.begin(),
+      onMove: (client) => {
+        const at = this.#snapToGrid(this.clientToWorld(client.x, client.y))
+        const vertices = mode === 'move'
+          ? interior.map((point, i) => i === index ? at : point)
+          : [...interior.slice(0, index), at, ...interior.slice(index)]
+        this.#editor.execute([{ type: 'updateEdge', id: edgeId, patch: { vertices } }])
+      },
+      onEnd: (active) => {
+        if (active && this.#editor.history.inTransaction)
+          this.#editor.history.commit()
+        this.requestUpdate()
+      },
+    })
+  }
+
+  /** 世界坐标处的连接终点：靠近某个端口（exclude 那个端口除外）时取该端口，否则取指针下的节点；都没有时为 undefined。 */
+  #endpointAt(world: FlowPoint, exclude?: FlowEndpoint): FlowEndpoint | undefined {
     const nodes = this.#scene?.nodes ?? []
     const reach = PORT_HIT_DISTANCE / this.#viewport.zoom
     let best: { endpoint: FlowEndpoint, distance: number } | undefined
     for (const sceneNode of nodes) {
       for (const port of sceneNode.nodeType?.ports ?? []) {
-        if (sceneNode.id === source.node && port.id === source.port)
+        if (exclude && sceneNode.id === exclude.node && port.id === exclude.port)
           continue
         const at = getPortPosition(sceneNode.rect, port)
         const distance = Math.hypot(at.x - world.x, at.y - world.y)
@@ -1060,6 +1170,15 @@ export class XhFlowDesigner extends XhReactiveElement {
     })
   }
 
+  /** 删掉手动拐点；删到一个不剩时交回路由器。路由出的折点没有可删的。 */
+  #removeVertex(edgeId: string, index: number): void {
+    const edge = this.#editor.document.edges.find(item => item.id === edgeId)
+    if (this.readonly || !edge?.vertices || !edge.vertices[index])
+      return
+    const vertices = edge.vertices.filter((_, i) => i !== index)
+    this.#editor.updateEdge(edgeId, { vertices: vertices.length === 0 ? null : vertices })
+  }
+
   #targetOf(event: Event): { kind: 'node' | 'edge', id: string } | undefined {
     const target = event.target instanceof Element ? event.target : undefined
     const node = target?.closest<HTMLElement>('[data-part="node"]')
@@ -1073,6 +1192,11 @@ export class XhFlowDesigner extends XhReactiveElement {
   }
 
   readonly #onDoubleClick = (event: MouseEvent): void => {
+    const vertex = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-part="vertex-handle"]') : null
+    if (vertex && this.contains(vertex)) {
+      this.#removeVertex(vertex.dataset.edgeId!, Number(vertex.dataset.index))
+      return
+    }
     const target = this.#targetOf(event)
     if (target?.kind === 'node')
       emitEvent(this, 'node-dblclick', { id: target.id })

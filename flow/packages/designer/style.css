@@ -450,13 +450,14 @@ xh-flow-designer [data-part='node'][data-issue='warning']::after {
   background: var(--xh-fg-warning);
 }
 
+/* 端口与连线控制柄按屏幕尺寸画：世界层缩放多少，它们就反向缩回多少，缩小画布时仍点得中 */
 xh-flow-designer [data-part='port'] {
   position: absolute;
   box-sizing: border-box;
-  width: var(--xh-space-3);
-  height: var(--xh-space-3);
-  margin: calc(var(--xh-space-3) / -2) 0 0 calc(var(--xh-space-3) / -2);
-  border: var(--xh-stroke-thin) solid var(--xh-border-control-focus);
+  width: calc(var(--xh-space-3) / var(--xh-flow-designer-zoom, 1));
+  height: calc(var(--xh-space-3) / var(--xh-flow-designer-zoom, 1));
+  translate: -50% -50%;
+  border: calc(var(--xh-stroke-thin) / var(--xh-flow-designer-zoom, 1)) solid var(--xh-border-control-focus);
   border-radius: var(--xh-radius-full);
   background: var(--xh-bg-surface);
   opacity: 0;
@@ -572,4 +573,47 @@ xh-flow-designer [data-part='minimap-frame'] {
   fill: var(--xh-bg-brand-subtle);
   stroke: var(--xh-border-control-focus);
   stroke-width: var(--xh-stroke-thin);
+}
+
+xh-flow-designer [data-part='edge-handle'],
+xh-flow-designer [data-part='vertex-handle'],
+xh-flow-designer [data-part='segment-handle'] {
+  position: absolute;
+  box-sizing: border-box;
+  translate: -50% -50%;
+  border: calc(var(--xh-stroke-thin) / var(--xh-flow-designer-zoom, 1)) solid var(--xh-border-control-focus);
+  background: var(--xh-bg-surface);
+  touch-action: none;
+}
+
+xh-flow-designer [data-part='edge-handle'] {
+  inline-size: calc(var(--xh-space-3) / var(--xh-flow-designer-zoom, 1));
+  block-size: calc(var(--xh-space-3) / var(--xh-flow-designer-zoom, 1));
+  border-radius: var(--xh-radius-full);
+  cursor: crosshair;
+}
+
+xh-flow-designer [data-part='vertex-handle'] {
+  inline-size: calc(var(--xh-space-2_5) / var(--xh-flow-designer-zoom, 1));
+  block-size: calc(var(--xh-space-2_5) / var(--xh-flow-designer-zoom, 1));
+  border-radius: var(--xh-radius-sm);
+  cursor: move;
+}
+
+xh-flow-designer [data-part='segment-handle'] {
+  inline-size: calc(var(--xh-space-2) / var(--xh-flow-designer-zoom, 1));
+  block-size: calc(var(--xh-space-2) / var(--xh-flow-designer-zoom, 1));
+  border-radius: var(--xh-radius-full);
+  border-style: dashed;
+  cursor: copy;
+}
+
+xh-flow-designer [data-part='edge-handle']:hover,
+xh-flow-designer [data-part='vertex-handle']:hover,
+xh-flow-designer [data-part='segment-handle']:hover {
+  background: var(--xh-bg-brand-subtle);
+}
+
+xh-flow-designer [data-part='viewport'][data-gesture='vertex'] {
+  cursor: move;
 }
