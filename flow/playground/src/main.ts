@@ -76,17 +76,12 @@ toolbar('查看器操作', (action) => {
 const designer = document.querySelector('xh-flow-designer')!
 const log = document.querySelector<HTMLElement>('#log')!
 designer.nodeTypes = nodeTypes
+designer.paletteGroupOrder = ['human', 'control']
+designer.paletteGroupLabels = { human: '人工处理', control: '流程控制' }
 designer.schema = approvalFlow()
 
 function write(line: string): void {
   log.textContent = `${line}\n${log.textContent ?? ''}`.slice(0, 4000)
-}
-
-function syncHistoryButtons(): void {
-  for (const [value, enabled] of [['undo', designer.canUndo], ['redo', designer.canRedo]] as const) {
-    const button = document.querySelector<HTMLButtonElement>(`[aria-label="设计器操作"] button[value="${value}"]`)!
-    button.disabled = !enabled
-  }
 }
 
 function onDesigner<K extends keyof FlowDesignerEventMap>(type: K, listener: (event: FlowDesignerEventMap[K]) => void): void {
@@ -96,7 +91,6 @@ function onDesigner<K extends keyof FlowDesignerEventMap>(type: K, listener: (ev
 onDesigner('schema-change', (event) => {
   const { kind, operations } = event.detail
   write(`schema-change ${kind} ${operations.map(operation => operation.type).join(', ')}`)
-  syncHistoryButtons()
 })
 onDesigner('selection-change', (event) => {
   write(`selection-change ${JSON.stringify(event.detail)}`)
@@ -107,31 +101,6 @@ onDesigner('connect-reject', (event) => {
 onDesigner('issues-change', (event) => {
   write(`issues-change ${event.detail.issues.map(issue => issue.code).join(', ') || '无问题'}`)
 })
-syncHistoryButtons()
-
-toolbar('设计器操作', (action) => {
-  switch (action) {
-    case 'undo':
-      designer.undo()
-      break
-    case 'redo':
-      designer.redo()
-      break
-    case 'add':
-      designer.addNode('UserTask')
-      break
-    case 'delete':
-      designer.deleteSelection()
-      break
-    case 'layout':
-      designer.autoLayout({ direction: 'LR' })
-      break
-    case 'fit':
-      designer.zoomToFit()
-      break
-  }
-})
-
 document.querySelector('#zh')!.addEventListener('checked-change', (event) => {
   setXhConfig((event as CustomEvent<{ checked: boolean }>).detail.checked ? mergeXhConfig(zhCN, flowZhCN) : {})
 })
