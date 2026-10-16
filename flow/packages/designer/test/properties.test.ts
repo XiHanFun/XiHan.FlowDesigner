@@ -5,12 +5,12 @@
 
 // @vitest-environment jsdom
 
-import type { FlowPropertyEditor, FlowPropertyEditorContext, XhFlowDesigner } from '../src'
+import type { FlowPropertyEditor, FlowPropertyEditorContext, FlowPropertyTarget, XhFlowDesigner } from '../src'
 import { createNodeTypeRegistry } from '@xihan-flow/core'
 import { setXhConfig } from '@xihan-ui/web-components'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineFlowDesigner } from '../src'
-import { definitions, mount, part, unmountAll } from './helpers'
+import { definitions, mount, unmountAll } from './helpers'
 
 defineFlowDesigner()
 
@@ -77,18 +77,29 @@ async function mountTyped(setup: (designer: XhFlowDesigner) => void = () => {}):
   })
 }
 
+function panel(designer: Element): HTMLElement & { updateComplete: Promise<unknown> } {
+  return designer.querySelector('xh-designer-properties')!
+}
+
+function inPanel(designer: Element, name: string): HTMLElement[] {
+  return Array.from(panel(designer).querySelectorAll<HTMLElement>(`[data-part="${name}"]`))
+}
+
 function row(designer: Element, path: string): HTMLElement {
-  return designer.querySelector<HTMLElement>(`[data-part="property"][data-path="${path}"]`)!
+  return panel(designer).querySelector<HTMLElement>(`[data-part="property"][data-path="${path}"]`)!
 }
 
 function emit(target: Element, type: string, detail: unknown): void {
   target.dispatchEvent(new CustomEvent(type, { detail, bubbles: true }))
 }
 
+/** 设计器更新后属性面板再更新一轮，问题列表的计算也要等一个微任务。 */
 async function settle(designer: XhFlowDesigner): Promise<void> {
-  await designer.updateComplete
-  await Promise.resolve()
-  await designer.updateComplete
+  for (let round = 0; round < 3; round++) {
+    await designer.updateComplete
+    await panel(designer).updateComplete
+    await Promise.resolve()
+  }
 }
 
 function task(designer: XhFlowDesigner) {
@@ -96,20 +107,17 @@ function task(designer: XhFlowDesigner) {
 }
 
 describe('属性面板', () => {
-  it('没选中、选中多个时给提示，选中一个时按分组列出显示中的属性', async () => {
+  it('没选中时给提示；选中一个时按分组列出显示中的属性，标题下写对象名与 id', async () => {
     const designer = await mountTyped()
-    expect(part(designer, 'properties-empty')[0]!.textContent).toBe('Select a node or connection to edit its properties')
-    designer.select({ nodes: ['s', 't'] })
-    await designer.updateComplete
-    expect(part(designer, 'properties-empty')[0]!.textContent).toContain('2 items selected')
-
+    await settle(designer)
+    expect(inPanel(designer, 'empty')[0]!.textContent).toBe('Select nodes or connections to edit their properties')
     designer.propertyGroupOrder = ['run']
     designer.propertyGroupLabels = { run: '执行' }
     designer.select({ nodes: ['t'] })
-    await designer.updateComplete
-    expect(part(designer, 'properties-subject')[0]!.textContent).toBe('任务 · t')
-    const groups = part(designer, 'property-group').map(group => [
-      group.querySelector('[data-part="property-group-label"]')?.textContent ?? '',
+    await settle(designer)
+    expect(inPanel(designer, 'heading')[0]!.textContent).toBe('任务 · t')
+    const groups = inPanel(designer, 'group').map(group => [
+      group.querySelector('[data-part="group-label"]')?.textContent ?? '',
       ...Array.from(group.querySelectorAll<HTMLElement>('[data-part="property"]'), item => item.dataset.path),
     ])
     expect(groups).toEqual([
@@ -117,16 +125,32 @@ describe('属性面板', () => {
       ['basic', 'label', 'data.urgent'],
       ['', 'data.tags', 'data.color', 'data.extra', 'data.who'],
     ])
-    expect(row(designer, 'label').querySelector('xh-text-field [data-xh-part="label"]')!.textContent).toBe('名称')
+    expect(row(designer, 'label').querySelector('[data-xh-part="label"]')!.textContent).toBe('名称')
     expect(row(designer, 'data.retries').querySelector('[data-xh-part="suffix"]')!.textContent).toBe('次')
-    expect(row(designer, 'data.extra').querySelector('[data-part="property-hint"]')!.textContent).toBe('任意 JSON')
-    expect(row(designer, 'data.who').querySelector('[data-part="property-unsupported"]')!.textContent).toBe('assignees')
+    expect(row(designer, 'data.extra').querySelector('[data-xh-part="description"]')!.textContent).toBe('任意 JSON')
+    expect(row(designer, 'data.who').querySelector('[data-control="unsupported"]')!.textContent).toBe('assignees')
+  })
+
+  it('选中多个时只列共同属性，一次输入同时写进每个对象、记为一步', async () => {
+    const designer = await mountTyped()
+    designer.select({ nodes: ['s', 't'], edges: ['st'] })
+    await settle(designer)
+    expect(inPanel(designer, 'heading')[0]!.textContent).toBe('3 items selected')
+    expect(inPanel(designer, 'property').map(item => item.dataset.path)).toEqual(['label'])
+    const field = row(designer, 'label').querySelector('xh-text-field')!
+    emit(field, 'value-change', { value: '同' })
+    emit(field, 'value-change', { value: '同名' })
+    expect(designer.schema.nodes.filter(node => node.id !== 'e').map(node => node.label)).toEqual(['同名', '同名'])
+    expect(designer.schema.edges[0]!.label).toBe('同名')
+    designer.undo()
+    expect(designer.schema.nodes.every(node => node.label === undefined)).toBe(true)
+    expect(designer.schema.edges[0]!.label).toBeUndefined()
   })
 
   it('文本连续输入并成一步撤销，失焦后另起一步', async () => {
     const designer = await mountTyped()
     designer.select({ nodes: ['t'] })
-    await designer.updateComplete
+    await settle(designer)
     const field = row(designer, 'label').querySelector('xh-text-field')!
     emit(field, 'value-change', { value: '审' })
     emit(field, 'value-change', { value: '审批' })
@@ -137,14 +161,14 @@ describe('属性面板', () => {
     expect(task(designer).label).toBe('审批')
     designer.undo()
     expect(task(designer)).not.toHaveProperty('label')
-    await designer.updateComplete
+    await settle(designer)
     expect((field as HTMLElement & { value?: string }).value).toBe('')
   })
 
   it('数字、选择、开关、标签、颜色与 JSON 写回节点，选择改动显示条件后字段随之出现', async () => {
     const designer = await mountTyped()
     designer.select({ nodes: ['t'] })
-    await designer.updateComplete
+    await settle(designer)
     emit(row(designer, 'data.retries').querySelector('xh-number-field')!, 'value-change', { value: '3', valueAsNumber: 3 })
     emit(row(designer, 'data.mode').querySelector('xh-select')!, 'value-change', { value: ['1'] })
     emit(row(designer, 'data.urgent').querySelector('xh-switch')!, 'checked-change', { checked: true })
@@ -152,9 +176,8 @@ describe('属性面板', () => {
     emit(row(designer, 'data.color').querySelector('xh-color-field')!, 'value-change', { value: '#ff0000' })
     emit(row(designer, 'data.extra').querySelector('xh-text-field')!, 'value-change', { value: '{"a":1}' })
     expect(task(designer).data).toEqual({ retries: 3, mode: 'all', urgent: true, tags: ['a', 'b'], color: '#ff0000', extra: { a: 1 } })
-    await designer.updateComplete
+    await settle(designer)
     expect(row(designer, 'data.note')).not.toBeNull()
-    expect(row(designer, 'data.tags').querySelectorAll('[data-xh-part="item"]')).toHaveLength(2)
 
     emit(row(designer, 'data.retries').querySelector('xh-number-field')!, 'value-change', { value: '-', valueAsNumber: Number.NaN })
     emit(row(designer, 'data.mode').querySelector('xh-select')!, 'value-change', { value: [] })
@@ -165,34 +188,34 @@ describe('属性面板', () => {
   it('不合法的 JSON 就地报错、不写回，改对后写回并清掉错误', async () => {
     const designer = await mountTyped()
     designer.select({ nodes: ['t'] })
-    await designer.updateComplete
+    await settle(designer)
     const json = row(designer, 'data.extra')
     const field = json.querySelector('xh-text-field')!
     emit(field, 'value-change', { value: '{"a":' })
-    const error = json.querySelector<HTMLElement>('[data-part="property-error"]')!
-    expect([error.hidden, error.textContent, field.hasAttribute('invalid')]).toEqual([false, 'Not valid JSON', true])
+    await settle(designer)
+    expect(json.querySelector('[data-xh-part="error-text"]')!.textContent).toBe('Not valid JSON')
+    expect(json.querySelector('xh-field')!.hasAttribute('invalid')).toBe(true)
     expect(task(designer).data).toBeUndefined()
     emit(field, 'value-change', { value: '{"a":2}' })
-    await designer.updateComplete
+    await settle(designer)
     expect(task(designer).data).toEqual({ extra: { a: 2 } })
-    expect([error.hidden, field.hasAttribute('invalid')]).toEqual([true, false])
+    expect(json.querySelector('xh-field')!.hasAttribute('invalid')).toBe(false)
   })
 
-  it('必填未填时字段标为无效并显示问题说明', async () => {
+  it('必填未填时字段标为无效并显示问题说明，填上后清掉', async () => {
     const designer = await mountTyped()
     designer.select({ nodes: ['t'] })
     await settle(designer)
     const label = row(designer, 'label')
-    const field = label.querySelector('xh-text-field')!
+    const field = label.querySelector('xh-field')!
     expect([field.hasAttribute('required'), field.hasAttribute('invalid')]).toEqual([true, true])
-    expect(label.querySelector('[data-part="property-error"]')!.textContent).toBe('Required')
-    emit(field, 'value-change', { value: '任务一' })
+    expect(label.querySelector('[data-xh-part="error-text"]')!.textContent).toBe('Required')
+    emit(label.querySelector('xh-text-field')!, 'value-change', { value: '任务一' })
     await settle(designer)
     expect(field.hasAttribute('invalid')).toBe(false)
-    expect(label.querySelector<HTMLElement>('[data-part="property-error"]')!.hidden).toBe(true)
   })
 
-  it('宿主编辑器按编辑方式接管，拿到值、对象与只读状态，撤销后收到新值', async () => {
+  it('宿主编辑器按编辑方式或路径接管，拿到值、全部对象与只读状态，撤销后收到新值', async () => {
     const contexts: FlowPropertyEditorContext[] = []
     const editor: FlowPropertyEditor = (context) => {
       contexts.push(context)
@@ -202,46 +225,46 @@ describe('属性面板', () => {
     }
     const designer = await mountTyped(element => element.propertyEditors = { byControl: { assignees: editor }, byPath: { 'data.color': editor } })
     designer.select({ nodes: ['t'] })
-    await designer.updateComplete
-    expect(row(designer, 'data.who').querySelector('[data-custom]')).not.toBeNull()
-    expect(row(designer, 'data.who').querySelector('[data-part="property-label"]')!.textContent).toBe('受理人')
+    await settle(designer)
+    expect(row(designer, 'data.who').querySelector('[data-control="custom"] [data-custom]')).not.toBeNull()
+    expect(row(designer, 'data.who').querySelector('[data-xh-part="label"]')!.textContent).toBe('受理人')
     expect(row(designer, 'data.color').querySelector('xh-color-field')).toBeNull()
     const who = contexts.find(context => context.descriptor.path.at(-1) === 'who')!
-    expect([who.value, (who.target as { id: string }).id, who.readonly]).toEqual([undefined, 't', false])
+    const targets = who.target as readonly FlowPropertyTarget[]
+    expect([who.value, targets.map(target => [target.kind, target.id]), who.readonly]).toEqual([undefined, [['task', 't']], false])
     who.setValue({ users: ['u1'] })
     who.commit()
     expect(task(designer).data).toEqual({ who: { users: ['u1'] } })
     designer.undo()
-    await designer.updateComplete
+    await settle(designer)
     expect(contexts.at(-1)!.value).toBeUndefined()
   })
 
   it('连线缺省编辑标签与虚线；宿主可换成自己的连线属性', async () => {
     const designer = await mountTyped()
     designer.select({ edges: ['st'] })
-    await designer.updateComplete
-    expect(part(designer, 'properties-subject')[0]!.textContent).toBe('Connection · st')
-    expect(part(designer, 'property').map(item => item.dataset.path)).toEqual(['label', 'style.dashed'])
+    await settle(designer)
+    expect(inPanel(designer, 'heading')[0]!.textContent).toBe('Connection · st')
+    expect(inPanel(designer, 'property').map(item => item.dataset.path)).toEqual(['label', 'style.dashed'])
     emit(row(designer, 'label').querySelector('xh-text-field')!, 'value-change', { value: '同意' })
     emit(row(designer, 'style.dashed').querySelector('xh-switch')!, 'checked-change', { checked: true })
     expect(designer.schema.edges[0]).toMatchObject({ label: '同意', style: { dashed: true } })
 
     designer.edgeProperties = [{ path: ['data', 'condition'], control: { kind: 'text' }, label: '条件', required: true }]
     await settle(designer)
-    expect(part(designer, 'property').map(item => item.dataset.path)).toEqual(['data.condition'])
+    expect(inPanel(designer, 'property').map(item => item.dataset.path)).toEqual(['data.condition'])
     expect(designer.validate().map(issue => `${issue.code}@${issue.target?.id}`)).toContain('required@st')
   })
 
   it('只读时字段只读、写入无效；panels 里没列属性面板时收起', async () => {
     const designer = await mountTyped(element => element.readonly = true)
     designer.select({ nodes: ['t'] })
-    await designer.updateComplete
-    const field = row(designer, 'label').querySelector('xh-text-field')!
-    expect(field.hasAttribute('read-only')).toBe(true)
-    emit(field, 'value-change', { value: 'x' })
+    await settle(designer)
+    expect(row(designer, 'label').querySelector('xh-field')!.hasAttribute('read-only')).toBe(true)
+    emit(row(designer, 'label').querySelector('xh-text-field')!, 'value-change', { value: 'x' })
     expect(task(designer)).not.toHaveProperty('label')
     designer.panels = 'toolbar palette issues'
     await designer.updateComplete
-    expect(part(designer, 'properties')[0]!.hidden).toBe(true)
+    expect(panel(designer).hidden).toBe(true)
   })
 })

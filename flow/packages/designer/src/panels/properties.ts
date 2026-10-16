@@ -3,20 +3,24 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-// 设计器的属性面板：按属性描述把选中的节点或连线渲染成一组字段，分组、显示条件与缺省值都取自 designer-kit/properties。
-// 内建七种编辑方式用 UI 的字段元素，宿主可以按编辑方式、属性路径或节点类型换成自己的编辑器。
-// 连续输入并成一步撤销，失焦或一次选择结束时封口。
+// 设计器的属性面板：把选中的节点与连线交给 <xh-designer-properties>，选中多个时只编辑共同属性。
+// 节点按类型取属性描述，连线取 edgeProperties；面板派发的写入换成编辑器的 setProperty，一次编辑结束时封口。
 
-import type { FlowEdge, FlowIssue, FlowNode, FlowNodeType, FlowPropertyDescriptor } from '@xihan-flow/core'
+import type { FlowIssue, FlowPropertyDescriptor } from '@xihan-flow/core'
 import type { FlowDesignerTranslations } from '@xihan-flow/runtime'
 import type { JsonPath, JsonValue } from '@xihan-ui/core/json'
-import type { PropertyEditorTable, PropertyGroup } from '@xihan-ui/designer-kit/properties'
-import type { FlowEditor } from '../editor'
-import type { FieldContext, FlowPropertyEditor, FlowPropertyEditorContext, FlowPropertyEditorInstance, FlowPropertyTarget } from './property-editors'
-import { formatJsonPath, getJsonAt } from '@xihan-ui/core/json'
-import { groupProperties, resolvePropertyEditor } from '@xihan-ui/designer-kit/properties'
-import { createAuthoredElement, createGeneratedElement, setText } from '@xihan-ui/web-components/authoring'
-import { builtinEditor } from './property-editors'
+import type { PropertyEditorContext, PropertyEditorInstance, PropertyEditorTable } from '@xihan-ui/designer-kit/properties'
+import type {
+  DesignerPropertiesEventMap,
+  DesignerPropertyDescriptor,
+  DesignerPropertyEditor,
+  DesignerPropertyError,
+  DesignerPropertyTarget,
+  XhDesignerPropertiesElement,
+} from '@xihan-ui/designer-shell'
+import type { FlowEditor, FlowPropertyRef } from '../editor'
+import { formatJsonPath } from '@xihan-ui/core/json'
+import { createGeneratedElement } from '@xihan-ui/web-components/authoring'
 
 /** 连线缺省可编辑的属性：标签与虚线。 */
 export const DEFAULT_EDGE_PROPERTIES: readonly FlowPropertyDescriptor[] = [
@@ -29,11 +33,22 @@ const DEFAULT_NODE_PROPERTIES: readonly FlowPropertyDescriptor[] = [
   { path: ['label'], control: { kind: 'text' } },
 ]
 
+/** 交给属性编辑器的对象：kind 是节点类型（连线为 edge），value 是节点或连线本身。 */
+export type FlowPropertyTarget = DesignerPropertyTarget
+
+/** 宿主提供的属性编辑器。 */
+export type FlowPropertyEditor = DesignerPropertyEditor
+
+/** 交给属性编辑器的上下文：target 是当前全部被编辑的对象。 */
+export type FlowPropertyEditorContext = PropertyEditorContext<DesignerPropertyDescriptor, readonly DesignerPropertyTarget[]>
+
+/** 属性编辑器实例。 */
+export type FlowPropertyEditorInstance = PropertyEditorInstance<DesignerPropertyDescriptor, readonly DesignerPropertyTarget[]>
+
 /** 属性面板需要设计器提供的能力与配置。 */
 export interface PropertiesHost {
   readonly ownerDocument: Document
   readonly editor: FlowEditor
-  readonly nextId: () => string
   readonly isReadonly: () => boolean
   readonly issues: () => readonly FlowIssue[]
   readonly editors: () => PropertyEditorTable<FlowPropertyEditor> | undefined
@@ -42,256 +57,118 @@ export interface PropertiesHost {
   readonly edgeProperties: () => readonly FlowPropertyDescriptor[] | undefined
 }
 
-type Selected
-  = | { readonly kind: 'node', readonly target: FlowNode, readonly nodeType: FlowNodeType | undefined }
-    | { readonly kind: 'edge', readonly target: FlowEdge }
-
-interface Row {
-  readonly descriptor: FlowPropertyDescriptor
-  readonly element: HTMLElement
-  readonly error: HTMLElement
-  instance: { readonly update?: (context: FieldContext) => void, readonly destroy?: () => void }
-  localError: string | undefined
+function refKey(kind: string, id: string): string {
+  return `${kind}\u0000${id}`
 }
 
-/** 属性面板：选中对象或显示中的属性变化时重建字段，其余时候只把新值交给各编辑器。 */
+function hintOf(descriptor: DesignerPropertyDescriptor): string | undefined {
+  const description = descriptor.meta?.description
+  return typeof description === 'string' ? description : undefined
+}
+
+/** 属性面板：每次设计器更新时把选择与问题换成面板的输入，只在真的变了时才赋值。 */
 export class PropertiesPanel {
-  readonly element: HTMLElement
+  readonly element: XhDesignerPropertiesElement
   readonly #host: PropertiesHost
-  readonly #title: HTMLElement
-  readonly #subject: HTMLElement
-  readonly #body: HTMLElement
-  #structure = ''
-  #rows: Row[] = []
-  #selected: Selected | undefined
-  #t: FlowDesignerTranslations | undefined
-  #editorsSeen: PropertyEditorTable<FlowPropertyEditor> | undefined
+  #refs = new Map<string, FlowPropertyRef>()
+  #labels: Readonly<Record<string, string>> | undefined
+  #groupLabel: ((group: string) => string) | undefined
+  #propertyLabel: FlowDesignerTranslations['propertyLabel'] | undefined
+  #labelOf: ((descriptor: DesignerPropertyDescriptor) => string) | undefined
+  #errorsKey = ''
 
   constructor(host: PropertiesHost) {
     this.#host = host
-    const doc = host.ownerDocument
-    this.element = createGeneratedElement(doc, 'div')
-    this.element.dataset.part = 'properties'
-    this.element.setAttribute('role', 'region')
-    this.#title = createAuthoredElement(doc, 'div', { 'data-part': 'properties-title', 'id': host.nextId() })
-    this.#subject = createAuthoredElement(doc, 'div', { 'data-part': 'properties-subject' })
-    this.#body = createAuthoredElement(doc, 'div', { 'data-part': 'properties-body' })
-    this.element.setAttribute('aria-labelledby', this.#title.id)
-    this.element.append(createAuthoredElement(doc, 'div', { 'data-part': 'properties-header' }, [this.#title, this.#subject]), this.#body)
+    this.element = createGeneratedElement(host.ownerDocument, 'xh-designer-properties', { 'data-part': 'properties' })
+    this.element.hintOf = hintOf
+    this.element.addEventListener('property-change', (event) => {
+      const { path, value, targets, merge } = (event as DesignerPropertiesEventMap['property-change']).detail
+      if (host.isReadonly())
+        return
+      const refs = targets.flatMap(target => this.#refs.get(refKey(target.kind, target.id)) ?? [])
+      host.editor.setProperty(refs, path, value, { merge })
+    })
+    this.element.addEventListener('property-commit', () => host.editor.seal())
   }
 
   update(t: FlowDesignerTranslations): void {
-    this.#t = t
-    setText(this.#title, t.properties)
+    const panel = this.element
     const editor = this.#host.editor
+    const document = editor.document
     const { nodes, edges } = editor.selection
-    const count = nodes.length + edges.length
-    this.#selected = count !== 1 ? undefined : this.#find(nodes[0], edges[0])
-    const selected = this.#selected
-    if (!selected) {
-      this.#subject.hidden = true
-      this.#showMessage(count === 0 ? t.propertiesEmpty : t.propertiesMultiple(count), `message:${count}`)
-      return
-    }
-    const name = selected.kind === 'node' ? selected.nodeType?.label ?? selected.target.type : t.edge
-    setText(this.#subject, `${name} · ${selected.target.id}`)
-    this.#subject.hidden = false
-
-    const descriptors = this.#descriptors(selected)
-    const groups = groupProperties(descriptors, selected.target as unknown as JsonValue, this.#host.groupOrder())
-    const labels = groups.flatMap(group => group.properties.map(descriptor => this.#label(descriptor, t)))
-    const structure = JSON.stringify([
-      selected.kind,
-      selected.target.id,
-      selected.kind === 'node' ? selected.target.type : '',
-      groups.map(group => [group.group ?? '', group.properties.map(descriptor => formatJsonPath(descriptor.path))]),
-      labels,
-      this.#host.isReadonly(),
-    ])
-    if (structure !== this.#structure || this.#editorsChanged()) {
-      this.#structure = structure
-      this.#build(selected, groups, t)
-      return
-    }
-    for (const row of this.#rows)
-      this.#refresh(row)
-  }
-
-  #editorsChanged(): boolean {
-    const editors = this.#host.editors()
-    if (editors === this.#editorsSeen)
-      return false
-    this.#editorsSeen = editors
-    return true
-  }
-
-  #find(nodeId: string | undefined, edgeId: string | undefined): Selected | undefined {
-    const editor = this.#host.editor
-    if (nodeId !== undefined) {
-      const node = editor.document.nodes.find(item => item.id === nodeId)
-      return node && { kind: 'node', target: node, nodeType: editor.registry.get(node.type) }
-    }
-    const edge = editor.document.edges.find(item => item.id === edgeId)
-    return edge && { kind: 'edge', target: edge }
-  }
-
-  #descriptors(selected: Selected): readonly FlowPropertyDescriptor[] {
-    if (selected.kind === 'edge')
-      return this.#host.edgeProperties() ?? DEFAULT_EDGE_PROPERTIES
-    return selected.nodeType?.properties ?? DEFAULT_NODE_PROPERTIES
-  }
-
-  #label(descriptor: FlowPropertyDescriptor, t: FlowDesignerTranslations): string {
-    return descriptor.label ?? t.propertyLabel(formatJsonPath(descriptor.path))
-  }
-
-  #showMessage(text: string, structure: string): void {
-    if (this.#structure === structure)
-      return
-    this.#structure = structure
-    this.#clear()
-    this.#body.append(createAuthoredElement(this.#host.ownerDocument, 'p', { 'data-part': 'properties-empty' }, [text]))
-  }
-
-  #clear(): void {
-    for (const row of this.#rows)
-      row.instance.destroy?.()
-    this.#rows = []
-    this.#editorsSeen = this.#host.editors()
-    this.#body.replaceChildren()
-  }
-
-  #build(selected: Selected, groups: readonly PropertyGroup<FlowPropertyDescriptor>[], t: FlowDesignerTranslations): void {
-    this.#clear()
-    const doc = this.#host.ownerDocument
-    const labels = this.#host.groupLabels() ?? {}
-    for (const group of groups) {
-      const rows = group.properties.map(descriptor => this.#createRow(selected, descriptor, t))
-      if (group.group === undefined) {
-        this.#body.append(createAuthoredElement(doc, 'div', { 'data-part': 'property-group' }, rows.map(row => row.element)))
+    const refs = new Map<string, FlowPropertyRef>()
+    const targets: DesignerPropertyTarget[] = []
+    let heading: string | undefined
+    for (const id of nodes) {
+      const node = document.nodes.find(item => item.id === id)
+      if (!node)
         continue
-      }
-      const title = Object.hasOwn(labels, group.group) ? labels[group.group]! : group.group
-      const label = createAuthoredElement(doc, 'div', { 'data-part': 'property-group-label', 'id': this.#host.nextId() }, [title])
-      this.#body.append(createAuthoredElement(doc, 'div', {
-        'data-part': 'property-group',
-        'role': 'group',
-        'aria-labelledby': label.id,
-      }, [label, ...rows.map(row => row.element)]))
+      const nodeType = editor.registry.get(node.type)
+      targets.push({ kind: node.type, id, value: node as unknown as JsonValue, descriptors: nodeType?.properties ?? DEFAULT_NODE_PROPERTIES })
+      refs.set(refKey(node.type, id), { kind: 'node', id })
+      heading = `${nodeType?.label ?? node.type} · ${id}`
+    }
+    const edgeDescriptors = this.#host.edgeProperties() ?? DEFAULT_EDGE_PROPERTIES
+    for (const id of edges) {
+      const edge = document.edges.find(item => item.id === id)
+      if (!edge)
+        continue
+      targets.push({ kind: 'edge', id, value: edge as unknown as JsonValue, descriptors: edgeDescriptors })
+      refs.set(refKey('edge', id), { kind: 'edge', id })
+      heading = `${t.edge} · ${id}`
+    }
+    this.#refs = refs
+    if (!sameTargets(panel.targets, targets))
+      panel.targets = targets
+    panel.heading = targets.length > 1 ? t.propertiesMultiple(targets.length) : heading
+    panel.emptyText = t.propertiesEmpty
+    panel.readonly = this.#host.isReadonly()
+    panel.editors = this.#host.editors()
+    panel.groupOrder = this.#host.groupOrder()
+    const labels = this.#host.groupLabels()
+    if (labels !== this.#labels || !this.#groupLabel) {
+      this.#labels = labels
+      this.#groupLabel = group => (labels && Object.hasOwn(labels, group) ? labels[group]! : group)
+    }
+    panel.groupLabel = this.#groupLabel
+    if (t.propertyLabel !== this.#propertyLabel || !this.#labelOf) {
+      const propertyLabel = t.propertyLabel
+      this.#propertyLabel = propertyLabel
+      this.#labelOf = descriptor => descriptor.label ?? propertyLabel(formatJsonPath(descriptor.path))
+    }
+    panel.labelOf = this.#labelOf
+    const errors = this.#errors(targets, t)
+    const errorsKey = JSON.stringify(errors)
+    if (errorsKey !== this.#errorsKey) {
+      this.#errorsKey = errorsKey
+      panel.errors = errors
     }
   }
 
-  #createRow(selected: Selected, descriptor: FlowPropertyDescriptor, t: FlowDesignerTranslations): Row {
-    const doc = this.#host.ownerDocument
-    const kindOfTarget = selected.kind === 'node' ? selected.target.type : 'edge'
-    const custom = resolvePropertyEditor(this.#host.editors() ?? { byControl: {} }, kindOfTarget, descriptor)
-    const builtin = custom === undefined ? builtinEditor(descriptor.control.kind) : undefined
-    const error = createAuthoredElement(doc, 'p', { 'data-part': 'property-error', 'hidden': true })
-    const hintText = descriptor.meta !== undefined && typeof descriptor.meta.description === 'string' ? descriptor.meta.description : undefined
-    const children: HTMLElement[] = []
-    const row: Row = {
-      descriptor,
-      element: createAuthoredElement(doc, 'div', { 'data-part': 'property', 'data-path': formatJsonPath(descriptor.path) }),
-      error,
-      instance: {},
-      localError: undefined,
-    }
-    const context = this.#context(row)
-    if (builtin) {
-      const created = builtin(context)
-      row.instance = created
-      children.push(created.element)
-    }
-    else if (custom) {
-      const created: FlowPropertyEditorInstance = custom(plainContext(context))
-      row.instance = { update: next => created.update?.(plainContext(next)), destroy: created.destroy }
-      children.push(createAuthoredElement(doc, 'div', { 'data-part': 'property-label' }, [this.#label(descriptor, t)]), created.element)
-    }
-    else {
-      children.push(
-        createAuthoredElement(doc, 'div', { 'data-part': 'property-label' }, [this.#label(descriptor, t)]),
-        createAuthoredElement(doc, 'p', { 'data-part': 'property-unsupported' }, [descriptor.control.kind]),
-      )
-    }
-    if (hintText !== undefined)
-      children.push(createAuthoredElement(doc, 'p', { 'data-part': 'property-hint' }, [hintText]))
-    children.push(error)
-    row.element.append(...children)
-    this.#rows.push(row)
-    this.#paintError(row, context)
-    return row
+  /** 把焦点交给该属性的字段（path 相对对象）；找不到时返回 false。 */
+  focusField(path: JsonPath): boolean {
+    return this.element.focusField(path)
   }
 
-  /** 当前对象上这一行的上下文。 */
-  #context(row: Row): FieldContext {
-    const selected = this.#selected!
-    const t = this.#t!
-    const editor = this.#host.editor
-    const message = row.localError ?? this.#issueMessage(selected, row.descriptor.path)
-    const readonly = this.#host.isReadonly()
-    const id = selected.target.id
-    const kind = selected.kind
-    return {
-      ownerDocument: this.#host.ownerDocument,
-      value: getJsonAt(selected.target as unknown as JsonValue, row.descriptor.path),
-      descriptor: row.descriptor,
-      target: selected.target,
-      readonly,
-      label: this.#label(row.descriptor, t),
-      required: row.descriptor.required === true,
-      invalid: message !== undefined,
-      invalidJson: t.invalidJson,
-      setValue: (value) => {
-        if (this.#host.isReadonly())
-          return
-        if (kind === 'node')
-          editor.setNodeProperty(id, row.descriptor.path, value)
-        else
-          editor.setEdgeProperty(id, row.descriptor.path, value)
-      },
-      commit: () => editor.seal(),
-      setLocalError: (next) => {
-        if (row.localError === next)
-          return
-        row.localError = next
-        this.#refresh(row)
-      },
-    }
-  }
-
-  #issueMessage(selected: Selected, path: JsonPath): string | undefined {
-    const key = formatJsonPath(path)
-    const issue = this.#host.issues().find(item =>
-      item.target?.kind === selected.kind
-      && item.target.id === selected.target.id
-      && formatJsonPath(item.path.slice(2)) === key)
-    if (!issue)
-      return undefined
+  /** 落在选中对象属性上的问题，path 换成相对对象。 */
+  #errors(targets: readonly DesignerPropertyTarget[], t: FlowDesignerTranslations): DesignerPropertyError[] {
     const registry = this.#host.editor.registry
-    return this.#t!.issue(issue, { nodeType: type => registry.get(type)?.label ?? type })
-  }
-
-  #refresh(row: Row): void {
-    const context = this.#context(row)
-    row.instance.update?.(context)
-    this.#paintError(row, context)
-  }
-
-  #paintError(row: Row, context: FieldContext): void {
-    const message = row.localError ?? this.#issueMessage(this.#selected!, row.descriptor.path)
-    setText(row.error, message ?? '')
-    row.error.hidden = message === undefined
-    row.element.toggleAttribute('data-invalid', context.invalid)
+    const names = { nodeType: (type: string) => registry.get(type)?.label ?? type }
+    const errors: DesignerPropertyError[] = []
+    for (const issue of this.#host.issues()) {
+      if (!issue.target || issue.path.length <= 2)
+        continue
+      const target = targets.find(entry => entry.id === issue.target!.id && (entry.kind === 'edge') === (issue.target!.kind === 'edge'))
+      if (target)
+        errors.push({ target: { kind: target.kind, id: target.id }, path: issue.path.slice(2), message: t.issue(issue, names) })
+    }
+    return errors
   }
 }
 
-function plainContext(context: FieldContext): FlowPropertyEditorContext {
-  return {
-    value: context.value,
-    descriptor: context.descriptor,
-    target: context.target as FlowPropertyTarget,
-    readonly: context.readonly,
-    setValue: context.setValue,
-    commit: context.commit,
-  }
+function sameTargets(current: readonly DesignerPropertyTarget[] | undefined, next: readonly DesignerPropertyTarget[]): boolean {
+  return current !== undefined && current.length === next.length && current.every((target, index) => {
+    const other = next[index]!
+    return target.kind === other.kind && target.id === other.id && target.value === other.value && target.descriptors === other.descriptors
+  })
 }
