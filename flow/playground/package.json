@@ -12,6 +12,7 @@
     "@xihan-flow/core": "workspace:^",
     "@xihan-flow/designer": "workspace:^",
     "@xihan-flow/runtime": "workspace:^",
+    "@xihan-ui/designer-shell": "catalog:",
     "@xihan-ui/styles": "catalog:",
     "@xihan-ui/web-components": "catalog:"
   },

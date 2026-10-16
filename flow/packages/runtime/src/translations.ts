@@ -48,18 +48,14 @@ export interface FlowDesignerTranslations {
   readonly palette: string
   /** 没有类别的节点类型所在分组的标题。 */
   readonly paletteUncategorized: string
-  /** 属性面板的标题。 */
-  readonly properties: string
   /** 没有选中时属性面板里的提示。 */
   readonly propertiesEmpty: string
-  /** 选中多个对象时属性面板里的提示。 */
+  /** 选中多个对象时属性面板标题下的一行。 */
   readonly propertiesMultiple: (count: number) => string
   /** 属性面板里连线的类型名。 */
   readonly edge: string
   /** 属性描述没有给 label 时的标签，key 是 formatJsonPath 写出的属性路径。 */
   readonly propertyLabel: (key: string) => string
-  /** JSON 编辑框里的文字不是合法 JSON。 */
-  readonly invalidJson: string
   /** 问题的说明文字。 */
   readonly issue: (issue: FlowIssue, names: FlowIssueNames) => string
   /** 落在某个属性上的问题：属性名与问题说明拼在一起。 */

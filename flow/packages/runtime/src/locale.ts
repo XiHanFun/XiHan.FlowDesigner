@@ -3,11 +3,12 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-// 流程产品的中文文案，查看器与设计器共用：与 UI 的语言包一起交给 mergeXhConfig，再经 setXhConfig 或 <xh-config> 生效。
+// 流程产品的中文文案，查看器与设计器共用，含设计器零件的中文：与 UI 的语言包一起交给 mergeXhConfig，再经 setXhConfig 或 <xh-config> 生效。
 
 import type { FlowIssue } from '@xihan-flow/core'
 import type { XhConfig } from '@xihan-ui/web-components'
 import type { FlowIssueNames } from './translations'
+import { designerShellZhCN } from '@xihan-ui/designer-shell/locale'
 
 const PROPERTY_LABELS: Readonly<Record<string, string>> = {
   'label': '名称',
@@ -75,6 +76,7 @@ function issueText(issue: FlowIssue, names: FlowIssueNames): string {
 /** 流程查看器与设计器的中文文案。 */
 export const flowZhCN: XhConfig = {
   translations: {
+    ...designerShellZhCN.translations,
     'xh-flow-viewer': { label: '流程图' },
     'xh-flow-designer': {
       label: '流程设计器',
@@ -103,12 +105,10 @@ export const flowZhCN: XhConfig = {
       zoomToActual: '100%',
       palette: '节点',
       paletteUncategorized: '其他',
-      properties: '属性',
-      propertiesEmpty: '选中一个节点或连线，在这里编辑它的属性',
-      propertiesMultiple: count => `已选中 ${count} 个对象，选中一个才能编辑属性`,
+      propertiesEmpty: '选中节点或连线，在这里编辑它们的属性',
+      propertiesMultiple: count => `已选中 ${count} 个对象`,
       edge: '连线',
       propertyLabel: key => Object.hasOwn(PROPERTY_LABELS, key) ? PROPERTY_LABELS[key]! : key,
-      invalidJson: '不是合法的 JSON',
       issue: issueText,
       propertyIssue: (property, message) => `${property}：${message}`,
       issues: '问题',

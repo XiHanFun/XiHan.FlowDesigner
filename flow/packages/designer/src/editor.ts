@@ -41,6 +41,12 @@ export interface FlowClipboard {
   readonly edges: readonly FlowEdge[]
 }
 
+/** 被写入属性的对象：节点或连线。 */
+export interface FlowPropertyRef {
+  readonly kind: 'node' | 'edge'
+  readonly id: string
+}
+
 /** 编辑器变化：文档变化带上历史变化的种类与实际应用的操作。 */
 export type FlowEditorChange
   = | { readonly kind: 'document', readonly cause: HistoryChangeKind, readonly document: FlowDocument, readonly operations: readonly FlowOperation[] }
@@ -124,6 +130,11 @@ export interface FlowEditor {
    * 其余路径抛错；value 为 undefined 时删除。同一连线同一路径的连续写入不论停顿多久都合并为一步，seal() 后另起一步。
    */
   readonly setEdgeProperty: (id: string, path: JsonPath, value: JsonValue | undefined, options?: ExecuteOptions) => void
+  /**
+   * 给一组节点与连线写入同一属性，记为一步，规则同 setNodeProperty / setEdgeProperty；值都没变时什么都不做。
+   * 同一组对象同一路径的连续写入不论停顿多久都合并为一步，seal() 后另起一步。
+   */
+  readonly setProperty: (targets: readonly FlowPropertyRef[], path: JsonPath, value: JsonValue | undefined, options?: ExecuteOptions) => void
   /** 剪贴板里有内容，可以粘贴。 */
   readonly hasClipboard: boolean
   /** 复制选中的节点与两端都被选中的连线；没有选中节点时返回 undefined。 */
@@ -371,50 +382,30 @@ export function createFlowEditor(options: FlowEditorOptions): FlowEditor {
     },
 
     setNodeProperty(id, path, value, executeOptions) {
-      const node = nodeById(id)
-      if (!node)
-        throw new Error(`[flow-designer] node "${id}" does not exist`)
-      const merge = { merge: `property:${id}:${formatJsonPath(path)}`, mergeWithin: Infinity, ...executeOptions }
-      if (path.length === 1 && path[0] === 'label') {
-        if (value !== undefined && typeof value !== 'string')
-          throw new Error('[flow-designer] node label must be a string')
-        history.execute([{ type: 'updateNode', id, patch: { label: value === undefined ? null : value } }], merge)
-        return
-      }
-      if (path[0] !== 'data' || path.length < 2)
-        throw new Error(`[flow-designer] node property path "${formatJsonPath(path)}" is not writable`)
-      const inner = path.slice(1)
-      if (jsonEquals(getJsonAt(node.data, inner), value))
-        return
-      const data = setJsonAt(node.data ?? {}, inner, value, { createMissing: true }).root
-      history.execute([{ type: 'updateNode', id, patch: { data: Object.keys(data).length === 0 ? null : data } }], merge)
+      editor.setProperty([{ kind: 'node', id }], path, value, executeOptions)
     },
 
     setEdgeProperty(id, path, value, executeOptions) {
-      const edge = document().edges.find(item => item.id === id)
-      if (!edge)
-        throw new Error(`[flow-designer] edge "${id}" does not exist`)
-      const merge = { merge: `edge-property:${id}:${formatJsonPath(path)}`, mergeWithin: Infinity, ...executeOptions }
-      if (path.length === 1 && path[0] === 'label') {
-        if (value !== undefined && typeof value !== 'string')
-          throw new Error('[flow-designer] edge label must be a string')
-        history.execute([{ type: 'updateEdge', id, patch: { label: value === undefined ? null : value } }], merge)
+      editor.setProperty([{ kind: 'edge', id }], path, value, executeOptions)
+    },
+
+    setProperty(targets, path, value, executeOptions) {
+      const operations = targets.flatMap((target) => {
+        if (target.kind === 'node') {
+          const node = nodeById(target.id)
+          if (!node)
+            throw new Error(`[flow-designer] node "${target.id}" does not exist`)
+          return nodePropertyOperation(node, path, value) ?? []
+        }
+        const edge = document().edges.find(item => item.id === target.id)
+        if (!edge)
+          throw new Error(`[flow-designer] edge "${target.id}" does not exist`)
+        return edgePropertyOperation(edge, path, value) ?? []
+      })
+      if (operations.length === 0)
         return
-      }
-      const field = path[0]
-      if ((field !== 'style' && field !== 'data') || path.length < 2)
-        throw new Error(`[flow-designer] edge property path "${formatJsonPath(path)}" is not writable`)
-      const inner = path.slice(1)
-      const current = field === 'style' ? edge.style as JsonObject | undefined : edge.data
-      if (jsonEquals(getJsonAt(current, inner), value))
-        return
-      const next = setJsonAt(current ?? {}, inner, value, { createMissing: true }).root
-      const empty = Object.keys(next).length === 0
-      history.execute([{
-        type: 'updateEdge',
-        id,
-        patch: field === 'style' ? { style: empty ? null : next as FlowEdgeStyle } : { data: empty ? null : next },
-      }], merge)
+      const subjects = targets.map(target => `${target.kind}:${target.id}`).join(',')
+      history.execute(operations, { merge: `property:${subjects}:${formatJsonPath(path)}`, mergeWithin: Infinity, ...executeOptions })
     },
 
     copy() {
@@ -523,6 +514,41 @@ function toggle(current: readonly string[], ids: readonly string[]): string[] {
 
 function sameIds(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((id, index) => id === b[index])
+}
+
+/** 写入节点属性的操作；值没变时为 undefined。 */
+function nodePropertyOperation(node: FlowNode, path: JsonPath, value: JsonValue | undefined): FlowOperation | undefined {
+  if (path.length === 1 && path[0] === 'label') {
+    if (value !== undefined && typeof value !== 'string')
+      throw new Error('[flow-designer] node label must be a string')
+    return node.label === value ? undefined : { type: 'updateNode', id: node.id, patch: { label: value === undefined ? null : value } }
+  }
+  if (path[0] !== 'data' || path.length < 2)
+    throw new Error(`[flow-designer] node property path "${formatJsonPath(path)}" is not writable`)
+  const inner = path.slice(1)
+  if (jsonEquals(getJsonAt(node.data, inner), value))
+    return undefined
+  const data = setJsonAt(node.data ?? {}, inner, value, { createMissing: true }).root
+  return { type: 'updateNode', id: node.id, patch: { data: Object.keys(data).length === 0 ? null : data } }
+}
+
+/** 写入连线属性的操作；值没变时为 undefined。 */
+function edgePropertyOperation(edge: FlowEdge, path: JsonPath, value: JsonValue | undefined): FlowOperation | undefined {
+  if (path.length === 1 && path[0] === 'label') {
+    if (value !== undefined && typeof value !== 'string')
+      throw new Error('[flow-designer] edge label must be a string')
+    return edge.label === value ? undefined : { type: 'updateEdge', id: edge.id, patch: { label: value === undefined ? null : value } }
+  }
+  const field = path[0]
+  if ((field !== 'style' && field !== 'data') || path.length < 2)
+    throw new Error(`[flow-designer] edge property path "${formatJsonPath(path)}" is not writable`)
+  const inner = path.slice(1)
+  const current = field === 'style' ? edge.style as JsonObject | undefined : edge.data
+  if (jsonEquals(getJsonAt(current, inner), value))
+    return undefined
+  const next = setJsonAt(current ?? {}, inner, value, { createMissing: true }).root
+  const empty = Object.keys(next).length === 0
+  return { type: 'updateEdge', id: edge.id, patch: field === 'style' ? { style: empty ? null : next as FlowEdgeStyle } : { data: empty ? null : next } }
 }
 
 function sameClipboard(a: FlowClipboard, b: FlowClipboard): boolean {

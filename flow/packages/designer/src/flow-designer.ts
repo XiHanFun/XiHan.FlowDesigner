@@ -32,11 +32,10 @@ import type { PropertyEditorTable } from '@xihan-ui/designer-kit/properties'
 import type { PointerSession } from '@xihan-ui/pointer'
 import type { KeyedChildren, PropertyValues } from '@xihan-ui/web-components/authoring'
 import type { FlowAutoLayoutOptions, FlowClipboard, FlowEditor, FlowSelection } from './editor'
-import type { FlowPropertyEditor } from './panels/property-editors'
+import type { FlowPropertyEditor } from './panels/properties'
 import { createNodeTypeRegistry, getPortPosition, portAllows } from '@xihan-flow/core'
 import { buildScene, createOrthogonalRouter } from '@xihan-flow/runtime'
 import { createCounterIdGenerator } from '@xihan-ui/core'
-import { formatJsonPath } from '@xihan-ui/core/json'
 import {
   centerOn,
   DEFAULT_VIEWPORT,
@@ -56,6 +55,7 @@ import {
   wheelZoomFactor,
   zoomBy,
 } from '@xihan-ui/designer-kit'
+import { defineDesignerShell } from '@xihan-ui/designer-shell'
 import { createPointerSession, resolveSessionDoc, shouldActivate, wheelPixels } from '@xihan-ui/pointer'
 import {
   createGeneratedElement,
@@ -510,12 +510,11 @@ export class XhFlowDesigner extends XhReactiveElement {
     }
     if (!target || issue.path.length <= 2)
       return
-    const key = formatJsonPath(issue.path.slice(2))
-    void this.updateComplete.then(() => {
-      const row = Array.from(this.querySelectorAll<HTMLElement>('[data-part="properties"] [data-part="property"]'))
-        .find(item => item.dataset.path === key)
-      row?.querySelector<HTMLElement>('input, textarea, button, [tabindex]')?.focus()
-    })
+    const path = issue.path.slice(2)
+    const properties = this.#ensureLayers().properties
+    void this.updateComplete
+      .then(() => properties.element.updateComplete)
+      .then(() => properties.focusField(path))
   }
 
   /** 浏览器视口坐标换成画布的世界坐标。 */
@@ -622,7 +621,6 @@ export class XhFlowDesigner extends XhReactiveElement {
     const properties = new PropertiesPanel({
       ownerDocument: doc,
       editor: this.#editor,
-      nextId: () => this.#ids.scopeId(),
       isReadonly: () => this.readonly,
       issues: () => this.#issues,
       editors: () => this.propertyEditors,
@@ -1363,6 +1361,7 @@ export class XhFlowDesigner extends XhReactiveElement {
 /** 注册 <xh-flow-designer>；重复调用不报错。 */
 export function defineFlowDesigner(): void {
   defineXhElements()
+  defineDesignerShell()
   registerElement(FLOW_DESIGNER_TAG, XhFlowDesigner)
 }
 

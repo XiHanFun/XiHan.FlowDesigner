@@ -15,6 +15,7 @@ import { zhCN } from '@xihan-ui/web-components/locale'
 import { expressionEditor } from './expression-editor'
 import { approvalFlow, nodeTypes, runSteps } from './sample'
 import '@xihan-ui/styles/index.css'
+import '@xihan-ui/designer-shell/style.css'
 import '@xihan-flow/runtime/style.css'
 import '@xihan-flow/designer/style.css'
 
