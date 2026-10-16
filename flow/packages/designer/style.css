@@ -100,6 +100,92 @@ xh-flow-designer [data-part='palette-item']:disabled {
   cursor: not-allowed;
 }
 
+xh-flow-designer > [data-part='properties'] {
+  grid-area: properties;
+  display: flex;
+  flex-direction: column;
+  gap: var(--xh-space-3);
+  inline-size: var(--xh-layout-col-min-md);
+  overflow: auto;
+  padding: var(--xh-space-3);
+  border-inline-start: var(--xh-stroke-thin) solid var(--xh-border-subtle);
+}
+
+xh-flow-designer [data-part='properties-header'] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--xh-space-0_5);
+}
+
+xh-flow-designer [data-part='properties-title'] {
+  font-weight: var(--xh-font-weight-semibold);
+}
+
+xh-flow-designer [data-part='properties-subject'] {
+  overflow: hidden;
+  color: var(--xh-fg-muted);
+  font-size: var(--xh-font-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+xh-flow-designer [data-part='properties-subject'][hidden] {
+  display: none;
+}
+
+xh-flow-designer [data-part='properties-body'] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--xh-space-4);
+}
+
+xh-flow-designer [data-part='properties-empty'] {
+  margin: 0;
+  color: var(--xh-fg-muted);
+}
+
+xh-flow-designer [data-part='property-group'] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--xh-space-3);
+}
+
+xh-flow-designer [data-part='property-group-label'] {
+  color: var(--xh-fg-muted);
+  font-size: var(--xh-font-size-xs);
+}
+
+xh-flow-designer [data-part='property'] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--xh-space-1);
+}
+
+xh-flow-designer [data-part='property-label'] {
+  color: var(--xh-fg-default);
+}
+
+xh-flow-designer [data-part='property-hint'],
+xh-flow-designer [data-part='property-unsupported'] {
+  margin: 0;
+  color: var(--xh-fg-muted);
+  font-size: var(--xh-font-size-xs);
+}
+
+xh-flow-designer [data-part='property-error'] {
+  margin: 0;
+  color: var(--xh-fg-danger);
+  font-size: var(--xh-font-size-xs);
+}
+
+xh-flow-designer [data-part='property-error'][hidden] {
+  display: none;
+}
+
+xh-flow-designer [data-part='property'] [data-json] textarea {
+  font-family: var(--xh-font-family-mono);
+}
+
 xh-flow-designer > [data-part='canvas'] {
   grid-area: canvas;
   position: relative;

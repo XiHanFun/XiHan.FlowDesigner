@@ -219,6 +219,24 @@ describe('validateDocument', () => {
     ])
   })
 
+  it('连线属性：给了描述才检查，重复 id 的连线只查第一条', () => {
+    const document = doc(
+      [node('s', 'start'), node('t', 'task')],
+      [edge('a', 's', 't'), edge('b', 's', 't', { label: 'ok', data: { weight: 'heavy' } }), edge('a', 's', 't')],
+    )
+    expect(brief(validateDocument(document, registry)).filter(item => item.includes('edge:'))).toEqual(['edge.duplicate-id@edge:a'])
+    const issues = validateDocument(document, registry, {
+      edgeProperties: [
+        { path: ['label'], control: { kind: 'text' }, required: true },
+        { path: ['data', 'weight'], control: { kind: 'number' } },
+      ],
+    })
+    expect(issues.filter(issue => issue.target?.kind === 'edge' && issue.code !== 'edge.duplicate-id')).toEqual([
+      { code: 'required', severity: 'error', path: ['edges', 0, 'label'], target: { kind: 'edge', id: 'a' } },
+      { code: 'invalid-type', severity: 'error', path: ['edges', 1, 'data', 'weight'], target: { kind: 'edge', id: 'b' } },
+    ])
+  })
+
   it('按问题码覆盖严重程度或关闭', () => {
     const document = doc([node('s', 'start'), node('t', 'task'), node('lonely', 'task')], [edge('a', 's', 't')])
     const issues = validateDocument(document, registry, { severity: { 'node.isolated': 'error', 'node.missing-outgoing': 'off' } })

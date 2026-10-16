@@ -30,9 +30,12 @@ export type FlowToolbarCommand
     | 'zoom-to-fit'
     | 'zoom-to-actual'
 
+/** 取值是字符串的文案键。 */
+type TextKey = { [K in keyof FlowDesignerTranslations]: FlowDesignerTranslations[K] extends string ? K : never }[keyof FlowDesignerTranslations]
+
 interface CommandSpec {
   readonly command: FlowToolbarCommand
-  readonly label: keyof FlowDesignerTranslations
+  readonly label: TextKey
   readonly run: (designer: XhFlowDesigner) => void
   /** 只读时也能用的命令（视口类）不看 readonly。 */
   readonly enabled: (state: ToolbarState) => boolean
