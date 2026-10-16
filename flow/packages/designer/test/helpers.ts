@@ -54,7 +54,7 @@ export function part(root: Element, name: string): HTMLElement[] {
 }
 
 export function press(target: Element, x: number, y: number, init: PointerEventInit = {}): void {
-  target.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, button: 0, clientX: x, clientY: y, bubbles: true, ...init }))
+  target.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, isPrimary: true, button: 0, clientX: x, clientY: y, bubbles: true, ...init }))
 }
 
 export function move(x: number, y: number): void {

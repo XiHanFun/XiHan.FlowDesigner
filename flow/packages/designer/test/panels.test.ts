@@ -77,73 +77,117 @@ describe('工具栏', () => {
 })
 
 describe('物料面板', () => {
-  it('按类别分组，没有类别的排最后', async () => {
+  function palette(designer: Element): HTMLElement & { updateComplete: Promise<unknown> } {
+    return designer.querySelector('xh-designer-palette')!
+  }
+
+  function item(designer: Element, type: string): HTMLButtonElement {
+    return palette(designer).querySelector<HTMLButtonElement>(`button[data-part="item"][data-id="${type}"]`)!
+  }
+
+  async function settle(designer: XhFlowDesigner): Promise<void> {
+    await designer.updateComplete
+    await palette(designer).updateComplete
+  }
+
+  /** jsdom 不排版：画布范围内的点都落在画布上，其余落在 body 上。 */
+  function hitCanvas(designer: XhFlowDesigner, width: number, height: number): void {
+    const root = part(designer, 'viewport')[0]!
+    document.elementFromPoint = (x: number, y: number) => (x >= 0 && x <= width && y >= 0 && y <= height ? root : document.body)
+  }
+
+  afterEach(() => {
+    Reflect.deleteProperty(document, 'elementFromPoint')
+  })
+
+  it('按类别分组，没有类别的排最后；分组的先后与标题可换', async () => {
     const designer = await mount()
-    const groups = part(designer, 'palette-group').map(group => [
-      group.querySelector('[data-part="palette-group-label"]')!.textContent,
-      ...Array.from(group.querySelectorAll<HTMLElement>('[data-part="palette-item"]'), item => `${item.dataset.nodeType}:${item.textContent}`),
+    await settle(designer)
+    const groups = (): string[][] => Array.from(palette(designer).querySelectorAll('[data-part="group"]'), group => [
+      group.querySelector('[data-part="group-label"]')!.textContent!,
+      ...Array.from(group.querySelectorAll<HTMLElement>('button[data-part="item"]'), button => `${button.dataset.id}:${button.textContent}`),
     ])
-    expect(groups).toEqual([
+    expect(groups()).toEqual([
       ['事件', 'start:开始', 'end:结束'],
       ['活动', 'task:任务'],
       ['Other', 'note:note'],
     ])
-    const group = part(designer, 'palette-group')[0]!
-    expect(group.getAttribute('aria-labelledby')).toBe(group.querySelector('[data-part="palette-group-label"]')!.id)
+    expect(palette(designer).querySelector('[data-part="title"]')!.textContent).toBe('Nodes')
 
     designer.paletteGroupOrder = ['活动']
     designer.paletteGroupLabels = { 活动: '人工活动' }
-    await designer.updateComplete
-    expect(part(designer, 'palette-group-label').map(label => label.textContent)).toEqual(['人工活动', '事件', 'Other'])
+    await settle(designer)
+    expect(groups().map(group => group[0])).toEqual(['人工活动', '事件', 'Other'])
   })
 
   it('点条目在视口中央新建节点并选中', async () => {
     const designer = await mount()
     placeCanvas(designer, 600, 400)
     designer.setViewport({ x: 0, y: 0, zoom: 1 })
-    designer.querySelector<HTMLButtonElement>('[data-node-type="task"]')!.click()
+    await settle(designer)
+    item(designer, 'task').click()
     const added = designer.schema.nodes.at(-1)!
     expect([added.type, added.x, added.y]).toEqual(['task', 256, 176])
     expect(designer.getSelection().nodes).toEqual([added.id])
   })
 
-  it('拖进画布在松手处新建节点，拖动中显示落点；松手在画布外不新建', async () => {
+  it('拖进画布在松手处新建节点：拖动中按网格画落点、藏起跟手预览；松手在画布外不新建', async () => {
     const designer = await mount()
     placeCanvas(designer, 600, 400)
+    hitCanvas(designer, 600, 400)
     designer.setViewport({ x: 0, y: 0, zoom: 1 })
-    const item = designer.querySelector<HTMLButtonElement>('[data-node-type="task"]')!
+    await settle(designer)
+    const task = item(designer, 'task')
+    const root = part(designer, 'viewport')[0]!
     const preview = part(designer, 'drop-preview')[0]!
 
-    press(item, 5, 5)
+    press(task, 5, 5)
     move(-50, 300)
     await designer.updateComplete
-    expect(item.hasAttribute('data-dragging')).toBe(true)
     expect(preview.hidden).toBe(true)
+    const ghost = document.querySelector<HTMLElement>('[data-xh-designer-drag-preview]')!
+    expect(ghost.hidden).toBe(false)
     move(310, 300)
     await designer.updateComplete
     expect(preview.hidden).toBe(false)
     expect([preview.style.left, preview.style.top]).toEqual(['256px', '288px'])
+    expect(ghost.hidden).toBe(true)
+    expect(root.dataset.gesture).toBe('drop')
     release(310, 300)
-    item.click()
+    task.click()
     await designer.updateComplete
     expect(preview.hidden).toBe(true)
-    expect(item.hasAttribute('data-dragging')).toBe(false)
+    expect(root.dataset.gesture).toBeUndefined()
+    expect(document.querySelector('[data-xh-designer-drag-preview]')).toBeNull()
     const added = designer.schema.nodes.at(-1)!
     expect([designer.schema.nodes.length, added.type, added.x, added.y]).toEqual([4, 'task', 256, 288])
 
-    press(item, 5, 5)
+    press(task, 5, 5)
     move(310, 300)
     move(-50, 300)
     release(-50, 300)
+    await designer.updateComplete
     expect(designer.schema.nodes).toHaveLength(4)
+    expect(preview.hidden).toBe(true)
   })
 
-  it('只读时条目禁用，panels 里没列物料时收起', async () => {
+  it('拖到画布边缘时按 pan-request 平移视口', async () => {
+    const designer = await mount()
+    placeCanvas(designer, 600, 400)
+    designer.setViewport({ x: 0, y: 0, zoom: 1 })
+    part(designer, 'viewport')[0]!.dispatchEvent(new CustomEvent('pan-request', { detail: { dx: 12, dy: -4 }, bubbles: true }))
+    expect(designer.getViewport()).toEqual({ x: -12, y: 4, zoom: 1 })
+  })
+
+  it('只读时条目不能用、拖不进来，panels 里没列物料时收起', async () => {
     const designer = await mount(element => element.readonly = true)
-    expect(part(designer, 'palette-item').every(item => (item as HTMLButtonElement).disabled)).toBe(true)
+    await settle(designer)
+    expect(Array.from(palette(designer).querySelectorAll('button[data-part="item"]')).every(button => button.getAttribute('aria-disabled') === 'true')).toBe(true)
+    item(designer, 'task').click()
+    expect(designer.schema.nodes).toHaveLength(3)
     designer.panels = 'toolbar  properties\tissues minimap'
     await designer.updateComplete
-    expect(part(designer, 'palette')[0]!.hidden).toBe(true)
+    expect(palette(designer).hidden).toBe(true)
   })
 })
 
