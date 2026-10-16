@@ -27,9 +27,9 @@ import type {
   FlowValidateOptions,
 } from '@xihan-flow/core'
 import type { FlowDesignerTranslations, FlowNodeRenderer, FlowScene, FlowSceneEdge, FlowSceneNode } from '@xihan-flow/runtime'
-import type { AlignMode, DistributeAxis, ExecuteOptions, SnapGuide, Viewport } from '@xihan-ui/designer-kit'
+import type { AlignMode, DistributeAxis, ExecuteOptions, Viewport } from '@xihan-ui/designer-kit'
 import type { PropertyEditorTable } from '@xihan-ui/designer-kit/properties'
-import type { DropOver, PanRequestDetail } from '@xihan-ui/designer-shell'
+import type { DesignerSnapOptions, DesignerTransformEventMap, DropOver, PanRequestDetail, XhDesignerTransformElement } from '@xihan-ui/designer-shell'
 import type { PointerSession } from '@xihan-ui/pointer'
 import type { KeyedChildren, PropertyValues } from '@xihan-ui/web-components/authoring'
 import type { FlowAutoLayoutOptions, FlowClipboard, FlowEditor, FlowSelection } from './editor'
@@ -42,15 +42,12 @@ import {
   expandRect,
   fitRect,
   hitTest,
-  marqueeModeFromDrag,
-  marqueeRect,
   nudgeDelta,
   panBy,
   revealRect,
   screenToWorld,
   selectInMarquee,
   snapPointToGrid,
-  snapRect,
   unionRects,
   wheelZoomFactor,
   zoomBy,
@@ -107,8 +104,7 @@ const ZOOM_STEP = 1.2
 const PAN_STEP = 48
 const FIT_PADDING = 24
 const EDGE_LAYER_MARGIN = 32
-/** 吸附与端口命中的屏幕距离（像素）。 */
-const SNAP_DISTANCE = 6
+/** 端口命中的屏幕距离（像素）。 */
 const PORT_HIT_DISTANCE = 12
 /** 连线控制柄。 */
 const HANDLE_SELECTOR = '[data-part="edge-handle"], [data-part="vertex-handle"], [data-part="segment-handle"]'
@@ -125,8 +121,8 @@ interface Layers {
   readonly ports: HTMLElement
   readonly handles: HTMLElement
   readonly overlay: SVGSVGElement
-  readonly marquee: HTMLElement
   readonly dropPreview: HTMLElement
+  readonly transform: XhDesignerTransformElement
   readonly toolbar: ToolbarPanel
   readonly palette: PalettePanel
   readonly properties: PropertiesPanel
@@ -136,7 +132,7 @@ interface Layers {
 }
 
 interface Gesture {
-  readonly kind: 'pan' | 'move' | 'marquee' | 'connect' | 'vertex'
+  readonly kind: 'pan' | 'connect' | 'vertex'
   readonly session: PointerSession
   active: boolean
 }
@@ -214,9 +210,10 @@ export class XhFlowDesigner extends XhReactiveElement {
   #autoFit = true
   #fitPending = true
   #gesture: Gesture | undefined
-  #guides: readonly SnapGuide[] = []
   #preview: ConnectPreview | undefined
-  #marquee: FlowRect | undefined
+  /** 框选开始前的选择（追加框选时保留）与框选是否已越过激活距离。 */
+  #marqueeBase: readonly string[] = []
+  #marqueeStarted = false
   #dropPreview: FlowRect | undefined
   #transactionOperations: FlowOperation[] = []
   #dirty = false
@@ -346,6 +343,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     this.#renderPorts(layers)
     this.#renderHandles(layers)
     this.#renderOverlay(layers)
+    this.#syncTransform(layers)
     this.#renderPanels(layers, t)
     if (!this.#fitIfPending())
       this.#applyViewport(false)
@@ -586,14 +584,15 @@ export class XhFlowDesigner extends XhReactiveElement {
     const handles = createGeneratedElement(doc, 'div')
     handles.dataset.part = 'handles'
     const overlay = svgLayer(doc, 'overlay')
-    const marquee = createGeneratedElement(doc, 'div')
-    marquee.dataset.part = 'marquee'
-    marquee.hidden = true
     const dropPreview = createGeneratedElement(doc, 'div')
     dropPreview.dataset.part = 'drop-preview'
     dropPreview.hidden = true
-    world.append(edges, labels, nodes, ports, handles, overlay, marquee, dropPreview)
-    root.append(world)
+    world.append(edges, labels, nodes, ports, handles, overlay, dropPreview)
+    const transform = createGeneratedElement(doc, 'xh-designer-transform', { 'data-part': 'transform' })
+    transform.getSnap = this.#getSnap
+    transform.addEventListener('transform', this.#onTransform)
+    transform.addEventListener('marquee', this.#onMarquee)
+    root.append(world, transform)
     const minimap = new MinimapPanel({
       ownerDocument: doc,
       scene: () => this.#scene,
@@ -644,7 +643,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     root.addEventListener('dblclick', this.#onDoubleClick)
     root.addEventListener('contextmenu', this.#onContextMenu)
     root.addEventListener('wheel', this.#onWheel, { passive: false })
-    this.#layers = { canvas, root, world, edges, labels, nodes, ports, handles, overlay, marquee, dropPreview, toolbar, palette, properties, issues, minimap, menu }
+    this.#layers = { canvas, root, world, edges, labels, nodes, ports, handles, overlay, dropPreview, transform, toolbar, palette, properties, issues, minimap, menu }
     return this.#layers
   }
 
@@ -757,11 +756,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     const scene = this.#scene
     placeSvgLayer(layers.overlay, scene?.bounds)
     const doc = this.ownerDocument
-    const shapes: { key: string, d: string, part: string, valid?: boolean }[] = this.#guides.map((guide, index) => ({
-      key: `guide-${index}`,
-      part: 'guide',
-      d: guide.axis === 'x' ? `M${guide.position},${guide.from}V${guide.to}` : `M${guide.from},${guide.position}H${guide.to}`,
-    }))
+    const shapes: { key: string, d: string, part: string, valid?: boolean }[] = []
     const preview = this.#preview
     if (preview)
       shapes.push({ key: 'preview', part: 'connect-preview', d: `M${preview.from.x},${preview.from.y}L${preview.to.x},${preview.to.y}`, valid: preview.valid })
@@ -776,7 +771,6 @@ export class XhFlowDesigner extends XhReactiveElement {
         path.setAttribute('data-valid', String(shape.valid))
       return path
     })
-    placeBox(layers.marquee, this.#marquee)
     placeBox(layers.dropPreview, this.#dropPreview)
   }
 
@@ -914,9 +908,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     this.#layers?.root.removeAttribute('data-gesture')
     if (this.#editor.history.inTransaction)
       this.#editor.history.rollback()
-    this.#guides = []
     this.#preview = undefined
-    this.#marquee = undefined
     this.requestUpdate()
   }
 
@@ -952,7 +944,7 @@ export class XhFlowDesigner extends XhReactiveElement {
       return
     }
     if (event.shiftKey)
-      this.#startMarquee(event, event.ctrlKey || event.metaKey)
+      this.#beginMarquee(event, event.ctrlKey || event.metaKey)
     else
       this.#startPan(event)
   }
@@ -969,44 +961,104 @@ export class XhFlowDesigner extends XhReactiveElement {
     }
     if (this.readonly)
       return
-    this.#startMove(event)
+    const layers = this.#ensureLayers()
+    this.#syncTransform(layers)
+    layers.transform.startMove(event)
   }
 
-  #startMove(event: PointerEvent): void {
+  /** 覆盖层的输入：视口、选中的节点（不缩放、不旋转）与只读。 */
+  #syncTransform(layers: Layers): void {
+    const transform = layers.transform
+    transform.viewport = this.#viewport
+    transform.readonly = this.readonly
     const ids = new Set(this.#editor.selection.nodes)
-    const nodes = this.#editor.document.nodes
-    const moving = nodes.filter(node => ids.has(node.id))
-    const others = nodes.filter(node => !ids.has(node.id)).map(node => ({ x: node.x, y: node.y, width: node.width, height: node.height }))
-    const bounds = unionRects(moving)
-    if (!bounds)
-      return
-    const start = { x: event.clientX, y: event.clientY }
-    this.#track(event, 'move', {
-      onActivate: () => this.#editor.history.begin(),
-      onMove: (client) => {
-        const zoom = this.#viewport.zoom
-        let dx = (client.x - start.x) / zoom
-        let dy = (client.y - start.y) / zoom
-        const grid = this.grid === false || !(this.grid > 0) ? undefined : this.grid
-        if (this.snap || grid !== undefined) {
-          const snapped = snapRect({ ...bounds, x: bounds.x + dx, y: bounds.y + dy }, {
-            targets: this.snap ? others : [],
-            threshold: SNAP_DISTANCE / zoom,
-            ...(grid === undefined ? {} : { grid }),
-          })
-          dx += snapped.dx
-          dy += snapped.dy
-          this.#guides = snapped.guides
-        }
-        this.#editor.execute([{ type: 'moveNodes', positions: moving.map(node => ({ id: node.id, x: node.x + dx, y: node.y + dy })) }])
-      },
-      onEnd: (active) => {
-        this.#guides = []
-        if (active && this.#editor.history.inTransaction)
-          this.#editor.history.commit()
-        this.requestUpdate()
-      },
+    const nodes = this.#editor.document.nodes.filter(node => ids.has(node.id))
+    const current = transform.items ?? []
+    const same = current.length === nodes.length && current.every((item, index) => {
+      const node = nodes[index]!
+      return item.id === node.id && item.rect.x === node.x && item.rect.y === node.y && item.rect.width === node.width && item.rect.height === node.height
     })
+    if (!same)
+      transform.items = nodes.map(node => ({ id: node.id, rect: { x: node.x, y: node.y, width: node.width, height: node.height }, handles: false }))
+  }
+
+  /** 移动时的吸附：开了 snap 时对齐其余节点，设了网格时退到网格；都没有时不吸。 */
+  readonly #getSnap = (): DesignerSnapOptions | undefined => {
+    const grid = this.grid === false || !(this.grid > 0) ? undefined : this.grid
+    if (!this.snap && grid === undefined)
+      return undefined
+    const ids = new Set(this.#editor.selection.nodes)
+    const targets = this.snap
+      ? this.#editor.document.nodes.filter(node => !ids.has(node.id)).map(node => ({ x: node.x, y: node.y, width: node.width, height: node.height }))
+      : []
+    return grid === undefined ? { targets } : { targets, grid }
+  }
+
+  /** 覆盖层的移动：开始时开事务，每一帧移动节点，松手提交；按住 Alt 松手时撤回移动，按位移复制一份。 */
+  readonly #onTransform = (event: Event): void => {
+    const { phase, rects, copy } = (event as DesignerTransformEventMap['transform']).detail
+    const history = this.#editor.history
+    const root = this.#ensureLayers().root
+    if (phase === 'start') {
+      history.begin()
+      root.dataset.gesture = 'move'
+      return
+    }
+    if (phase === 'move') {
+      this.#editor.execute([{ type: 'moveNodes', positions: [...rects].map(([id, rect]) => ({ id, x: rect.x, y: rect.y })) }])
+      return
+    }
+    delete root.dataset.gesture
+    if (!history.inTransaction)
+      return
+    if (phase === 'cancel') {
+      history.rollback()
+      return
+    }
+    if (!copy) {
+      history.commit()
+      return
+    }
+    history.rollback()
+    const [id, rect] = [...rects][0]!
+    const node = this.#editor.document.nodes.find(item => item.id === id)
+    if (node)
+      this.#editor.duplicate({ offset: { x: rect.x - node.x, y: rect.y - node.y } })
+  }
+
+  /** 交给覆盖层框选；没拖动就松手且不是追加时清空选择。 */
+  #beginMarquee(event: PointerEvent, additive: boolean): void {
+    this.#marqueeBase = additive ? this.#editor.selection.nodes : []
+    this.#marqueeStarted = false
+    const doc = this.ownerDocument
+    const onUp = (up: PointerEvent): void => {
+      if (up.pointerId !== event.pointerId)
+        return
+      doc.removeEventListener('pointerup', onUp)
+      doc.removeEventListener('pointercancel', onUp)
+      if (!this.#marqueeStarted && !additive && up.type === 'pointerup')
+        this.#editor.clearSelection()
+    }
+    doc.addEventListener('pointerup', onUp)
+    doc.addEventListener('pointercancel', onUp)
+    this.#ensureLayers().transform.startMarquee(event, { additive })
+  }
+
+  /** 框选：选中落在框里的节点，追加时并上框选前的选择。 */
+  readonly #onMarquee = (event: Event): void => {
+    const { phase, rect, mode } = (event as DesignerTransformEventMap['marquee']).detail
+    const root = this.#ensureLayers().root
+    if (phase === 'start') {
+      this.#marqueeStarted = true
+      root.dataset.gesture = 'marquee'
+    }
+    if (phase === 'end' || phase === 'cancel')
+      delete root.dataset.gesture
+    if (phase === 'cancel')
+      return
+    const nodes = this.#scene?.nodes ?? []
+    const hits = selectInMarquee(rect, nodes.map(node => node.rect), mode).map(index => nodes[index]!.id)
+    this.#editor.select({ nodes: [...new Set([...this.#marqueeBase, ...hits])], edges: [] })
   }
 
   #startConnect(event: PointerEvent, nodeId: string, portId: string): void {
@@ -1162,28 +1214,6 @@ export class XhFlowDesigner extends XhReactiveElement {
   readonly #onPanRequest = (event: Event): void => {
     const { dx, dy } = (event as CustomEvent<PanRequestDetail>).detail
     this.setViewport(panBy(this.#viewport, -dx, -dy))
-  }
-
-  #startMarquee(event: PointerEvent, additive: boolean): void {
-    const start = this.clientToWorld(event.clientX, event.clientY)
-    const before = this.#editor.selection.nodes
-    this.#track(event, 'marquee', {
-      onMove: (client) => {
-        const current = this.clientToWorld(client.x, client.y)
-        const rect = marqueeRect(start, current)
-        const nodes = this.#scene?.nodes ?? []
-        const hits = selectInMarquee(rect, nodes.map(node => node.rect), marqueeModeFromDrag(start, current)).map(index => nodes[index]!.id)
-        this.#marquee = rect
-        this.#editor.select({ nodes: additive ? [...before, ...hits] : hits, edges: [] })
-        this.requestUpdate()
-      },
-      onEnd: (active) => {
-        this.#marquee = undefined
-        if (!active && !additive)
-          this.#editor.clearSelection()
-        this.requestUpdate()
-      },
-    })
   }
 
   #startPan(event: PointerEvent): void {
