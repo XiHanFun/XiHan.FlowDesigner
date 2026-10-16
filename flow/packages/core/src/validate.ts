@@ -7,7 +7,7 @@ import type { JsonObject, JsonPath } from '@xihan-ui/core/json'
 import type { IssueParamValue, IssueSeverity, SchemaIssueTarget } from '@xihan-ui/designer-kit/schema'
 import type { GraphLink } from '@xihan-ui/viz/graph'
 import type { FlowEdgeEnd, FlowIssue, FlowValidationIssueCode } from './issues'
-import type { FlowNodeType, FlowNodeTypeRegistry, FlowPort } from './registry'
+import type { FlowNodeType, FlowNodeTypeRegistry, FlowPort, FlowPropertyDescriptor } from './registry'
 import type { FlowDocument, FlowEndpoint, FlowNode } from './schema'
 import { checkProperties } from '@xihan-ui/designer-kit/properties'
 import { withSeverity } from '@xihan-ui/designer-kit/schema'
@@ -46,6 +46,8 @@ export const DEFAULT_ISSUE_SEVERITY: Readonly<Record<FlowValidationIssueCode, Is
 export interface FlowValidateOptions {
   /** 按问题码覆盖严重程度，off 表示不报告。 */
   readonly severity?: Readonly<Partial<Record<FlowValidationIssueCode, IssueSeverity | 'off'>>>
+  /** 连线的属性描述，path 相对连线本身；给了就逐条连线检查必填与取值，问题落在连线上。 */
+  readonly edgeProperties?: readonly FlowPropertyDescriptor[]
 }
 
 /** 连接检查可能给出的问题码。 */
@@ -312,6 +314,18 @@ export function validateDocument(
     for (const issue of found)
       issues.push(issue as FlowIssue<FlowValidationIssueCode>)
   })
+
+  const edgeProperties = options.edgeProperties ?? []
+  if (edgeProperties.length > 0) {
+    const checked = new Set<string>()
+    document.edges.forEach((edge, index) => {
+      if (checked.has(edge.id))
+        return
+      checked.add(edge.id)
+      for (const issue of checkProperties(edgeProperties, edge as unknown as JsonObject, edgeAt(index)))
+        issues.push(issue as FlowIssue<FlowValidationIssueCode>)
+    })
+  }
 
   return withSeverity(issues, DEFAULT_ISSUE_SEVERITY, options.severity)
 }

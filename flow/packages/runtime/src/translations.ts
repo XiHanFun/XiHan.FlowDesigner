@@ -5,6 +5,8 @@
 
 // 流程产品各元素的文案键：查看器与设计器的文案类型集中在这里，并补进 UI 的 XhTranslationOverrides。
 
+import type { FlowIssue } from '@xihan-flow/core'
+
 /** 查看器的文案。 */
 export interface FlowViewerTranslations {
   /** 视口区域的可访问名。 */
@@ -40,6 +42,26 @@ export interface FlowDesignerTranslations {
   readonly palette: string
   /** 没有类别的节点类型所在分组的标题。 */
   readonly paletteUncategorized: string
+  /** 属性面板的标题。 */
+  readonly properties: string
+  /** 没有选中时属性面板里的提示。 */
+  readonly propertiesEmpty: string
+  /** 选中多个对象时属性面板里的提示。 */
+  readonly propertiesMultiple: (count: number) => string
+  /** 属性面板里连线的类型名。 */
+  readonly edge: string
+  /** 属性描述没有给 label 时的标签，key 是 formatJsonPath 写出的属性路径。 */
+  readonly propertyLabel: (key: string) => string
+  /** JSON 编辑框里的文字不是合法 JSON。 */
+  readonly invalidJson: string
+  /** 问题的说明文字。 */
+  readonly issue: (issue: FlowIssue, names: FlowIssueNames) => string
+}
+
+/** 拼问题说明时用到的名称。 */
+export interface FlowIssueNames {
+  /** 节点类型的显示名。 */
+  readonly nodeType: (type: string) => string
 }
 
 declare module '@xihan-ui/web-components' {

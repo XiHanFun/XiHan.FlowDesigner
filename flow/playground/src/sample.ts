@@ -30,7 +30,23 @@ export const nodeTypes: FlowNodeTypeRegistry = createNodeTypeRegistry([
       { path: ['data', 'timeoutSeconds'], control: { kind: 'number', integer: true, min: 0, unit: 's' }, group: 'execution', label: '超时（秒）' },
     ],
   },
-  { type: 'Decision', label: '条件分支', category: 'control', size: { width: 140, height: 48 }, ports: 'both' },
+  {
+    type: 'Decision',
+    label: '条件分支',
+    category: 'control',
+    size: { width: 140, height: 48 },
+    ports: 'both',
+    properties: [
+      { path: ['label'], control: { kind: 'text' }, label: '名称', required: true },
+      {
+        path: ['data', 'properties', 'Expression'],
+        control: { kind: 'expression' },
+        label: '分支条件',
+        meta: { description: '宿主自定义的编辑器，例如 amount > 10000' },
+      },
+      { path: ['data', 'properties', 'Settings'], control: { kind: 'json' }, label: '高级设置' },
+    ],
+  },
   {
     type: 'End',
     label: '结束',

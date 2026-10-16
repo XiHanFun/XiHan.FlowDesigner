@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-// <xh-flow-designer>：流程设计器。顶部工具栏、左侧物料面板与中间画布；画布上点选、Shift 点选追加、
+// <xh-flow-designer>：流程设计器。顶部工具栏、左侧物料面板、中间画布与右侧属性面板；画布上点选、Shift 点选追加、
 // 拖动节点（吸附网格与对齐线，一次拖动记一步撤销）、Shift 拖空白框选、拖空白平移、从端口拖出连线，
 // 物料拖进画布新建节点；Ctrl / ⌘ + 滚轮缩放，键盘删除、撤销重做、复制粘贴与微移。
 // 面板用 @xihan-ui/web-components 的元素，defineFlowDesigner() 会一并注册它们。
@@ -18,13 +18,17 @@ import type {
   FlowNodeTypeRegistry,
   FlowOperation,
   FlowPoint,
+  FlowPropertyDescriptor,
   FlowRect,
+  FlowValidateOptions,
 } from '@xihan-flow/core'
 import type { FlowDesignerTranslations, FlowNodeRenderer, FlowScene, FlowSceneEdge, FlowSceneNode } from '@xihan-flow/runtime'
 import type { AlignMode, DistributeAxis, ExecuteOptions, SnapGuide, Viewport } from '@xihan-ui/designer-kit'
+import type { PropertyEditorTable } from '@xihan-ui/designer-kit/properties'
 import type { PointerSession } from '@xihan-ui/pointer'
 import type { KeyedChildren, PropertyValues } from '@xihan-ui/web-components/authoring'
 import type { FlowAutoLayoutOptions, FlowClipboard, FlowEditor, FlowSelection } from './editor'
+import type { FlowPropertyEditor } from './panels/property-editors'
 import { createNodeTypeRegistry, getPortPosition, portAllows } from '@xihan-flow/core'
 import { buildScene, createOrthogonalRouter } from '@xihan-flow/runtime'
 import { createCounterIdGenerator } from '@xihan-ui/core'
@@ -61,7 +65,9 @@ import {
 import { defineXhElements } from '@xihan-ui/web-components/define'
 import { createFlowEditor } from './editor'
 import { PalettePanel } from './panels/palette'
+import { DEFAULT_EDGE_PROPERTIES, PropertiesPanel } from './panels/properties'
 import { ToolbarPanel } from './panels/toolbar'
+import { DEFAULT_TRANSLATIONS } from './translations'
 
 /** 设计器的标签名。 */
 export const FLOW_DESIGNER_TAG = 'xh-flow-designer'
@@ -88,31 +94,9 @@ export interface FlowDesignerEventMap {
 export interface FlowDesignerPanels {
   readonly toolbar?: boolean
   readonly palette?: boolean
+  readonly properties?: boolean
 }
 
-const DEFAULT_TRANSLATIONS: FlowDesignerTranslations = {
-  label: 'Flow designer',
-  toolbar: 'Designer tools',
-  undo: 'Undo',
-  redo: 'Redo',
-  delete: 'Delete',
-  duplicate: 'Duplicate',
-  alignLeft: 'Align left',
-  alignCenter: 'Align center',
-  alignRight: 'Align right',
-  alignTop: 'Align top',
-  alignMiddle: 'Align middle',
-  alignBottom: 'Align bottom',
-  distributeHorizontal: 'Distribute horizontally',
-  distributeVertical: 'Distribute vertically',
-  autoLayout: 'Auto layout',
-  zoomIn: 'Zoom in',
-  zoomOut: 'Zoom out',
-  zoomToFit: 'Fit',
-  zoomToActual: '100%',
-  palette: 'Nodes',
-  paletteUncategorized: 'Other',
-}
 const EMPTY_SCHEMA: FlowDocument = { version: 1, nodes: [], edges: [] }
 const ZOOM_STEP = 1.2
 const PAN_STEP = 48
@@ -135,6 +119,7 @@ interface Layers {
   readonly dropPreview: HTMLElement
   readonly toolbar: ToolbarPanel
   readonly palette: PalettePanel
+  readonly properties: PropertiesPanel
 }
 
 interface Gesture {
@@ -158,6 +143,11 @@ export class XhFlowDesigner extends XhReactiveElement {
     panels: { attribute: false },
     paletteGroupOrder: { attribute: false },
     paletteGroupLabels: { attribute: false },
+    propertyEditors: { attribute: false },
+    propertyGroupOrder: { attribute: false },
+    propertyGroupLabels: { attribute: false },
+    edgeProperties: { attribute: false },
+    validateOptions: { attribute: false },
     renderNode: { attribute: false },
     router: { attribute: false },
     translations: { attribute: false },
@@ -177,6 +167,19 @@ export class XhFlowDesigner extends XhReactiveElement {
   declare paletteGroupOrder: readonly string[] | undefined
   /** 物料面板的类别标题，缺省直接显示 category。 */
   declare paletteGroupLabels: Readonly<Record<string, string>> | undefined
+  /**
+   * 属性面板的自定义编辑器：按编辑方式（byControl）、属性路径（byPath）或对象种类 + 路径（byTarget）查找，
+   * 节点的对象种类是节点类型名，连线是 edge；查不到的内建编辑方式用面板自带的编辑器。
+   */
+  declare propertyEditors: PropertyEditorTable<FlowPropertyEditor> | undefined
+  /** 属性面板里先列出的分组及其顺序，其余分组按首次出现的顺序排在后面。 */
+  declare propertyGroupOrder: readonly string[] | undefined
+  /** 属性面板的分组标题，缺省直接显示分组 id。 */
+  declare propertyGroupLabels: Readonly<Record<string, string>> | undefined
+  /** 连线的属性描述，path 相对连线本身；缺省可编辑标签与虚线。 */
+  declare edgeProperties: readonly FlowPropertyDescriptor[] | undefined
+  /** 校验选项：按问题码覆盖严重程度。 */
+  declare validateOptions: FlowValidateOptions | undefined
   /** 自定义节点内容。 */
   declare renderNode: FlowNodeRenderer | undefined
   /** 连线路由器，缺省为直角路由。 */
@@ -203,6 +206,7 @@ export class XhFlowDesigner extends XhReactiveElement {
   #transactionOperations: FlowOperation[] = []
   #dirty = false
   #issuesScheduled = false
+  #issues: readonly FlowIssue[] = []
   #resizeObserver: ResizeObserver | undefined
 
   constructor() {
@@ -299,6 +303,8 @@ export class XhFlowDesigner extends XhReactiveElement {
     }
     if (changed.has('router'))
       this.#sceneStale = true
+    if (changed.has('edgeProperties') || changed.has('validateOptions'))
+      this.#scheduleIssues()
     if (this.readonly)
       this.setAttribute('data-readonly', '')
     else
@@ -385,9 +391,9 @@ export class XhFlowDesigner extends XhReactiveElement {
       this.#editor.autoLayout(options)
   }
 
-  /** 按当前节点类型登记表校验定义。 */
+  /** 按当前节点类型登记表、连线属性描述与校验选项校验定义。 */
   validate(): FlowIssue[] {
-    return this.#editor.validate()
+    return this.#editor.validate({ ...this.validateOptions, edgeProperties: this.edgeProperties ?? DEFAULT_EDGE_PROPERTIES })
   }
 
   getViewport(): Viewport {
@@ -466,7 +472,9 @@ export class XhFlowDesigner extends XhReactiveElement {
     this.#issuesScheduled = true
     queueMicrotask(() => {
       this.#issuesScheduled = false
-      emitEvent(this, 'issues-change', { issues: this.#editor.validate() })
+      this.#issues = this.validate()
+      this.requestUpdate()
+      emitEvent(this, 'issues-change', { issues: this.#issues })
     })
   }
 
@@ -522,13 +530,24 @@ export class XhFlowDesigner extends XhReactiveElement {
       addNode: type => this.addNode(type),
       startDrag: (event, type, onEnd) => this.#startDrop(event, type, onEnd),
     })
-    this.append(toolbar.element, palette.element, canvas)
+    const properties = new PropertiesPanel({
+      ownerDocument: doc,
+      editor: this.#editor,
+      nextId: () => this.#ids.scopeId(),
+      isReadonly: () => this.readonly,
+      issues: () => this.#issues,
+      editors: () => this.propertyEditors,
+      groupOrder: () => this.propertyGroupOrder,
+      groupLabels: () => this.propertyGroupLabels,
+      edgeProperties: () => this.edgeProperties,
+    })
+    this.append(toolbar.element, palette.element, canvas, properties.element)
     root.addEventListener('pointerdown', this.#onPointerDown)
     root.addEventListener('dblclick', this.#onDoubleClick)
     root.addEventListener('contextmenu', this.#onContextMenu)
     root.addEventListener('wheel', this.#onWheel, { passive: false })
     root.addEventListener('keydown', this.#onKeyDown)
-    this.#layers = { canvas, root, world, edges, labels, nodes, ports, overlay, marquee, dropPreview, toolbar, palette }
+    this.#layers = { canvas, root, world, edges, labels, nodes, ports, overlay, marquee, dropPreview, toolbar, palette, properties }
     return this.#layers
   }
 
@@ -630,10 +649,13 @@ export class XhFlowDesigner extends XhReactiveElement {
     const panels = this.panels ?? {}
     layers.toolbar.element.hidden = panels.toolbar === false
     layers.palette.element.hidden = panels.palette === false
+    layers.properties.element.hidden = panels.properties === false
     if (!layers.toolbar.element.hidden)
       layers.toolbar.update(t)
     if (!layers.palette.element.hidden)
       layers.palette.update(this.#editor.registry, { order: this.paletteGroupOrder, labels: this.paletteGroupLabels }, t)
+    if (!layers.properties.element.hidden)
+      layers.properties.update(t)
   }
 
   #startAutoFit(): void {

@@ -135,11 +135,11 @@ describe('删除与移动', () => {
 })
 
 describe('节点数据', () => {
-  it('同一路径的连续写入合并为一步，封口后另起一步', () => {
+  it('同一路径的连续写入不论停顿多久都合并为一步，封口后另起一步', () => {
     let time = 0
     const editor = createFlowEditor({ document: sample(), registry, now: () => time })
     editor.setNodeProperty('t', ['data', 'assignee'], 'b')
-    time += 100
+    time += 60_000
     editor.setNodeProperty('t', ['data', 'assignee'], 'bc')
     expect(editor.history.undoCount).toBe(1)
     editor.seal()
@@ -170,6 +170,33 @@ describe('节点数据', () => {
     expect(() => editor.setNodeProperty('t', ['x'], 1)).toThrow(/not writable/)
     expect(() => editor.setNodeProperty('t', ['data'], {})).toThrow(/not writable/)
     expect(() => editor.setNodeProperty('t', ['label'], 1)).toThrow(/must be a string/)
+  })
+})
+
+describe('连线属性', () => {
+  it('写标签、外观与 data，同一路径连续写入合并，清空后删除字段', () => {
+    let time = 0
+    const editor = createFlowEditor({ document: sample(), registry, now: () => time })
+    editor.setEdgeProperty('st', ['label'], '同')
+    time += 100
+    editor.setEdgeProperty('st', ['label'], '同意')
+    expect(editor.history.undoCount).toBe(1)
+    editor.setEdgeProperty('st', ['style', 'dashed'], true)
+    editor.setEdgeProperty('st', ['data', 'condition', 'expr'], 'amount > 1')
+    expect(editor.document.edges[0]).toMatchObject({ label: '同意', style: { dashed: true }, data: { condition: { expr: 'amount > 1' } } })
+    expect(editor.history.undoCount).toBe(3)
+    editor.setEdgeProperty('st', ['style', 'dashed'], undefined)
+    editor.setEdgeProperty('st', ['label'], undefined)
+    expect(editor.document.edges[0]).not.toHaveProperty('style')
+    expect(editor.document.edges[0]).not.toHaveProperty('label')
+  })
+
+  it('其余路径不可写，标签必须是字符串', () => {
+    const { editor } = setup()
+    expect(() => editor.setEdgeProperty('st', ['source'], 's')).toThrow(/not writable/)
+    expect(() => editor.setEdgeProperty('st', ['style'], {})).toThrow(/not writable/)
+    expect(() => editor.setEdgeProperty('st', ['label'], 1)).toThrow(/must be a string/)
+    expect(() => editor.setEdgeProperty('missing', ['label'], 'x')).toThrow(/does not exist/)
   })
 })
 

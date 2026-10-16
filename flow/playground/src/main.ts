@@ -12,6 +12,7 @@ import { flowZhCN } from '@xihan-flow/runtime/locale'
 import { mergeXhConfig, setXhConfig } from '@xihan-ui/web-components'
 import { defineXhElements } from '@xihan-ui/web-components/define'
 import { zhCN } from '@xihan-ui/web-components/locale'
+import { expressionEditor } from './expression-editor'
 import { approvalFlow, nodeTypes, runSteps } from './sample'
 import '@xihan-ui/styles/index.css'
 import '@xihan-flow/runtime/style.css'
@@ -78,6 +79,9 @@ const log = document.querySelector<HTMLElement>('#log')!
 designer.nodeTypes = nodeTypes
 designer.paletteGroupOrder = ['human', 'control']
 designer.paletteGroupLabels = { human: '人工处理', control: '流程控制' }
+designer.propertyGroupOrder = ['basic', 'participants', 'execution']
+designer.propertyGroupLabels = { basic: '基本', participants: '参与人', execution: '执行' }
+designer.propertyEditors = { byControl: { expression: expressionEditor } }
 designer.schema = approvalFlow()
 
 function write(line: string): void {
