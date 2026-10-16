@@ -63,10 +63,12 @@ describe('工具栏', () => {
     expect(designer.getViewport().zoom).toBeCloseTo(1.2)
   })
 
-  it('panels.toolbar 为 false 时收起，文案跟着全局配置变', async () => {
-    const designer = await mount(element => element.panels = { toolbar: false })
+  it('panels 里没列工具栏时收起，文案跟着全局配置变', async () => {
+    const designer = await mount(element => element.setAttribute('panels', 'palette properties'))
     expect(part(designer, 'toolbar')[0]!.hidden).toBe(true)
-    designer.panels = {}
+    expect(part(designer, 'palette')[0]!.hidden).toBe(false)
+    expect(part(designer, 'issues')[0]!.hidden).toBe(true)
+    designer.removeAttribute('panels')
     setXhConfig({ translations: { 'xh-flow-designer': { undo: '撤销' } } })
     await designer.updateComplete
     expect(part(designer, 'toolbar')[0]!.hidden).toBe(false)
@@ -136,10 +138,10 @@ describe('物料面板', () => {
     expect(designer.schema.nodes).toHaveLength(4)
   })
 
-  it('只读时条目禁用，panels.palette 为 false 时收起', async () => {
+  it('只读时条目禁用，panels 里没列物料时收起', async () => {
     const designer = await mount(element => element.readonly = true)
     expect(part(designer, 'palette-item').every(item => (item as HTMLButtonElement).disabled)).toBe(true)
-    designer.panels = { palette: false }
+    designer.panels = 'toolbar  properties\tissues minimap'
     await designer.updateComplete
     expect(part(designer, 'palette')[0]!.hidden).toBe(true)
   })
@@ -188,7 +190,7 @@ describe('问题列表', () => {
     expect(document.activeElement).toBe(designer.querySelector('[data-part="property"][data-path="data.owner"] input'))
   })
 
-  it('没有问题时给提示，panels.issues 为 false 时收起', async () => {
+  it('没有问题时给提示，panels 写空串时全部收起', async () => {
     const designer = await mount((element) => {
       element.validateOptions = { severity: { 'node.isolated': 'off', 'node.missing-outgoing': 'off', 'node.missing-incoming': 'off' } }
     })
@@ -196,9 +198,9 @@ describe('问题列表', () => {
     expect(part(designer, 'issue')).toHaveLength(0)
     expect(part(designer, 'issues-empty')[0]!.hidden).toBe(false)
     expect(part(designer, 'issues-danger')[0]!.hidden).toBe(true)
-    designer.panels = { issues: false }
+    designer.panels = ''
     await designer.updateComplete
-    expect(part(designer, 'issues')[0]!.hidden).toBe(true)
+    expect(['toolbar', 'palette', 'properties', 'issues', 'minimap'].map(name => part(designer, name)[0]!.hidden)).toEqual([true, true, true, true, true])
   })
 })
 
@@ -238,13 +240,13 @@ describe('小地图', () => {
     release(75, 50)
   })
 
-  it('没有节点或 panels.minimap 为 false 时收起', async () => {
+  it('没有节点或 panels 里没列小地图时收起', async () => {
     const designer = await mount(element => element.schema = { version: 1, nodes: [], edges: [] })
     expect(part(designer, 'minimap')[0]!.hidden).toBe(true)
     designer.schema = { version: 1, nodes: [{ id: 'a', type: 'task', x: 0, y: 0, width: 100, height: 40 }], edges: [] }
     await designer.updateComplete
     expect(part(designer, 'minimap')[0]!.hidden).toBe(false)
-    designer.panels = { minimap: false }
+    designer.panels = 'toolbar palette'
     await designer.updateComplete
     expect(part(designer, 'minimap')[0]!.hidden).toBe(true)
   })
