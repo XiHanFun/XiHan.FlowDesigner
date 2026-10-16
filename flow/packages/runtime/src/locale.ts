@@ -84,6 +84,7 @@ export const flowZhCN: XhConfig = {
       delete: '删除',
       duplicate: '创建副本',
       copy: '复制',
+      cut: '剪切',
       paste: '粘贴',
       selectAll: '全选',
       alignLeft: '左对齐',

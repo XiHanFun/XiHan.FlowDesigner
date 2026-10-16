@@ -13,6 +13,7 @@ export type FlowCommand
   = | 'undo'
     | 'redo'
     | 'copy'
+    | 'cut'
     | 'paste'
     | 'delete'
     | 'duplicate'
@@ -62,6 +63,7 @@ export const COMMANDS: Readonly<Record<FlowCommand, CommandSpec>> = {
   'undo': { label: 'undo', run: d => d.undo(), enabled: editable(s => s.canUndo) },
   'redo': { label: 'redo', run: d => d.redo(), enabled: editable(s => s.canRedo) },
   'copy': { label: 'copy', run: d => d.copy(), enabled: s => s.selectedNodes > 0 },
+  'cut': { label: 'cut', run: d => d.cut(), enabled: editable(s => s.selectedNodes > 0) },
   'paste': { label: 'paste', run: d => d.paste(), enabled: editable(s => s.canPaste) },
   'delete': { label: 'delete', run: d => d.deleteSelection(), enabled: editable(s => s.selectedNodes + s.selectedEdges > 0) },
   'duplicate': { label: 'duplicate', run: d => d.duplicate(), enabled: editable(s => s.selectedNodes > 0) },

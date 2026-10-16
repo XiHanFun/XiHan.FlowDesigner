@@ -68,6 +68,7 @@ import {
   XhReactiveElement,
 } from '@xihan-ui/web-components/authoring'
 import { defineXhElements } from '@xihan-ui/web-components/define'
+import { encodeFlowClipboard, readFlowClipboard, writeFlowClipboard } from './clipboard'
 import { createFlowEditor } from './editor'
 import { ContextMenuPanel } from './panels/context-menu'
 import { IssuesPanel } from './panels/issues'
@@ -111,6 +112,8 @@ const SNAP_DISTANCE = 6
 const PORT_HIT_DISTANCE = 12
 /** 连线控制柄。 */
 const HANDLE_SELECTOR = '[data-part="edge-handle"], [data-part="vertex-handle"], [data-part="segment-handle"]'
+/** 画布有焦点时接管的剪贴板事件。 */
+const CLIPBOARD_EVENTS = ['copy', 'cut', 'paste'] as const
 
 interface Layers {
   readonly canvas: HTMLElement
@@ -299,6 +302,8 @@ export class XhFlowDesigner extends XhReactiveElement {
   override connectedCallback(): void {
     super.connectedCallback()
     const layers = this.#ensureLayers()
+    for (const type of CLIPBOARD_EVENTS)
+      this.ownerDocument.addEventListener(type, this.#onClipboard)
     if (typeof ResizeObserver !== 'undefined') {
       this.#resizeObserver ??= new ResizeObserver(() => this.#onResize())
       this.#resizeObserver.observe(layers.root)
@@ -307,6 +312,8 @@ export class XhFlowDesigner extends XhReactiveElement {
 
   override disconnectedCallback(): void {
     super.disconnectedCallback()
+    for (const type of CLIPBOARD_EVENTS)
+      this.ownerDocument.removeEventListener(type, this.#onClipboard)
     this.#resizeObserver?.disconnect()
     this.#cancelGesture()
   }
@@ -385,8 +392,22 @@ export class XhFlowDesigner extends XhReactiveElement {
     return !this.readonly && this.#editor.deleteSelection()
   }
 
+  /** 复制选中的节点与两端都被选中的连线，同时写进系统剪贴板；没有选中节点时返回 undefined。 */
   copy(): FlowClipboard | undefined {
-    return this.#editor.copy()
+    const copied = this.#editor.copy()
+    if (copied)
+      this.#writeSystemClipboard(copied)
+    return copied
+  }
+
+  /** 复制选中内容后删除选中的节点与连线，同时写进系统剪贴板；只读或没有选中节点时返回 undefined。 */
+  cut(): FlowClipboard | undefined {
+    if (this.readonly)
+      return undefined
+    const copied = this.#editor.cut()
+    if (copied)
+      this.#writeSystemClipboard(copied)
+    return copied
   }
 
   paste(clipboard?: FlowClipboard): FlowSelection {
@@ -1234,6 +1255,32 @@ export class XhFlowDesigner extends XhReactiveElement {
     this.setViewport(panBy(this.#viewport, -pixels.x, -pixels.y))
   }
 
+  /** 写进系统剪贴板，只写 text/plain；写不进时内容只留在设计器内。 */
+  #writeSystemClipboard(clipboard: FlowClipboard): void {
+    this.ownerDocument.defaultView?.navigator.clipboard?.writeText(encodeFlowClipboard(clipboard)).catch(() => {})
+  }
+
+  /** 画布有焦点时，复制、剪切写入剪贴板事件的数据，粘贴读出流程的剪贴板内容；别的内容不处理。 */
+  readonly #onClipboard = (event: ClipboardEvent): void => {
+    const data = event.clipboardData
+    const root = this.getRootNode() as Document | ShadowRoot
+    if (!data || this.#gesture || !this.#layers || root.activeElement !== this.#layers.menu.trigger)
+      return
+    if (event.type === 'paste') {
+      const content = this.readonly ? undefined : readFlowClipboard(data)
+      if (content) {
+        this.paste(content)
+        event.preventDefault()
+      }
+      return
+    }
+    const copied = event.type === 'copy' ? this.#editor.copy() : this.readonly ? undefined : this.#editor.cut()
+    if (!copied)
+      return
+    writeFlowClipboard(data, copied)
+    event.preventDefault()
+  }
+
   readonly #onKeyDown = (event: KeyboardEvent): void => {
     if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) {
       const { nodes, edges } = this.#editor.selection
@@ -1264,10 +1311,6 @@ export class XhFlowDesigner extends XhReactiveElement {
       this.#editor.selectAll()
       return true
     }
-    if (key === 'c') {
-      this.#editor.copy()
-      return true
-    }
     if (this.readonly)
       return false
     if (key === 'z') {
@@ -1279,10 +1322,6 @@ export class XhFlowDesigner extends XhReactiveElement {
     }
     if (key === 'y') {
       this.#editor.redo()
-      return true
-    }
-    if (key === 'v') {
-      this.paste()
       return true
     }
     if (key === 'd') {

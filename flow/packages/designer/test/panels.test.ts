@@ -282,11 +282,11 @@ describe('右键菜单', () => {
     rightClick(designer.querySelector('[data-part="node"][data-node-id="t"]')!)
     await designer.updateComplete
     expect(designer.getSelection().nodes).toEqual(['t'])
-    expect(items()).toEqual(['duplicate', 'copy', 'delete'])
+    expect(items()).toEqual(['duplicate', 'copy', 'cut', 'delete'])
 
     designer.select({ nodes: ['s', 't', 'e'] })
     rightClick(designer.querySelector('[data-part="node"][data-node-id="t"]')!)
-    expect(items()).toEqual(['duplicate', 'copy', 'delete', 'align-left', 'align-center', 'align-right', 'align-top', 'align-middle', 'align-bottom', 'distribute-horizontal', 'distribute-vertical'])
+    expect(items()).toEqual(['duplicate', 'copy', 'cut', 'delete', 'align-left', 'align-center', 'align-right', 'align-top', 'align-middle', 'align-bottom', 'distribute-horizontal', 'distribute-vertical'])
 
     rightClick(part(designer, 'edge-hit')[0]!)
     expect(items()).toEqual(['delete', 'clear-vertices(x)'])
@@ -308,9 +308,16 @@ describe('右键菜单', () => {
     designer.readonly = true
     await designer.updateComplete
     rightClick(designer.querySelector('[data-part="node"][data-node-id="t"]')!)
-    expect(items()).toEqual(['duplicate(x)', 'copy', 'delete(x)'])
+    expect(items()).toEqual(['duplicate(x)', 'copy', 'cut(x)', 'delete(x)'])
     menu.dispatchEvent(new CustomEvent('select', { detail: { value: 'delete' } }))
+    menu.dispatchEvent(new CustomEvent('select', { detail: { value: 'cut' } }))
     expect(designer.schema.nodes).toHaveLength(4)
+
+    designer.readonly = false
+    await designer.updateComplete
+    designer.select({ nodes: ['t'] })
+    menu.dispatchEvent(new CustomEvent('select', { detail: { value: 'cut' } }))
+    expect(designer.schema.nodes.map(node => node.id)).not.toContain('t')
   })
 
   it('宿主取消 *-contextmenu 时不弹内置菜单，也拦下浏览器菜单', async () => {

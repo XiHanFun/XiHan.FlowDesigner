@@ -80,6 +80,7 @@ export const DEFAULT_TRANSLATIONS: FlowDesignerTranslations = {
   delete: 'Delete',
   duplicate: 'Duplicate',
   copy: 'Copy',
+  cut: 'Cut',
   paste: 'Paste',
   selectAll: 'Select all',
   alignLeft: 'Align left',
