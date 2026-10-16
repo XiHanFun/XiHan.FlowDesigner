@@ -5,10 +5,12 @@
 
 // @vitest-environment jsdom
 
+import type { XhFlowDesigner } from '../src'
+import { createNodeTypeRegistry } from '@xihan-flow/core'
 import { setXhConfig } from '@xihan-ui/web-components'
 import { afterEach, describe, expect, it } from 'vitest'
 import { defineFlowDesigner } from '../src'
-import { mount, move, part, placeCanvas, press, release, unmountAll } from './helpers'
+import { definitions, mount, move, part, placeCanvas, press, release, unmountAll } from './helpers'
 
 defineFlowDesigner()
 
@@ -140,5 +142,62 @@ describe('物料面板', () => {
     designer.panels = { palette: false }
     await designer.updateComplete
     expect(part(designer, 'palette')[0]!.hidden).toBe(true)
+  })
+})
+
+describe('问题列表', () => {
+  const typed = createNodeTypeRegistry([
+    ...definitions.filter(definition => definition.type !== 'task'),
+    { type: 'task', label: '任务', size: { width: 100, height: 40 }, ports: 'both', properties: [{ path: ['data', 'owner'], control: { kind: 'text' }, label: '负责人', required: true }] },
+    { type: 'single', size: { width: 100, height: 40 }, ports: 'none', minCount: 1 },
+  ])
+
+  async function settle(designer: XhFlowDesigner): Promise<void> {
+    await designer.updateComplete
+    await Promise.resolve()
+    await designer.updateComplete
+  }
+
+  it('列出问题与错误、警告数，落在属性上的带属性名，节点上标出最严重的一级', async () => {
+    const designer = await mount(element => element.nodeTypes = typed)
+    await settle(designer)
+    const rows = part(designer, 'issue').map(item => [item.tagName, item.dataset.severity, item.querySelector('[data-part="issue-subject"]')!.textContent, item.querySelector('[data-part="issue-message"]')!.textContent])
+    expect(rows).toEqual([
+      ['DIV', 'error', 'Flow', 'At least 1 single required, found 0'],
+      ['BUTTON', 'warning', '任务', 'No outgoing connection'],
+      ['BUTTON', 'warning', '结束', 'Not connected'],
+      ['BUTTON', 'error', '任务', '负责人: Required'],
+    ])
+    expect(part(designer, 'issues-danger')[0]!.textContent).toBe('2 errors')
+    expect(part(designer, 'issues-warning')[0]!.textContent).toBe('2 warnings')
+    expect(designer.querySelector<HTMLElement>('[data-part="node"][data-node-id="t"]')!.dataset.issue).toBe('error')
+    expect(designer.querySelector<HTMLElement>('[data-part="node"][data-node-id="e"]')!.dataset.issue).toBe('warning')
+    expect(designer.querySelector<HTMLElement>('[data-part="node"][data-node-id="s"]')!.dataset.issue).toBeUndefined()
+  })
+
+  it('点问题选中并显露所在节点，落在属性上时把焦点交给那个字段', async () => {
+    const designer = await mount(element => element.nodeTypes = typed)
+    placeCanvas(designer, 200, 100)
+    designer.setViewport({ x: -1000, y: -1000, zoom: 1 })
+    await settle(designer)
+    const owner = part(designer, 'issue').find(item => item.textContent!.includes('负责人'))!
+    owner.click()
+    expect(designer.getSelection()).toEqual({ nodes: ['t'], edges: [] })
+    expect(designer.getViewport()).not.toEqual({ x: -1000, y: -1000, zoom: 1 })
+    await settle(designer)
+    expect(document.activeElement).toBe(designer.querySelector('[data-part="property"][data-path="data.owner"] input'))
+  })
+
+  it('没有问题时给提示，panels.issues 为 false 时收起', async () => {
+    const designer = await mount((element) => {
+      element.validateOptions = { severity: { 'node.isolated': 'off', 'node.missing-outgoing': 'off', 'node.missing-incoming': 'off' } }
+    })
+    await settle(designer)
+    expect(part(designer, 'issue')).toHaveLength(0)
+    expect(part(designer, 'issues-empty')[0]!.hidden).toBe(false)
+    expect(part(designer, 'issues-danger')[0]!.hidden).toBe(true)
+    designer.panels = { issues: false }
+    await designer.updateComplete
+    expect(part(designer, 'issues')[0]!.hidden).toBe(true)
   })
 })

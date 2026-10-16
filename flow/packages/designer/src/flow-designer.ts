@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-// <xh-flow-designer>：流程设计器。顶部工具栏、左侧物料面板、中间画布与右侧属性面板；画布上点选、Shift 点选追加、
+// <xh-flow-designer>：流程设计器。顶部工具栏、左侧物料面板、中间画布、右侧属性面板与底部问题列表；画布上点选、Shift 点选追加、
 // 拖动节点（吸附网格与对齐线，一次拖动记一步撤销）、Shift 拖空白框选、拖空白平移、从端口拖出连线，
 // 物料拖进画布新建节点；Ctrl / ⌘ + 滚轮缩放，键盘删除、撤销重做、复制粘贴与微移。
 // 面板用 @xihan-ui/web-components 的元素，defineFlowDesigner() 会一并注册它们。
@@ -32,6 +32,7 @@ import type { FlowPropertyEditor } from './panels/property-editors'
 import { createNodeTypeRegistry, getPortPosition, portAllows } from '@xihan-flow/core'
 import { buildScene, createOrthogonalRouter } from '@xihan-flow/runtime'
 import { createCounterIdGenerator } from '@xihan-ui/core'
+import { formatJsonPath } from '@xihan-ui/core/json'
 import {
   centerOn,
   DEFAULT_VIEWPORT,
@@ -64,6 +65,7 @@ import {
 } from '@xihan-ui/web-components/authoring'
 import { defineXhElements } from '@xihan-ui/web-components/define'
 import { createFlowEditor } from './editor'
+import { IssuesPanel } from './panels/issues'
 import { PalettePanel } from './panels/palette'
 import { DEFAULT_EDGE_PROPERTIES, PropertiesPanel } from './panels/properties'
 import { ToolbarPanel } from './panels/toolbar'
@@ -95,6 +97,7 @@ export interface FlowDesignerPanels {
   readonly toolbar?: boolean
   readonly palette?: boolean
   readonly properties?: boolean
+  readonly issues?: boolean
 }
 
 const EMPTY_SCHEMA: FlowDocument = { version: 1, nodes: [], edges: [] }
@@ -120,6 +123,7 @@ interface Layers {
   readonly toolbar: ToolbarPanel
   readonly palette: PalettePanel
   readonly properties: PropertiesPanel
+  readonly issues: IssuesPanel
 }
 
 interface Gesture {
@@ -207,6 +211,8 @@ export class XhFlowDesigner extends XhReactiveElement {
   #dirty = false
   #issuesScheduled = false
   #issues: readonly FlowIssue[] = []
+  /** 节点 id → 落在它上面的问题里最严重的那一级。 */
+  #issueLevels = new Map<string, 'error' | 'warning'>()
   #resizeObserver: ResizeObserver | undefined
 
   constructor() {
@@ -448,6 +454,34 @@ export class XhFlowDesigner extends XhReactiveElement {
       this.setViewport(next)
   }
 
+  /** 选中问题所在的节点或连线并显露它；问题落在属性上时把焦点交给属性面板里的那个字段。 */
+  #locate(issue: FlowIssue): void {
+    const target = issue.target
+    if (target?.kind === 'node') {
+      this.#editor.select({ nodes: [target.id] })
+      this.revealNode(target.id)
+    }
+    else if (target?.kind === 'edge') {
+      this.#editor.select({ edges: [target.id] })
+      const points = this.#scene?.edges.find(edge => edge.id === target.id)?.points ?? []
+      const rect = unionRects(points.map(point => ({ x: point.x, y: point.y, width: 0, height: 0 })))
+      const size = this.#size()
+      if (rect && size) {
+        const next = revealRect(this.#viewport, rect, size, FIT_PADDING)
+        if (next !== this.#viewport)
+          this.setViewport(next)
+      }
+    }
+    if (!target || issue.path.length <= 2)
+      return
+    const key = formatJsonPath(issue.path.slice(2))
+    void this.updateComplete.then(() => {
+      const row = Array.from(this.querySelectorAll<HTMLElement>('[data-part="properties"] [data-part="property"]'))
+        .find(item => item.dataset.path === key)
+      row?.querySelector<HTMLElement>('input, textarea, button, [tabindex]')?.focus()
+    })
+  }
+
   /** 浏览器视口坐标换成画布的世界坐标。 */
   clientToWorld(clientX: number, clientY: number): FlowPoint {
     const box = this.#ensureLayers().root.getBoundingClientRect()
@@ -473,6 +507,11 @@ export class XhFlowDesigner extends XhReactiveElement {
     queueMicrotask(() => {
       this.#issuesScheduled = false
       this.#issues = this.validate()
+      this.#issueLevels = new Map()
+      for (const issue of this.#issues) {
+        if (issue.target?.kind === 'node' && this.#issueLevels.get(issue.target.id) !== 'error')
+          this.#issueLevels.set(issue.target.id, issue.severity === 'warning' ? 'warning' : 'error')
+      }
       this.requestUpdate()
       emitEvent(this, 'issues-change', { issues: this.#issues })
     })
@@ -541,13 +580,22 @@ export class XhFlowDesigner extends XhReactiveElement {
       groupLabels: () => this.propertyGroupLabels,
       edgeProperties: () => this.edgeProperties,
     })
-    this.append(toolbar.element, palette.element, canvas, properties.element)
+    const issues = new IssuesPanel({
+      ownerDocument: doc,
+      nextId: () => this.#ids.scopeId(),
+      document: () => this.#editor.document,
+      registry: () => this.#editor.registry,
+      issues: () => this.#issues,
+      edgeProperties: () => this.edgeProperties ?? DEFAULT_EDGE_PROPERTIES,
+      locate: issue => this.#locate(issue),
+    })
+    this.append(toolbar.element, palette.element, canvas, properties.element, issues.element)
     root.addEventListener('pointerdown', this.#onPointerDown)
     root.addEventListener('dblclick', this.#onDoubleClick)
     root.addEventListener('contextmenu', this.#onContextMenu)
     root.addEventListener('wheel', this.#onWheel, { passive: false })
     root.addEventListener('keydown', this.#onKeyDown)
-    this.#layers = { canvas, root, world, edges, labels, nodes, ports, overlay, marquee, dropPreview, toolbar, palette, properties }
+    this.#layers = { canvas, root, world, edges, labels, nodes, ports, overlay, marquee, dropPreview, toolbar, palette, properties, issues }
     return this.#layers
   }
 
@@ -592,6 +640,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     element.dataset.nodeId = node.id
     element.dataset.nodeType = node.type
     toggleData(element, 'selected', selected ? '' : undefined)
+    toggleData(element, 'issue', this.#issueLevels.get(node.id))
     element.style.left = `${rect.x}px`
     element.style.top = `${rect.y}px`
     element.style.width = `${rect.width}px`
@@ -650,12 +699,15 @@ export class XhFlowDesigner extends XhReactiveElement {
     layers.toolbar.element.hidden = panels.toolbar === false
     layers.palette.element.hidden = panels.palette === false
     layers.properties.element.hidden = panels.properties === false
+    layers.issues.element.hidden = panels.issues === false
     if (!layers.toolbar.element.hidden)
       layers.toolbar.update(t)
     if (!layers.palette.element.hidden)
       layers.palette.update(this.#editor.registry, { order: this.paletteGroupOrder, labels: this.paletteGroupLabels }, t)
     if (!layers.properties.element.hidden)
       layers.properties.update(t)
+    if (!layers.issues.element.hidden)
+      layers.issues.update(t)
   }
 
   #startAutoFit(): void {
