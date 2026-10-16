@@ -23,7 +23,7 @@ import type { AlignMode, DistributeAxis, ExecuteOptions, History, HistoryChangeK
 import type { LayeredDirection } from '@xihan-ui/viz/graph'
 import { applyOperation, checkConnection, createNode, validateDocument } from '@xihan-flow/core'
 import { formatJsonPath, getJsonAt, jsonEquals, setJsonAt } from '@xihan-ui/core/json'
-import { alignRects, createHistory, distributeRects, nextFreeId, unionRects } from '@xihan-ui/designer-kit'
+import { alignRects, createHistory, distributeRects, nextFreeId, remapIds, unionRects } from '@xihan-ui/designer-kit'
 import { layered } from '@xihan-ui/viz/graph'
 
 /** 选中的节点与连线 id，各自按选中先后排列。 */
@@ -128,7 +128,12 @@ export interface FlowEditor {
   readonly hasClipboard: boolean
   /** 复制选中的节点与两端都被选中的连线；没有选中节点时返回 undefined。 */
   readonly copy: () => FlowClipboard | undefined
-  /** 粘贴剪贴板内容并选中粘贴出的对象；缺省用最近一次 copy 的内容，每次粘贴比上一次多偏移 offset。 */
+  /** 复制选中内容后删除选中的节点与连线，删除记为一步；没有选中节点时什么都不做，返回 undefined。 */
+  readonly cut: (options?: ExecuteOptions) => FlowClipboard | undefined
+  /**
+   * 粘贴剪贴板内容并选中粘贴出的对象，每次粘贴比上一次多偏移 offset。缺省用当前剪贴板内容；
+   * 给了 clipboard 时它成为剪贴板内容，与当前内容相同则接着累加偏移。
+   */
   readonly paste: (clipboard?: FlowClipboard, options?: ExecuteOptions & { readonly offset?: number }) => FlowSelection
   /** 复制选中内容并立即粘贴，不改动剪贴板。 */
   readonly duplicate: (options?: ExecuteOptions & { readonly offset?: number }) => FlowSelection
@@ -218,15 +223,15 @@ export function createFlowEditor(options: FlowEditorOptions): FlowEditor {
       return EMPTY_SELECTION
     const nodeIds = new Set<string>()
     const edgeIds = new Set<string>()
-    const remap = new Map<string, string>()
-    for (const node of source.nodes)
-      remap.set(node.id, allocate('node', node.type, nodeIds))
+    const types = new Map(source.nodes.map(node => [node.id, node.type]))
+    const remap = remapIds(types.keys(), id => allocate('node', types.get(id), nodeIds))
     const nodes = source.nodes.map((node): FlowNode => ({ ...node, id: remap.get(node.id)!, x: node.x + offset, y: node.y + offset }))
-    const edges = source.edges
-      .filter(edge => remap.has(edge.source.node) && remap.has(edge.target.node))
+    const kept = source.edges.filter(edge => remap.has(edge.source.node) && remap.has(edge.target.node))
+    const edgeRemap = remapIds(kept.map(edge => edge.id), () => allocate('edge', undefined, edgeIds))
+    const edges = kept
       .map((edge): FlowEdge => ({
         ...edge,
-        id: allocate('edge', undefined, edgeIds),
+        id: edgeRemap.get(edge.id)!,
         source: { ...edge.source, node: remap.get(edge.source.node)! },
         target: { ...edge.target, node: remap.get(edge.target.node)! },
         ...(edge.vertices === undefined ? {} : { vertices: edge.vertices.map(point => ({ x: point.x + offset, y: point.y + offset })) }),
@@ -421,14 +426,22 @@ export function createFlowEditor(options: FlowEditorOptions): FlowEditor {
       return copied
     },
 
+    cut(executeOptions) {
+      const copied = editor.copy()
+      if (copied)
+        editor.deleteSelection(executeOptions)
+      return copied
+    },
+
     paste(source, pasteOptions = {}) {
-      const content = source ?? clipboard
-      if (!content)
+      if (source !== undefined && !(clipboard && sameClipboard(source, clipboard))) {
+        clipboard = source
+        pasteCount = 0
+      }
+      if (!clipboard)
         return EMPTY_SELECTION
-      if (source === undefined)
-        pasteCount++
-      const step = pasteOptions.offset ?? DEFAULT_PASTE_OFFSET
-      return pasteInto(content, step * (source === undefined ? pasteCount : 1), pasteOptions)
+      pasteCount++
+      return pasteInto(clipboard, (pasteOptions.offset ?? DEFAULT_PASTE_OFFSET) * pasteCount, pasteOptions)
     },
 
     duplicate(pasteOptions = {}) {
@@ -510,4 +523,8 @@ function toggle(current: readonly string[], ids: readonly string[]): string[] {
 
 function sameIds(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((id, index) => id === b[index])
+}
+
+function sameClipboard(a: FlowClipboard, b: FlowClipboard): boolean {
+  return a === b || jsonEquals(a as unknown as JsonValue, b as unknown as JsonValue)
 }

@@ -71,7 +71,7 @@ function entries(subject: ContextMenuSubject, selectedNodes: number): (FlowComma
     return ['delete', 'clear-vertices']
   if (subject === 'blank')
     return ['paste', 'select-all', SEPARATOR, 'auto-layout', 'zoom-to-fit']
-  const list: (FlowCommand | typeof SEPARATOR)[] = ['duplicate', 'copy', 'delete']
+  const list: (FlowCommand | typeof SEPARATOR)[] = ['duplicate', 'copy', 'cut', 'delete']
   if (selectedNodes >= 2)
     list.push(SEPARATOR, 'align-left', 'align-center', 'align-right', 'align-top', 'align-middle', 'align-bottom')
   if (selectedNodes >= 3)

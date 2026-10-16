@@ -215,17 +215,43 @@ describe('复制与粘贴', () => {
     expect(editor.history.undoCount).toBe(2)
   })
 
-  it('复制带拐点的连线时拐点随之偏移；给出剪贴板时只偏移一次', () => {
+  it('复制带拐点的连线时拐点随之偏移；给出与当前相同的剪贴板时接着累加偏移', () => {
     const { editor } = setup()
     editor.select({ nodes: ['t', 'e'] })
     const clipboard = editor.copy()!
-    editor.paste(clipboard, { offset: 10 })
+    editor.paste(structuredClone(clipboard), { offset: 10 })
     editor.paste(clipboard, { offset: 10 })
     expect(editor.document.edges.filter(edge => edge.vertices).map(edge => edge.vertices)).toEqual([
       [{ x: 350, y: 80 }],
       [{ x: 360, y: 90 }],
-      [{ x: 360, y: 90 }],
+      [{ x: 370, y: 100 }],
     ])
+  })
+
+  it('给出别的剪贴板时它成为剪贴板内容，偏移从头算起', () => {
+    const { editor } = setup()
+    editor.select({ nodes: ['s'] })
+    editor.copy()
+    editor.paste(undefined, { offset: 10 })
+    editor.paste({ nodes: [{ id: 'x', type: 'task', x: 0, y: 100, width: 10, height: 10 }], edges: [] }, { offset: 10 })
+    editor.paste(undefined, { offset: 10 })
+    expect(editor.document.nodes.slice(-3).map(node => [node.id, node.x, node.y])).toEqual([['start_1', 10, 10], ['task_1', 10, 110], ['task_2', 20, 120]])
+    expect(editor.hasClipboard).toBe(true)
+  })
+
+  it('剪切复制选中内容并删除选中的节点与连线，记为一步；没有选中节点时什么都不做', () => {
+    const { editor } = setup()
+    editor.select({ edges: ['st'] })
+    expect(editor.cut()).toBeUndefined()
+    expect(editor.document).toEqual(sample())
+    editor.select({ nodes: ['s', 't'] })
+    expect(editor.cut()).toEqual({ nodes: sample().nodes.slice(0, 2), edges: [sample().edges[0]] })
+    expect(editor.document.nodes.map(node => node.id)).toEqual(['e'])
+    expect(editor.history.undoCount).toBe(1)
+    expect(editor.paste().nodes).toEqual(['start_1', 'task_1'])
+    editor.undo()
+    editor.undo()
+    expect(editor.document).toEqual(sample())
   })
 
   it('原地复制不改剪贴板，没有选中节点时什么都不做', () => {

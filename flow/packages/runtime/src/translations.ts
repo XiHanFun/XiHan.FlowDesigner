@@ -24,6 +24,7 @@ export interface FlowDesignerTranslations {
   readonly delete: string
   readonly duplicate: string
   readonly copy: string
+  readonly cut: string
   readonly paste: string
   readonly selectAll: string
   readonly alignLeft: string

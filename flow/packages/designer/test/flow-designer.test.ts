@@ -9,7 +9,7 @@ import type { FlowDocument } from '@xihan-flow/core'
 import type { XhFlowDesigner } from '../src'
 import { createNodeTypeRegistry } from '@xihan-flow/core'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { defineFlowDesigner, FLOW_DESIGNER_TAG } from '../src'
+import { decodeFlowClipboard, defineFlowDesigner, encodeFlowClipboard, FLOW_DESIGNER_TAG } from '../src'
 
 defineFlowDesigner()
 
@@ -71,6 +71,28 @@ function move(x: number, y: number): void {
 
 function release(x: number, y: number): void {
   window.document.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: x, clientY: y }))
+}
+
+/** 剪贴板事件的数据：按类型存取的文本。 */
+function clipboardData(initial: Readonly<Record<string, string>> = {}): DataTransfer & { readonly store: Map<string, string> } {
+  const store = new Map(Object.entries(initial))
+  return {
+    store,
+    getData: (type: string) => store.get(type) ?? '',
+    setData: (type: string, value: string) => void store.set(type, value),
+  } as unknown as DataTransfer & { readonly store: Map<string, string> }
+}
+
+/** 从 body 派发剪贴板事件，jsdom 里补上 clipboardData。 */
+function clip(type: 'copy' | 'cut' | 'paste', data: DataTransfer): Event {
+  const event = new Event(type, { bubbles: true, cancelable: true })
+  Object.defineProperty(event, 'clipboardData', { value: data })
+  window.document.body.dispatchEvent(event)
+  return event
+}
+
+function focusCanvas(designer: XhFlowDesigner): void {
+  designer.querySelector<HTMLElement>('[data-flow-canvas]')!.focus()
 }
 
 function key(designer: XhFlowDesigner, init: KeyboardEventInit): KeyboardEvent {
@@ -213,8 +235,12 @@ describe('<xh-flow-designer>', () => {
     key(designer, { key: 'a', ctrlKey: true })
     expect(designer.getSelection()).toEqual({ nodes: ['s', 't', 'e'], edges: ['st'] })
     designer.select({ nodes: ['s'] })
-    key(designer, { key: 'c', ctrlKey: true })
-    key(designer, { key: 'v', ctrlKey: true })
+    focusCanvas(designer)
+    expect(key(designer, { key: 'c', ctrlKey: true }).defaultPrevented).toBe(false)
+    const data = clipboardData()
+    expect(clip('copy', data).defaultPrevented).toBe(true)
+    expect(key(designer, { key: 'v', ctrlKey: true }).defaultPrevented).toBe(false)
+    expect(clip('paste', data).defaultPrevented).toBe(true)
     expect(designer.schema.nodes.at(-1)).toMatchObject({ id: 'start_1', x: 16, y: 16 })
     key(designer, { key: 'ArrowRight' })
     key(designer, { key: 'ArrowRight', shiftKey: true })
@@ -223,6 +249,92 @@ describe('<xh-flow-designer>', () => {
     designer.addEventListener('save', () => saves.push(1))
     expect(key(designer, { key: 's', ctrlKey: true }).defaultPrevented).toBe(true)
     expect(saves).toHaveLength(1)
+  })
+
+  it('系统剪贴板：画布有焦点时复制写进事件数据，粘贴读出流程内容，跨实例可贴', async () => {
+    const source = await mount()
+    const target = await mount(element => element.schema = { version: 1, nodes: [], edges: [] })
+    source.select({ nodes: ['s', 't'] })
+    const data = clipboardData()
+    expect(clip('copy', data).defaultPrevented).toBe(false)
+    focusCanvas(source)
+    expect(clip('copy', data).defaultPrevented).toBe(true)
+    const text = data.store.get('application/x-xihan-flow+json')!
+    expect(data.store.get('text/plain')).toBe(text)
+    expect(decodeFlowClipboard(text)).toEqual({ nodes: sample().nodes.slice(0, 2), edges: sample().edges })
+
+    focusCanvas(target)
+    clip('paste', data)
+    clip('paste', data)
+    expect(target.schema.nodes.map(node => [node.id, node.x, node.y])).toEqual([
+      ['start_1', 16, 16],
+      ['task_1', 216, 16],
+      ['start_2', 32, 32],
+      ['task_2', 232, 32],
+    ])
+    expect(target.schema.edges.map(edge => [edge.source.node, edge.target.node])).toEqual([['start_1', 'task_1'], ['start_2', 'task_2']])
+    expect(target.getSelection()).toEqual({ nodes: ['start_2', 'task_2'], edges: ['edge_2'] })
+  })
+
+  it('只有 text/plain 也能粘贴；别的内容、结构不合法或焦点不在画布上时不处理', async () => {
+    const designer = await mount(element => element.schema = { version: 1, nodes: [], edges: [] })
+    const text = encodeFlowClipboard({ nodes: [sample().nodes[0]!], edges: [] })
+    focusCanvas(designer)
+    expect(clip('paste', clipboardData({ 'text/plain': 'hello' })).defaultPrevented).toBe(false)
+    expect(clip('paste', clipboardData({ 'text/plain': text.replace('"start"', '1') })).defaultPrevented).toBe(false)
+    expect(designer.schema.nodes).toEqual([])
+    expect(clip('paste', clipboardData({ 'text/plain': text })).defaultPrevented).toBe(true)
+    expect(designer.schema.nodes.map(node => node.id)).toEqual(['start_1'])
+
+    const input = window.document.createElement('input')
+    window.document.body.append(input)
+    input.focus()
+    expect(clip('paste', clipboardData({ 'text/plain': text })).defaultPrevented).toBe(false)
+    expect(designer.schema.nodes).toHaveLength(1)
+    input.remove()
+  })
+
+  it('剪切写进剪贴板并删除选中内容，记为一步；只读时剪切与粘贴都不处理', async () => {
+    const designer = await mount()
+    designer.select({ nodes: ['t'] })
+    focusCanvas(designer)
+    const data = clipboardData()
+    expect(clip('cut', data).defaultPrevented).toBe(true)
+    expect(designer.schema.nodes.map(node => node.id)).toEqual(['s', 'e'])
+    expect(designer.schema.edges).toEqual([])
+    expect(decodeFlowClipboard(data.store.get('text/plain')!)!.nodes.map(node => node.id)).toEqual(['t'])
+    designer.undo()
+    expect(designer.schema).toEqual(sample())
+
+    designer.readonly = true
+    await designer.updateComplete
+    designer.select({ nodes: ['t'] })
+    expect(clip('cut', clipboardData()).defaultPrevented).toBe(false)
+    expect(clip('paste', data).defaultPrevented).toBe(false)
+    expect(designer.cut()).toBeUndefined()
+    expect(designer.schema).toEqual(sample())
+    expect(clip('copy', clipboardData()).defaultPrevented).toBe(true)
+  })
+
+  it('copy() 与 cut() 同时写进系统剪贴板的 text/plain', async () => {
+    const writeText = vi.fn(async (_text: string) => {})
+    const navigator = window.document.defaultView!.navigator
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    try {
+      const designer = await mount()
+      designer.select({ nodes: ['s'] })
+      expect(designer.copy()!.nodes.map(node => node.id)).toEqual(['s'])
+      expect(designer.cut()!.nodes.map(node => node.id)).toEqual(['s'])
+      expect(designer.schema.nodes.map(node => node.id)).toEqual(['t', 'e'])
+      expect(writeText).toHaveBeenCalledTimes(2)
+      expect(decodeFlowClipboard(writeText.mock.calls[1]![0])!.nodes.map(node => node.id)).toEqual(['s'])
+      designer.select({ nodes: [] })
+      expect(designer.copy()).toBeUndefined()
+      expect(writeText).toHaveBeenCalledTimes(2)
+    }
+    finally {
+      Reflect.deleteProperty(navigator, 'clipboard')
+    }
   })
 
   it('只读时可以选择，不能移动、连线或删除', async () => {
