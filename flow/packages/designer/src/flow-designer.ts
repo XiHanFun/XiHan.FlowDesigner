@@ -985,6 +985,7 @@ export class XhFlowDesigner extends XhReactiveElement {
       const { x, y, zoom } = this.#viewport
       layers.world.style.transform = `translate(${x}px, ${y}px) scale(${zoom})`
       layers.world.style.setProperty('--xh-flow-designer-zoom', String(zoom))
+      layers.transform.viewport = this.#viewport
       if (this.#shows('minimap'))
         layers.minimap.update()
     }
