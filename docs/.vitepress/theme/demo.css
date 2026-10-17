@@ -47,6 +47,13 @@
   block-size: 36rem;
 }
 
+/* 示例里扩展登记的统计面板 */
+.flow-demo [slot='leave-summary'] {
+  margin: 0;
+  padding: var(--xh-space-2) var(--xh-space-3);
+  color: var(--xh-fg-muted);
+}
+
 /* 示例里宿主自己写的原生下拉框 */
 .flow-demo select[data-xh-part='control'] {
   inline-size: 100%;
