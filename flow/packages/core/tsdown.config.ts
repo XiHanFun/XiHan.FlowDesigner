@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsdown'
 
 export default defineConfig({
-  entry: { index: 'src/index.ts' },
+  entry: { 'index': 'src/index.ts', 'presets/xihan-workflow': 'src/presets/xihan-workflow/index.ts' },
   format: ['esm'],
   platform: 'neutral',
   dts: true,

@@ -6,6 +6,7 @@
 // 开发预览页：注册 UI 元素与流程的查看器、设计器，装上示例审批流并接好工具栏。
 
 import type { FlowDesignerEventMap } from '@xihan-flow/designer'
+import { xihanWorkflowZhCN } from '@xihan-flow/core/presets/xihan-workflow'
 import { defineFlowDesigner } from '@xihan-flow/designer'
 import { defineFlowViewer } from '@xihan-flow/runtime'
 import { flowZhCN } from '@xihan-flow/runtime/locale'
@@ -13,7 +14,7 @@ import { mergeXhConfig, setXhConfig } from '@xihan-ui/web-components'
 import { defineXhElements } from '@xihan-ui/web-components/define'
 import { zhCN } from '@xihan-ui/web-components/locale'
 import { expressionEditor } from './expression-editor'
-import { approvalFlow, approvalTypes, runSteps } from './sample'
+import { approvalFlow, runSteps, workflow } from './sample'
 import '@xihan-ui/styles/index.css'
 import '@xihan-ui/designer-shell/style.css'
 import '@xihan-flow/runtime/style.css'
@@ -33,7 +34,7 @@ function toolbar(label: string, run: (action: string) => void): void {
 }
 
 const viewer = document.querySelector('xh-flow-viewer')!
-viewer.extensions = [approvalTypes]
+viewer.extensions = [workflow]
 viewer.schema = approvalFlow()
 let step = 0
 let highlighted = false
@@ -77,11 +78,11 @@ toolbar('查看器操作', (action) => {
 
 const designer = document.querySelector('xh-flow-designer')!
 const log = document.querySelector<HTMLElement>('#log')!
-designer.extensions = [approvalTypes, { id: '@xihan-flow/playground/editors', editors: { byControl: { expression: expressionEditor } } }]
+designer.extensions = [workflow, { id: '@xihan-flow/playground/editors', editors: { byPath: { 'data.condition': expressionEditor } } }]
 designer.paletteGroupOrder = ['human', 'control']
-designer.paletteGroupLabels = { human: '人工处理', control: '流程控制' }
-designer.propertyGroupOrder = ['basic', 'participants', 'execution']
-designer.propertyGroupLabels = { basic: '基本', participants: '参与人', execution: '执行' }
+designer.paletteGroupLabels = xihanWorkflowZhCN.categories
+designer.propertyGroupOrder = ['basic', 'participants', 'form', 'execution']
+designer.propertyGroupLabels = xihanWorkflowZhCN.groups
 designer.schema = approvalFlow()
 
 function write(line: string): void {

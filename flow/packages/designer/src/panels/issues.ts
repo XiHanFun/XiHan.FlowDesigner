@@ -58,10 +58,10 @@ export class IssuesPanel {
     return t.flow
   }
 
-  /** 问题说明；落在属性上的问题带上属性名。 */
+  /** 问题说明：扩展给的文字优先，再取设计器文案；落在属性上的问题带上属性名。 */
   #message(issue: FlowIssue, t: FlowDesignerTranslations): string {
-    const registry = this.#host.model().nodeTypes
-    const text = t.issue(issue, { nodeType: type => registry.get(type)?.label ?? type })
+    const model = this.#host.model()
+    const text = model.issueText(issue) ?? t.issue(issue, { nodeType: type => model.nodeTypes.get(type)?.label ?? type })
     const property = this.#property(issue)
     return property === undefined ? text : t.propertyIssue(property.label ?? t.propertyLabel(formatJsonPath(property.path)), text)
   }

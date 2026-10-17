@@ -155,21 +155,22 @@ export class PropertiesPanel {
 
   /** 落在选中对象属性上的问题，path 换成相对对象；流程定义级属性的问题不带 target，path 就是属性路径。 */
   #errors(targets: readonly DesignerPropertyTarget[], t: FlowDesignerTranslations): DesignerPropertyError[] {
-    const registry = this.#host.editor.model.nodeTypes
-    const names = { nodeType: (type: string) => registry.get(type)?.label ?? type }
+    const model = this.#host.editor.model
+    const names = { nodeType: (type: string) => model.nodeTypes.get(type)?.label ?? type }
+    const message = (issue: FlowIssue): string => model.issueText(issue) ?? t.issue(issue, names)
     const errors: DesignerPropertyError[] = []
     const documentTarget = targets.find(entry => entry.kind === DOCUMENT_TARGET_KIND && entry.id === '')
     for (const issue of this.#host.issues()) {
       if (!issue.target) {
         if (documentTarget && issue.path.length > 0)
-          errors.push({ target: { kind: documentTarget.kind, id: '' }, path: issue.path, message: t.issue(issue, names) })
+          errors.push({ target: { kind: documentTarget.kind, id: '' }, path: issue.path, message: message(issue) })
         continue
       }
       if (issue.path.length <= 2)
         continue
       const target = targets.find(entry => entry.id === issue.target!.id && (entry.kind === 'edge') === (issue.target!.kind === 'edge'))
       if (target)
-        errors.push({ target: { kind: target.kind, id: target.id }, path: issue.path.slice(2), message: t.issue(issue, names) })
+        errors.push({ target: { kind: target.kind, id: target.id }, path: issue.path.slice(2), message: message(issue) })
     }
     return errors
   }
