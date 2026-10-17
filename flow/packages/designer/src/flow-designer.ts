@@ -29,7 +29,7 @@ import type {
 import type { FlowDesignerTranslations, FlowNodeRenderer, FlowScene, FlowSceneEdge, FlowSceneNode } from '@xihan-flow/runtime'
 import type { AlignMode, DistributeAxis, ExecuteOptions, Viewport } from '@xihan-ui/designer-kit'
 import type { PropertyEditorTable } from '@xihan-ui/designer-kit/properties'
-import type { DesignerFrameRegion, DesignerSnapOptions, DesignerTransformEventMap, DropOver, PanRequestDetail, XhDesignerFrameElement, XhDesignerTransformElement } from '@xihan-ui/designer-shell'
+import type { DesignerFrameRegion, DesignerSnapOptions, DesignerTransformEventMap, DropOver, PanRequestDetail } from '@xihan-ui/designer-shell'
 import type { PointerSession } from '@xihan-ui/pointer'
 import type { KeyedChildren, PropertyValues } from '@xihan-ui/web-components/authoring'
 import type { FlowAutoLayoutOptions, FlowClipboard, FlowEditor, FlowSelection } from './editor'
@@ -52,7 +52,18 @@ import {
   wheelZoomFactor,
   zoomBy,
 } from '@xihan-ui/designer-kit'
-import { defineDesignerShell, DESIGNER_FRAME_REGIONS, parseDesignerPanels, registerDropTarget } from '@xihan-ui/designer-shell'
+import {
+  defineDesignerShellElement,
+  DESIGNER_FRAME_REGIONS,
+  parseDesignerPanels,
+  registerDropTarget,
+  XhDesignerFrameElement,
+  XhDesignerIssuesElement,
+  XhDesignerMinimapElement,
+  XhDesignerPaletteElement,
+  XhDesignerPropertiesElement,
+  XhDesignerTransformElement,
+} from '@xihan-ui/designer-shell'
 import { createPointerSession, resolveSessionDoc, shouldActivate, wheelPixels } from '@xihan-ui/pointer'
 import {
   createGeneratedElement,
@@ -64,7 +75,7 @@ import {
   XhConfigController,
   XhReactiveElement,
 } from '@xihan-ui/web-components/authoring'
-import { defineXhElements } from '@xihan-ui/web-components/define'
+import { defineXhElement, XhContextMenuElement, XhToolbarElement } from '@xihan-ui/web-components/define'
 import { encodeFlowClipboard, readFlowClipboard, writeFlowClipboard } from './clipboard'
 import { createFlowEditor } from './editor'
 import { ContextMenuPanel } from './panels/context-menu'
@@ -1424,10 +1435,19 @@ export class XhFlowDesigner extends XhReactiveElement {
   }
 }
 
-/** 注册 <xh-flow-designer>；重复调用不报错。 */
+/**
+ * 注册 <xh-flow-designer> 与它用到的 UI 元素、设计器零件（零件各自带上它们内部用的 UI 元素）；
+ * 宿主不必再全量注册。重复调用不报错。
+ */
 export function defineFlowDesigner(): void {
-  defineXhElements()
-  defineDesignerShell()
+  defineXhElement('xh-toolbar', XhToolbarElement)
+  defineXhElement('xh-context-menu', XhContextMenuElement)
+  defineDesignerShellElement('xh-designer-frame', XhDesignerFrameElement)
+  defineDesignerShellElement('xh-designer-palette', XhDesignerPaletteElement)
+  defineDesignerShellElement('xh-designer-properties', XhDesignerPropertiesElement)
+  defineDesignerShellElement('xh-designer-issues', XhDesignerIssuesElement)
+  defineDesignerShellElement('xh-designer-minimap', XhDesignerMinimapElement)
+  defineDesignerShellElement('xh-designer-transform', XhDesignerTransformElement)
   registerElement(FLOW_DESIGNER_TAG, XhFlowDesigner)
 }
 
