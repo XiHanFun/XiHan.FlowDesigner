@@ -33,6 +33,7 @@ const guideSidebar: DefaultTheme.SidebarItem[] = [
       { text: '设计器', link: '/guide/designer' },
       { text: '扩展', link: '/guide/extensions' },
       { text: 'XiHan 工作流引擎预设', link: '/guide/xihan-workflow' },
+      { text: '与宿主集成', link: '/guide/host' },
     ],
   },
 ]
