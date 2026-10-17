@@ -59,4 +59,6 @@ pnpm add @xihan-flow/core @xihan-flow/runtime @xihan-ui/styles
 ## 下一步
 
 - [流程定义结构](./guide/schema)：节点、连线、业务数据与扩展数据。
+- [查看器](./guide/viewer)：运行状态、高亮、定位与事件。
+- [设计器](./guide/designer)：可视化编辑流程定义，撤销与保存。
 - [介绍](./introduction)：包与入口、工作流程。

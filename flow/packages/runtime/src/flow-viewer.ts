@@ -81,6 +81,7 @@ interface Layers {
   readonly nodes: HTMLElement
 }
 
+/** 流程查看器 <xh-flow-viewer>：只读显示流程、运行状态与高亮。 */
 export class XhFlowViewer extends XhReactiveElement {
   static override properties = {
     schema: { attribute: false },

@@ -109,16 +109,27 @@ export type FlowSchemaChangeKind = 'execute' | 'undo' | 'redo' | 'load'
 
 /** 设计器派发的事件；x / y 为浏览器视口坐标。 */
 export interface FlowDesignerEventMap {
+  /** 流程定义变了：带新定义、这次的操作与种类；拖动等成组的修改在结束时合成一次派发，装载新定义时 operations 为空。 */
   'schema-change': CustomEvent<{ schema: FlowDocument, operations: readonly FlowOperation[], kind: FlowSchemaChangeKind }>
+  /** 选中的节点与连线变了。 */
   'selection-change': CustomEvent<FlowSelection>
+  /** 有没有未保存的修改变了。 */
   'dirty-change': CustomEvent<{ dirty: boolean }>
+  /** 流程定义、扩展或校验选项变了之后重新校验，带全部问题。 */
   'issues-change': CustomEvent<{ issues: readonly FlowIssue[] }>
+  /** 拖出或改连的连线违反连接约束，没有连上；带两端与全部问题。 */
   'connect-reject': CustomEvent<{ source: FlowEndpoint, target: FlowEndpoint, problems: readonly FlowConnectionProblem[] }>
+  /** 双击了节点。 */
   'node-dblclick': CustomEvent<{ id: string }>
+  /** 在节点上打开右键菜单，节点没被选中时先选中它；可以取消，取消后内置菜单与浏览器的右键菜单都不出现。 */
   'node-contextmenu': CustomEvent<{ id: string, x: number, y: number }>
+  /** 在连线上打开右键菜单，连线没被选中时先选中它；可以取消。 */
   'edge-contextmenu': CustomEvent<{ id: string, x: number, y: number }>
+  /** 在画布空白处打开右键菜单；可以取消。 */
   'blank-contextmenu': CustomEvent<{ x: number, y: number }>
+  /** 视口变了：缩放、平移、适配与 setViewport 都会派发。 */
   'viewport-change': CustomEvent<{ viewport: Viewport }>
+  /** 画布有焦点时按了 Ctrl / ⌘ + S；设计器不自己保存。 */
   'save': CustomEvent<Record<string, never>>
 }
 
@@ -175,6 +186,7 @@ interface ConnectPreview {
   readonly valid: boolean | undefined
 }
 
+/** 流程设计器 <xh-flow-designer>：在画布上编辑流程定义。 */
 export class XhFlowDesigner extends XhReactiveElement {
   static override properties = {
     readonly: { type: Boolean },
@@ -336,10 +348,12 @@ export class XhFlowDesigner extends XhReactiveElement {
     this.requestUpdate('extensions', old)
   }
 
+  /** 有可以撤销的一步。 */
   get canUndo(): boolean {
     return this.#editor.history.canUndo
   }
 
+  /** 有可以重做的一步。 */
   get canRedo(): boolean {
     return this.#editor.history.canRedo
   }
@@ -410,10 +424,12 @@ export class XhFlowDesigner extends XhReactiveElement {
     return this.#editor.execute(operations, options)
   }
 
+  /** 撤销一步；没有可撤销的返回 false。 */
   undo(): boolean {
     return this.#editor.undo()
   }
 
+  /** 重做一步；没有可重做的返回 false。 */
   redo(): boolean {
     return this.#editor.redo()
   }
@@ -433,14 +449,17 @@ export class XhFlowDesigner extends XhReactiveElement {
     return this.#editor.addNode(type, topLeft)
   }
 
+  /** 换成选中这些节点与连线，没写的一类清空。 */
   select(selection: Partial<FlowSelection>): void {
     this.#editor.select(selection)
   }
 
+  /** 当前选中的节点与连线。 */
   getSelection(): FlowSelection {
     return this.#editor.selection
   }
 
+  /** 删除选中的节点（连带相连的连线）与连线；只读或没有选中时返回 false。 */
   deleteSelection(): boolean {
     return !this.readonly && this.#editor.deleteSelection()
   }
@@ -463,24 +482,32 @@ export class XhFlowDesigner extends XhReactiveElement {
     return copied
   }
 
+  /**
+   * 粘贴并选中粘贴出的对象，返回它们；每次比上一次多偏移一格网格（不吸附网格时 24）。
+   * 缺省用设计器剪贴板里的内容，给了 clipboard 时它成为剪贴板内容；只读时什么都不做，返回空选择。
+   */
   paste(clipboard?: FlowClipboard): FlowSelection {
     return this.readonly ? { nodes: [], edges: [] } : this.#editor.paste(clipboard, { offset: this.#gridStep() })
   }
 
+  /** 复制选中内容并立即粘贴，偏移一格网格，不改动剪贴板；只读时什么都不做，返回空选择。 */
   duplicate(): FlowSelection {
     return this.readonly ? { nodes: [], edges: [] } : this.#editor.duplicate({ offset: this.#gridStep() })
   }
 
+  /** 对齐选中的节点；少于两个或只读时什么都不做。 */
   align(mode: AlignMode): void {
     if (!this.readonly)
       this.#editor.align(mode)
   }
 
+  /** 等距分布选中的节点；少于三个或只读时什么都不做。 */
   distribute(axis: DistributeAxis): void {
     if (!this.readonly)
       this.#editor.distribute(axis)
   }
 
+  /** 按连线方向分层排布全部节点，左上角保持在原处，并清除连线的手动拐点；记为一步，只读时什么都不做。 */
   autoLayout(options?: FlowAutoLayoutOptions): void {
     if (!this.readonly)
       this.#editor.autoLayout(options)
@@ -491,6 +518,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     return this.#editor.validate(this.validateOptions)
   }
 
+  /** 当前视口。 */
   getViewport(): Viewport {
     return this.#viewport
   }
@@ -507,10 +535,12 @@ export class XhFlowDesigner extends XhReactiveElement {
     this.#fitIfPending()
   }
 
+  /** 以视口中心放大一档。 */
   zoomIn(): void {
     this.#zoomAtCenter(ZOOM_STEP)
   }
 
+  /** 以视口中心缩小一档。 */
   zoomOut(): void {
     this.#zoomAtCenter(1 / ZOOM_STEP)
   }
@@ -525,6 +555,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     this.setViewport(centerOn({ x: 0, y: 0, zoom: 1 }, center, size))
   }
 
+  /** 把节点居中显示。 */
   scrollToNode(id: string): void {
     const rect = this.#nodeRect(id)
     const size = this.#size()

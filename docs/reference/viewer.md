@@ -144,7 +144,7 @@ declare function createOrthogonalRouter(options?: OrthogonalRouterOptions): Flow
 | `FlowNodeRenderContext` | 接口 | 自定义节点内容时拿到的上下文。 |
 | `FlowNodeRenderer` | 类型 | 自定义节点内容：每次绘制都会调用，把内容写进 container；不给时显示标签文字。 |
 | `FlowViewerEventMap` | 接口 | 查看器派发的事件；x / y 为浏览器视口坐标。 |
-| `XhFlowViewer` | 类 |  |
+| `XhFlowViewer` | 类 | 流程查看器 &lt;xh-flow-viewer&gt;：只读显示流程、运行状态与高亮。 |
 
 ### router
 
