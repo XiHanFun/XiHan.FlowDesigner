@@ -520,12 +520,91 @@ function viewerPage() {
   ])
 }
 
+// —— 设计器 ——
+
+/** 快捷键：Mod 写成 Ctrl / ⌘。 */
+function shortcutText(keys) {
+  return keys.map(key => (key === 'Mod' ? 'Ctrl / ⌘' : key)).join(' + ')
+}
+
+/** 内置命令：从 BUILTIN_COMMANDS 的字面量里取 id、文案键与快捷键；enabled 由 editable 包着的只读时不可用。 */
+function builtinCommands(file) {
+  const { node } = declaration(file, 'BUILTIN_COMMANDS')
+  return node.initializer.elements.map((element) => {
+    const fields = new Map(element.properties.map(property => [nameOf(property), property.initializer]))
+    const id = fields.get('id').text
+    const label = /^text\('(\w+)'\)$/.exec(flat(fields.get('label')))?.[1]
+    if (label === undefined)
+      throw new Error(`[gen-reference] command ${id} has no text() label`)
+    const shortcut = fields.get('shortcut')
+    const enabled = fields.get('enabled')
+    return {
+      id,
+      label,
+      shortcut: shortcut === undefined ? [] : shortcut.elements.map(item => item.text),
+      readonly: enabled === undefined || !flat(enabled).startsWith('editable('),
+    }
+  })
+}
+
+function commandTable(file) {
+  const texts = flowZhCN.translations['xh-flow-designer']
+  return table(['命令', '名称', '快捷键', '只读时'], builtinCommands(file).map(command => [
+    code(command.id, true),
+    texts[command.label],
+    command.shortcut.length === 0 ? '—' : code(shortcutText(command.shortcut), true),
+    command.readonly ? '可用' : '不可用',
+  ]))
+}
+
+/** 命令排列常量：每组一行。 */
+function layoutSection(file, name) {
+  const { node } = declaration(file, name)
+  return [
+    `### ${name} {#${anchorOf(name)}}`,
+    blockDoc(jsdoc(node.parent.parent)),
+    table(['组', '命令'], node.initializer.elements.map((group, index) => [
+      String(index + 1),
+      group.elements.map(item => code(item.text, true)).join(' '),
+    ])),
+  ].filter(Boolean).join('\n\n')
+}
+
+function designerPage() {
+  const root = packageSource('designer', 'src')
+  const designer = join(root, 'flow-designer.ts')
+  const editor = join(root, 'editor.ts')
+  const extensions = join(root, 'extensions.ts')
+  return page('设计器', `${code('<xh-flow-designer>')} 编辑流程定义，类在 ${code('@xihan-flow/designer')} 里导出为 ${code('XhFlowDesigner')}，调用 ${code('defineFlowDesigner()')} 注册。用法见[设计器](../guide/designer)。`, [
+    '## 元素 xh-flow-designer',
+    elementSections(designer, 'XhFlowDesigner', 'FlowDesignerEventMap'),
+    '## 注册',
+    functionSection(designer, 'defineFlowDesigner'),
+    '## 内置命令',
+    `内置命令登记在 ${code('FLOW_DESIGNER_EXTENSION')} 里，工具栏、右键菜单与 ${code('commandLayout')} 都按 id 引用。名称取自中文语言包；快捷键在画布有焦点时生效，Ctrl / ⌘ 在 macOS 上是 ⌘，其它系统是 Ctrl。`,
+    commandTable(extensions),
+    layoutSection(extensions, 'FLOW_TOOLBAR_LAYOUT'),
+    functionSection(extensions, 'flowMenuLayout'),
+    typeSection(extensions, 'FlowMenuSubject'),
+    '## 类型',
+    typeSection(designer, 'FlowSchemaChangeKind'),
+    typeSection(designer, 'FlowDesignerPanel'),
+    interfaceSection(editor, 'FlowSelection'),
+    interfaceSection(editor, 'FlowClipboard'),
+    interfaceSection(editor, 'FlowAutoLayoutOptions'),
+    '## 文案',
+    interfaceSection(packageSource('runtime', 'src', 'translations.ts'), 'FlowDesignerTranslations'),
+    exportIndexSection('全部导出', { root, file: join(root, 'index.ts') }),
+  ])
+}
+
 // —— 输出 ——
 
 const pages = {
   'reference/schema.md': schemaPage(),
   'reference/issues.md': issuesPage(),
   'reference/viewer.md': viewerPage(),
+  'reference/designer.md': designerPage(),
   'reference/core.md': corePage(),
 }
 

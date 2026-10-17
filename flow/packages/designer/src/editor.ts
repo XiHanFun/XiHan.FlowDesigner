@@ -29,7 +29,9 @@ import { layered } from '@xihan-ui/viz/graph'
 
 /** 选中的节点与连线 id，各自按选中先后排列。 */
 export interface FlowSelection {
+  /** 选中的节点 id。 */
   readonly nodes: readonly string[]
+  /** 选中的连线 id。 */
   readonly edges: readonly string[]
 }
 
@@ -38,7 +40,9 @@ export type FlowSelectMode = 'replace' | 'add' | 'toggle'
 
 /** 剪贴板内容：被复制的节点及两端都在其中的连线。 */
 export interface FlowClipboard {
+  /** 被复制的节点。 */
   readonly nodes: readonly FlowNode[]
+  /** 两端都在 nodes 里的连线。 */
   readonly edges: readonly FlowEdge[]
 }
 
@@ -84,9 +88,13 @@ export type FlowConnectResult
 
 /** 自动布局选项。 */
 export interface FlowAutoLayoutOptions {
+  /** 分层方向：TB 自上而下、BT 自下而上、LR 自左而右、RL 自右而左；缺省 TB。 */
   readonly direction?: LayeredDirection
+  /** 同层相邻两节点之间的空隙，缺省 24。 */
   readonly nodeGap?: number
+  /** 相邻两层之间的空隙，缺省 48。 */
   readonly layerGap?: number
+  /** 这一步的说明，供撤销重做按钮提示。 */
   readonly label?: string
 }
 
