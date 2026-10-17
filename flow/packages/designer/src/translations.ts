@@ -66,6 +66,12 @@ function issueText(issue: FlowIssue, names: FlowIssueNames): string {
       return 'Not one of the options'
     case 'invalid-color':
       return 'Not a valid color'
+    case 'invalid-value':
+      return 'Invalid value'
+    case 'unknown-key':
+      return 'Contains an unknown field'
+    case 'unknown-control':
+      return 'Unknown editor kind'
     default:
       return issue.code
   }
