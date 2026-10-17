@@ -206,6 +206,62 @@ function heritageOf(node) {
   return (node.heritageClauses ?? []).flatMap(clause => clause.types.map(flat))
 }
 
+function classMembers(file, className) {
+  const { node } = declaration(file, className)
+  const config = new Map()
+  const properties = []
+  const accessors = new Map()
+  const methods = []
+  for (const member of node.members) {
+    const name = nameOf(member)
+    const isStatic = hasModifier(member, ts.SyntaxKind.StaticKeyword)
+    if (isStatic && ts.isPropertyDeclaration(member) && name === 'properties' && member.initializer !== undefined && ts.isObjectLiteralExpression(member.initializer)) {
+      for (const property of member.initializer.properties) {
+        const options = {}
+        if (ts.isObjectLiteralExpression(property.initializer)) {
+          for (const item of property.initializer.properties)
+            options[nameOf(item)] = item.initializer.getText()
+        }
+        config.set(nameOf(property), options)
+      }
+      continue
+    }
+    if (isStatic || ts.isPrivateIdentifier(member.name ?? member) || hasModifier(member, ts.SyntaxKind.ProtectedKeyword) || hasModifier(member, ts.SyntaxKind.PrivateKeyword))
+      continue
+    if (ts.isPropertyDeclaration(member) && hasModifier(member, ts.SyntaxKind.DeclareKeyword)) {
+      properties.push({ name, type: flat(member.type), doc: jsdoc(member) })
+      continue
+    }
+    if (ts.isGetAccessorDeclaration(member)) {
+      const entry = accessors.get(name) ?? { name }
+      Object.assign(entry, { type: flat(member.type), doc: jsdoc(member) || entry.doc })
+      accessors.set(name, entry)
+      continue
+    }
+    if (ts.isSetAccessorDeclaration(member)) {
+      const entry = accessors.get(name) ?? { name }
+      Object.assign(entry, { writable: true, doc: entry.doc || jsdoc(member) })
+      accessors.set(name, entry)
+      continue
+    }
+    if (ts.isMethodDeclaration(member) && !hasModifier(member, ts.SyntaxKind.OverrideKeyword))
+      methods.push({ name, signature: signature(name, member), doc: jsdoc(member) })
+  }
+  const attribute = (name) => {
+    const options = config.get(name)
+    if (options === undefined || options.attribute === 'false')
+      return undefined
+    if (options.attribute !== undefined)
+      return options.attribute.replace(/^'|'$/g, '')
+    return name.toLowerCase()
+  }
+  return {
+    properties: properties.filter(property => config.has(property.name)).map(property => ({ ...property, attribute: attribute(property.name) })),
+    accessors: [...accessors.values()],
+    methods,
+  }
+}
+
 function constantValue(file, name) {
   return flat(declaration(file, name).node.initializer)
 }
@@ -242,6 +298,38 @@ function interfaceSection(file, name, level = '###', intro = '') {
     heritage.length > 0 ? `继承 ${heritage.map(item => code(item)).join('、')}。` : '',
     memberTable(members),
     methodTable(methods),
+  ].filter(Boolean).join('\n\n')
+}
+
+function eventTable(file, name) {
+  return table(['事件', 'detail', '说明'], interfaceMembers(file, name).map((member) => {
+    const detail = /^CustomEvent<(.*)>$/.exec(member.type)?.[1] ?? member.type
+    return [code(member.name, true), code(detail, true), cellDoc(member.doc)]
+  }))
+}
+
+function elementSections(file, className, eventMap) {
+  const { properties, accessors, methods } = classMembers(file, className)
+  return [
+    '### 属性',
+    table(['属性', 'attribute', '类型', '说明'], properties.map(property => [
+      code(property.name, true),
+      property.attribute === undefined ? '—' : code(property.attribute, true),
+      code(property.type, true),
+      cellDoc(property.doc),
+    ])),
+    accessors.length > 0 ? '### 存取器' : '',
+    table(['属性', '读写', '类型', '说明'], accessors.map(accessor => [
+      code(accessor.name, true),
+      accessor.writable ? '可读写' : '只读',
+      code(accessor.type, true),
+      cellDoc(accessor.doc ?? ''),
+    ])),
+    '### 方法',
+    methodTable(methods),
+    '### 事件',
+    '事件都是冒泡的 `CustomEvent`。',
+    eventTable(file, eventMap),
   ].filter(Boolean).join('\n\n')
 }
 
@@ -400,11 +488,44 @@ function corePage() {
   ])
 }
 
+// —— 查看器 ——
+
+/** 类型别名写成 TypeScript 代码块。 */
+function typeSection(file, name) {
+  const { node } = declaration(file, name)
+  return [`### ${name} {#${anchorOf(name)}}`, `\`\`\`ts\ntype ${name} = ${flat(node.type)}\n\`\`\``, blockDoc(jsdoc(node))].filter(Boolean).join('\n\n')
+}
+
+function viewerPage() {
+  const root = packageSource('runtime', 'src')
+  const viewer = join(root, 'flow-viewer.ts')
+  const extensions = join(root, 'extensions.ts')
+  const router = join(root, 'router.ts')
+  return page('查看器', `${code('<xh-flow-viewer>')} 在业务页面里显示流程与运行状态，类在 ${code('@xihan-flow/runtime')} 里导出为 ${code('XhFlowViewer')}，调用 ${code('defineFlowViewer()')} 注册。用法见[查看器](../guide/viewer)。`, [
+    '## 元素 xh-flow-viewer',
+    elementSections(viewer, 'XhFlowViewer', 'FlowViewerEventMap'),
+    '## 注册',
+    functionSection(viewer, 'defineFlowViewer'),
+    '## 节点渲染',
+    typeSection(viewer, 'FlowNodeRenderer'),
+    interfaceSection(viewer, 'FlowNodeRenderContext'),
+    interfaceSection(extensions, 'FlowRuntimeExtension'),
+    functionSection(extensions, 'createFlowRuntimeModel'),
+    '## 连线路由',
+    functionSection(router, 'createOrthogonalRouter'),
+    interfaceSection(router, 'OrthogonalRouterOptions'),
+    '## 文案',
+    interfaceSection(join(root, 'translations.ts'), 'FlowViewerTranslations'),
+    exportIndexSection('全部导出', { root, file: join(root, 'index.ts') }),
+  ])
+}
+
 // —— 输出 ——
 
 const pages = {
   'reference/schema.md': schemaPage(),
   'reference/issues.md': issuesPage(),
+  'reference/viewer.md': viewerPage(),
   'reference/core.md': corePage(),
 }
 

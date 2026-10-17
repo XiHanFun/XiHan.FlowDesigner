@@ -34,10 +34,15 @@ export const FLOW_VIEWER_TAG = 'xh-flow-viewer'
 
 /** 自定义节点内容时拿到的上下文。 */
 export interface FlowNodeRenderContext {
+  /** 要画的节点。 */
   readonly node: FlowNode
+  /** 节点类型；类型没有登记时为 undefined。 */
   readonly nodeType: FlowNodeType | undefined
+  /** 要显示的文字：节点的 label，没有时取节点类型的名称，再没有取节点 id。 */
   readonly label: string
+  /** 节点此刻的运行状态；没有状态时为 undefined。 */
   readonly status: FlowNodeStatus | undefined
+  /** 节点是否高亮。 */
   readonly highlighted: boolean
 }
 
@@ -46,12 +51,19 @@ export type FlowNodeRenderer = (container: HTMLElement, context: FlowNodeRenderC
 
 /** 查看器派发的事件；x / y 为浏览器视口坐标。 */
 export interface FlowViewerEventMap {
+  /** 点了节点；拖动平移之后松手不算点击。 */
   'node-click': CustomEvent<{ id: string }>
+  /** 点了连线或连线标签。 */
   'edge-click': CustomEvent<{ id: string }>
+  /** 点了画布空白处。 */
   'blank-click': CustomEvent<Record<string, never>>
+  /** 在节点上打开右键菜单；可以取消，取消后浏览器的右键菜单也不出现。 */
   'node-contextmenu': CustomEvent<{ id: string, x: number, y: number }>
+  /** 在连线上打开右键菜单；可以取消。 */
   'edge-contextmenu': CustomEvent<{ id: string, x: number, y: number }>
+  /** 在画布空白处打开右键菜单；可以取消。 */
   'blank-contextmenu': CustomEvent<{ x: number, y: number }>
+  /** 视口变了：缩放、平移、适配与 setViewport 都会派发。 */
   'viewport-change': CustomEvent<{ viewport: Viewport }>
 }
 
