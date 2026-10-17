@@ -1,0 +1,86 @@
+/*
+ * Copyright (c) 2021-Present XiHanFun and contributors.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ */
+
+/* 示例舞台：边框与留白只用 @xihan-ui 设计令牌；舞台里 VitePress .vp-doc 写在这些标签上的正文排版退回浏览器默认。 */
+
+.flow-demo {
+  margin-block: var(--xh-space-4);
+  padding: var(--xh-space-3);
+  border: var(--xh-stroke-thin) solid var(--xh-border-default);
+  border-radius: var(--xh-radius-md);
+  background: var(--xh-bg-page);
+  color: var(--xh-fg-default);
+}
+
+.vp-doc .flow-demo__stage :where(h1, h2, h3, h4, h5, h6, p, blockquote, ul, ol, li, table, tr, th, td, hr, a, code) {
+  margin: revert;
+  padding: revert;
+  border: revert;
+  background: revert;
+  color: revert;
+  font: revert;
+  letter-spacing: revert;
+  line-height: revert;
+  text-align: revert;
+  list-style: revert;
+  text-decoration: revert;
+  display: revert;
+  overflow: revert;
+}
+
+.flow-demo__missing {
+  margin: 0;
+  color: var(--xh-fg-danger);
+}
+
+/* 示例里的查看器给定高度与边框 */
+.flow-demo xh-flow-viewer {
+  block-size: 20rem;
+  border: var(--xh-stroke-thin) solid var(--xh-border-subtle);
+  border-radius: var(--xh-radius-md);
+}
+
+/* 示例里的设计器给定高度 */
+.flow-demo xh-flow-designer {
+  block-size: 36rem;
+}
+
+/* 示例里宿主自己写的原生下拉框 */
+.flow-demo select[data-xh-part='control'] {
+  inline-size: 100%;
+  padding-block: var(--xh-space-1);
+  padding-inline: var(--xh-space-2);
+  border: var(--xh-stroke-thin) solid var(--xh-border-control);
+  border-radius: var(--xh-radius-md);
+  background: var(--xh-bg-field);
+  color: var(--xh-fg-default);
+}
+
+/* 示例里直接写的原生按钮 */
+.flow-demo__stage > button {
+  margin-block-end: var(--xh-space-3);
+  padding-block: var(--xh-space-1);
+  padding-inline: var(--xh-space-3);
+  border: var(--xh-stroke-thin) solid var(--xh-border-default);
+  border-radius: var(--xh-radius-md);
+  background: var(--xh-bg-surface);
+  font-size: var(--xh-font-size-sm);
+}
+
+.flow-demo__stage > button + button {
+  margin-inline-start: var(--xh-space-2);
+}
+
+/* 示例里的状态行 */
+.flow-demo__stage > p {
+  margin-block: 0 var(--xh-space-3);
+  color: var(--xh-fg-muted);
+  font-size: var(--xh-font-size-sm);
+}
+
+.flow-demo__stage > button:focus-visible {
+  outline: 2px solid var(--xh-ring-focus);
+  outline-offset: 2px;
+}

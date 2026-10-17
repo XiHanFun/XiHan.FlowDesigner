@@ -25,6 +25,7 @@ XiHan.FlowDesigner 是框架无关的流程设计器，以原生 Web Components 
 ├─ AGENTS.md
 ├─ CLAUDE.md -> AGENTS.md         # Claude Code 仓库指令入口
 ├─ .github/ .gitee/ .gitcode/     # 三平台 Issue / PR 模板，GitHub 另有 CI
+├─ docs/                            # 产品文档站（VitePress，独立的 pnpm 项目）
 └─ flow/                           # pnpm monorepo 根
    ├─ packages/
    │  ├─ core/                    # @xihan-flow/core：模型层，纯 TS，不碰 DOM
@@ -33,7 +34,7 @@ XiHan.FlowDesigner 是框架无关的流程设计器，以原生 Web Components 
    └─ playground/                 # @xihan-flow/playground：开发预览页（private，不发布）
 ```
 
-仓库根没有 package.json，库命令在 `flow/` 执行。
+仓库根没有 package.json，库命令在 `flow/` 执行，文档站命令在 `docs/` 执行。
 
 ## 常用命令（`flow/`）
 
@@ -59,6 +60,26 @@ pnpm dev
 ```
 
 这是开发预览，不是产品：页面只用 UI 的令牌、皮肤与元素，不另写一套样式，也不进任何发布物。
+
+## 文档站（`docs/`）
+
+产品文档站用 VitePress 加组织统一主题 `@xihanfun/vitepress-theme`，做法与打印设计器的文档站一致。
+
+| 任务 | 命令（在 `docs/`） |
+| --- | --- |
+| 安装 | `pnpm install --frozen-lockfile` |
+| 开发 | `pnpm dev`（根仓 `.claude/launch.json` 登记为 `xihan-docs-flow`，端口 5188） |
+| 构建 | `pnpm build`（站内死链会让构建失败） |
+| 示例类型检查 | `pnpm typecheck` |
+| 示例流程定义读入并校验 | `pnpm check:examples` |
+| Lint | `pnpm lint` |
+
+- 流程三个包经 `link:` 读 `flow/packages/*` 的产物，先在 `flow/` 构建；`@xihan-ui/*` 与 `flow/` 工作区一样经 overrides 读同级 XiHan.UI 的产物，UI 5.0.0 正式发布后删掉那一段。
+- 正文里的 TypeScript 示例都放在 `examples/`，用 `<<< @/examples/…#片段` 引入，不在 Markdown 里另写一份：`schemas/` 下导出 `schema` 与 `extensions` 的流程定义由 `check:examples` 读入并校验，`demos/` 下的 `.ts` 导出 `mount(host)`，页面上写 `<FlowDemo name="…" />` 真实运行，`snippets/` 只做类型检查。
+- 正文里含 `{{` 的行内代码写成 `<code v-pre>…</code>`，否则会被 Vue 当成插值吃掉，构建也不报错。
+- 站点自己的导航、侧栏与示例组件放在 `docs/.vitepress/`，不复制或改写主题已提供的样式。
+- 文档只写已经做完的能力；不写组件数、节点类型数与依赖的具体版本号，不写预发布阶段的铺垫。
+- 站点地址是 https://flow.docs.xihanfun.com：`docs/public/CNAME`、`docs/public/.nojekyll` 与 `.github/workflows/deploy-docs.yml`（main 上 `docs/` 或 `flow/` 有变更时先装好并构建 `flow/`，再构建文档站，部署到 gh-pages）属于站点契约，不因清理构建配置而删除；主题配置的 `llms.site` 与 `docs/package.json` 的 `homepage` 写同一个地址。`flow/` 的 overrides 生效期间这条流水线跑不通，与不推送远端的约定一致。
 
 ## 分层与依赖
 
@@ -96,8 +117,8 @@ pnpm dev
 ## Git 与提交
 
 - 保留用户已有和无关改动；不要 reset、checkout 或清理它们。
-- 使用 Conventional Commits：`<type>(<scope>): <中文说明>`，scope 取 `core`、`runtime`、`designer`、`repo`。
-- 一项完整功能一个提交；提交前跑 `pnpm lint`、`pnpm build`、`pnpm typecheck`、`pnpm test` 与 `git diff --check`。
+- 使用 Conventional Commits：`<type>(<scope>): <中文说明>`，scope 取 `core`、`runtime`、`designer`、`docs`、`repo`。
+- 一项完整功能一个提交；改 `flow/` 的提交前跑 `pnpm lint`、`pnpm build`、`pnpm typecheck`、`pnpm test`，改 `docs/` 的在 `docs/` 跑 `pnpm check:examples`、`pnpm lint`、`pnpm typecheck`、`pnpm build`，都要过 `git diff --check`。
 - 不推送、不发布、不创建远程 PR，除非用户明确要求。
 
 ## 禁止事项
