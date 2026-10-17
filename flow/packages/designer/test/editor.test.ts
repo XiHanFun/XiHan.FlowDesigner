@@ -73,6 +73,32 @@ describe('新建节点与连线', () => {
     expect(editor.selection).toEqual({ nodes: [], edges: ['edge_1'] })
   })
 
+  it('新节点与新连线写入属性描述的缺省值', () => {
+    const editor = createFlowEditor({
+      document: { version: 1, nodes: [], edges: [] },
+      extensions: [{
+        id: 'test',
+        nodeTypes: [
+          {
+            type: 'gate',
+            size: { width: 10, height: 10 },
+            ports: 'out',
+            properties: [{ path: ['data', 'mode'], control: { kind: 'text' }, default: 'all' }],
+            outgoingEdges: [{ path: ['data', 'priority'], control: { kind: 'number' }, default: 0 }],
+          },
+          { type: 'sink', size: { width: 10, height: 10 }, ports: 'in' },
+        ],
+      }],
+    })
+    const gate = editor.addNode('gate', { x: 0, y: 0 })
+    const sink = editor.addNode('sink', { x: 50, y: 0 })
+    expect(gate.data).toEqual({ mode: 'all' })
+    expect(sink.data).toBeUndefined()
+    const result = editor.connect({ node: gate.id }, { node: sink.id })
+    expect(result.ok && result.edge.data).toEqual({ priority: 0 })
+    expect(editor.document.edges[0]!.data).toEqual({ priority: 0 })
+  })
+
   it('改连一端时排除被拖动的连线本身', () => {
     const { editor } = setup()
     expect(editor.reconnect('te', 'source', { node: 's' })).toEqual({

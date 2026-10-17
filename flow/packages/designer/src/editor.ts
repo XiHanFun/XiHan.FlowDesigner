@@ -25,6 +25,7 @@ import type { LayeredDirection } from '@xihan-ui/viz/graph'
 import { applyOperation, checkConnection, createFlowModel, createNode, validateDocument } from '@xihan-flow/core'
 import { formatJsonPath, getJsonAt, isPlainObject, jsonEquals, setJsonAt } from '@xihan-ui/core/json'
 import { alignRects, createHistory, distributeRects, nextFreeId, remapIds, unionRects } from '@xihan-ui/designer-kit'
+import { applyDefaults } from '@xihan-ui/designer-kit/properties'
 import { layered } from '@xihan-ui/viz/graph'
 
 /** 选中的节点与连线 id，各自按选中先后排列。 */
@@ -121,7 +122,7 @@ export interface FlowEditor {
   readonly addNode: (type: string, init: FlowAddNodeInit, options?: ExecuteOptions) => FlowNode
   /** 检查在两端点间新增连线会违反的约束；空数组表示可以连接。 */
   readonly checkConnect: (source: FlowEndpoint, target: FlowEndpoint, ignoreEdge?: string) => FlowConnectionProblem[]
-  /** 在两端点间新增连线并选中它；违反约束时不改文档。 */
+  /** 在两端点间新增连线并选中它，写入连线属性描述的缺省值；违反约束时不改文档。 */
   readonly connect: (source: FlowEndpoint, target: FlowEndpoint, options?: ExecuteOptions) => FlowConnectResult
   /** 把连线的一端改连到新端点；违反约束时不改文档。 */
   readonly reconnect: (edgeId: string, end: FlowEdgeEnd, endpoint: FlowEndpoint, options?: ExecuteOptions) => FlowConnectResult
@@ -348,7 +349,8 @@ export function createFlowEditor(options: FlowEditorOptions): FlowEditor {
       const problems = editor.checkConnect(source, target)
       if (problems.length > 0)
         return { ok: false, problems }
-      const edge: FlowEdge = { id: allocate('edge'), source, target }
+      const sourceType = nodeById(source.node)?.type
+      const edge = applyDefaults({ id: allocate('edge'), source, target } as unknown as JsonObject, model.edgePropertiesOf(sourceType)) as unknown as FlowEdge
       history.execute([{ type: 'addEdge', edge }], executeOptions)
       setSelection({ nodes: [], edges: [edge.id] })
       return { ok: true, edge }

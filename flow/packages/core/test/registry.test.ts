@@ -90,6 +90,21 @@ describe('createNode', () => {
     expect(node).toEqual({ id: 'n1', type: 'task', x: 0, y: 0, width: 1, height: 2, label: '', data: {} })
   })
 
+  it('属性描述的缺省值写进还没有值的路径，已有的值不动', () => {
+    const mail = createNodeTypeRegistry([{
+      type: 'mail',
+      size: { width: 10, height: 10 },
+      ports: 'none',
+      defaults: { data: { to: 'a' } },
+      properties: [
+        { path: ['data', 'to'], control: { kind: 'text' }, default: 'b' },
+        { path: ['data', 'retry', 'max'], control: { kind: 'number' }, default: 3 },
+        { path: ['label'], control: { kind: 'text' } },
+      ],
+    }]).get('mail')!
+    expect(createNode(mail, { id: 'm', x: 0, y: 0 })).toEqual({ id: 'm', type: 'mail', x: 0, y: 0, width: 10, height: 10, data: { to: 'a', retry: { max: 3 } } })
+  })
+
   it('类型无默认值时不写 label 与 data', () => {
     expect(createNode(registry.get('bare')!, { id: 'b', x: 1, y: 2 })).toEqual({ id: 'b', type: 'bare', x: 1, y: 2, width: 10, height: 10 })
   })
