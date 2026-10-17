@@ -30,6 +30,7 @@ export type {
 /** 预设的扩展 id；规则的问题码以 xihan-workflow. 开头。 */
 export const XIHAN_WORKFLOW_ID = '@xihan-flow/xihan-workflow'
 
+/** createXihanWorkflow 的选项。 */
 export interface CreateXihanWorkflowOptions {
   /** 文案，各部分按键覆盖英文缺省；中文直接传 xihanWorkflowZhCN。 */
   readonly texts?: XihanWorkflowTextsOverride

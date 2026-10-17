@@ -13,7 +13,9 @@ import { dirname, join } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { DEFAULT_ISSUE_SEVERITY } from '@xihan-flow/core'
+import { createXihanWorkflow, xihanWorkflowZhCN } from '@xihan-flow/core/presets/xihan-workflow'
 import { flowZhCN } from '@xihan-flow/runtime/locale'
+import { formatJsonPath } from '@xihan-ui/core/json'
 import ts from 'typescript'
 
 const docsDir = fileURLToPath(new URL('../', import.meta.url))
@@ -680,6 +682,109 @@ function extensionsPage() {
   ])
 }
 
+// —— XiHan 工作流引擎预设 ——
+
+const PORT_NAMES = { in: '左侧入口', out: '右侧出口', both: '左侧入口、右侧出口', none: '没有端口' }
+
+/** 节点类型的个数与可达性要求。 */
+function nodeTypeTraits(type) {
+  const traits = []
+  if (type.entry)
+    traits.push('可达性的起点，不要求入线')
+  if (type.terminal)
+    traits.push('不要求出线')
+  if (type.minCount !== undefined && type.minCount === type.maxCount)
+    traits.push(`恰好 ${type.minCount} 个`)
+  else if (type.minCount !== undefined || type.maxCount !== undefined)
+    traits.push([type.minCount === undefined ? '' : `至少 ${type.minCount} 个`, type.maxCount === undefined ? '' : `至多 ${type.maxCount} 个`].filter(Boolean).join('、'))
+  return traits.join('；') || '—'
+}
+
+/** 编辑方式：种类，下拉的写出选项。 */
+function controlText(control) {
+  if (control.kind !== 'select')
+    return code(control.kind, true)
+  const options = control.options.map(option => `${prose(option.label ?? String(option.value), true)}（${code(String(option.value), true)}）`)
+  return `${code('select', true)}：${options.join('、')}`
+}
+
+function descriptorTable(descriptors, groups) {
+  return table(['属性', '路径', '编辑方式', '分组', '必填'], descriptors.map(descriptor => [
+    prose(descriptor.label ?? '', true),
+    code(formatJsonPath(descriptor.path), true),
+    controlText(descriptor.control),
+    descriptor.group === undefined ? '—' : groups[descriptor.group] ?? descriptor.group,
+    descriptor.required ? '是' : '—',
+  ]))
+}
+
+/** 预设规则给出的问题码与严重程度：取 rules.ts 里 issue('码', '严重程度', …) 的调用。 */
+function workflowRuleSeverities(file) {
+  const found = new Map()
+  const visit = (node) => {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'issue') {
+      const [issueCode, severity] = node.arguments
+      if (issueCode && severity && ts.isStringLiteral(issueCode) && ts.isStringLiteral(severity))
+        found.set(issueCode.text, severity.text)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(sourceFile(file))
+  return found
+}
+
+function xihanWorkflowPage() {
+  const root = packageSource('core', 'src', 'presets', 'xihan-workflow')
+  const definition = join(root, 'definition.ts')
+  const preset = createXihanWorkflow({ texts: xihanWorkflowZhCN })
+  const { categories, groups, issues } = xihanWorkflowZhCN
+  const severities = workflowRuleSeverities(join(root, 'rules.ts'))
+  const sections = [
+    '## 节点类型',
+    `下表与各节点类型的属性取自中文文案的预设（${code('createXihanWorkflow({ texts: xihanWorkflowZhCN })')}）。类型名就是引擎的活动类型。`,
+    table(['类型', '名称', '类别', '端口', '个数与可达性'], preset.nodeTypes.map(type => [
+      `[${code(type.type, true)}](#${anchorOf(type.type)})`,
+      type.label,
+      categories[type.category] ?? type.category,
+      PORT_NAMES[type.ports] ?? '具名端口',
+      nodeTypeTraits(type),
+    ])),
+  ]
+  for (const type of preset.nodeTypes) {
+    sections.push(`### ${type.type} · ${type.label} {#${anchorOf(type.type)}}`)
+    sections.push(descriptorTable(type.properties ?? [], groups))
+    if ((type.outgoingEdges ?? []).length > 0)
+      sections.push('从它连出的连线：', descriptorTable(type.outgoingEdges, groups))
+    else if (type.ports === 'out' || type.ports === 'both')
+      sections.push('从它连出的连线没有额外属性。')
+  }
+  sections.push(
+    '## 流程定义级属性',
+    '什么都没选中时属性面板编辑这些属性，换成引擎定义时写在定义的顶层。',
+    descriptorTable(preset.documentProperties, groups),
+    '## 规则',
+    `规则检查引擎发布定义时把关、通用校验覆盖不到的约束。说明取自中文文案，严重程度可以经 ${code('validateOptions.severity')} 改写。`,
+    table(['问题码', '严重程度', '说明'], Object.keys(issues).map(issueCode => [
+      code(issueCode, true),
+      SEVERITY_NAMES[severities.get(issueCode)] ?? '—',
+      prose(issues[issueCode], true),
+    ])),
+    '## 预设',
+    functionSection(join(root, 'index.ts'), 'createXihanWorkflow'),
+    interfaceSection(join(root, 'index.ts'), 'CreateXihanWorkflowOptions'),
+    interfaceSection(join(root, 'texts.ts'), 'XihanWorkflowTexts'),
+    '## 与引擎定义互转',
+    functionSection(definition, 'toWorkflowDefinition'),
+    functionSection(definition, 'fromWorkflowDefinition'),
+    interfaceSection(definition, 'FromWorkflowDefinitionOptions'),
+    interfaceSection(definition, 'XihanWorkflowDefinition'),
+    interfaceSection(definition, 'XihanWorkflowNode'),
+    interfaceSection(definition, 'XihanWorkflowTransition'),
+    exportIndexSection('全部导出', { root, file: join(root, 'index.ts') }),
+  )
+  return page('XiHan 工作流引擎预设', `${code('@xihan-flow/core/presets/xihan-workflow')} 是 XiHan.Framework 工作流引擎的节点预设：引擎的每种活动对应一个节点类型，属性键与引擎读的一致，并能与引擎定义 JSON 互转。用法见 [XiHan 工作流引擎预设](../guide/xihan-workflow)。`, sections)
+}
+
 // —— 输出 ——
 
 const pages = {
@@ -688,6 +793,7 @@ const pages = {
   'reference/viewer.md': viewerPage(),
   'reference/designer.md': designerPage(),
   'reference/extensions.md': extensionsPage(),
+  'reference/xihan-workflow.md': xihanWorkflowPage(),
   'reference/core.md': corePage(),
 }
 

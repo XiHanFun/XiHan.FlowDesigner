@@ -26,6 +26,7 @@ export const XIHAN_WORKFLOW_ACTIVITY_TYPES = [
   'Fault',
 ] as const
 
+/** 引擎内置的活动类型名。 */
 export type XihanWorkflowActivityType = typeof XIHAN_WORKFLOW_ACTIVITY_TYPES[number]
 
 /** 物料面板的分类，节点类型的 category 取这些值。 */
@@ -124,13 +125,17 @@ export type XihanWorkflowIssueCode
 
 /** 预设的全部文案。 */
 export interface XihanWorkflowTexts {
+  /** 节点类型的显示名，键是活动类型。 */
   readonly activities: Readonly<Record<XihanWorkflowActivityType, string>>
   /** 交给设计器的 paletteGroupLabels。 */
   readonly categories: Readonly<Record<XihanWorkflowCategory, string>>
   /** 交给设计器的 propertyGroupLabels。 */
   readonly groups: Readonly<Record<XihanWorkflowGroup, string>>
+  /** 属性的标签。 */
   readonly properties: Readonly<Record<XihanWorkflowPropertyKey, string>>
+  /** 下拉选项的文字。 */
   readonly options: Readonly<Record<XihanWorkflowOptionKey, string>>
+  /** 规则问题的说明。 */
   readonly issues: Readonly<Record<XihanWorkflowIssueCode, string>>
 }
 

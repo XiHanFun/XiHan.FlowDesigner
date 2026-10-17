@@ -80,6 +80,19 @@
   margin-inline-start: var(--xh-space-2);
 }
 
+/* 示例里输出的 JSON */
+.flow-demo__stage > pre {
+  max-block-size: var(--xh-viewport-h-md);
+  overflow: auto;
+  margin-block: 0 var(--xh-space-3);
+  padding: var(--xh-space-2) var(--xh-space-3);
+  border: var(--xh-stroke-thin) solid var(--xh-border-subtle);
+  border-radius: var(--xh-radius-md);
+  background: var(--xh-bg-subtle);
+  font-family: var(--xh-font-family-mono);
+  font-size: var(--xh-font-size-sm);
+}
+
 /* 示例里的状态行 */
 .flow-demo__stage > p {
   margin-block: 0 var(--xh-space-3);
