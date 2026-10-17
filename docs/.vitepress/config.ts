@@ -24,15 +24,43 @@ const guideSidebar: DefaultTheme.SidebarItem[] = [
       { text: '快速开始', link: '/quickstart' },
     ],
   },
+  {
+    text: '指南',
+    collapsed: false,
+    items: [
+      { text: '流程定义结构', link: '/guide/schema' },
+    ],
+  },
+]
+
+// 参考页由 scripts/gen-reference.mjs 从源码生成
+const referenceSidebar: DefaultTheme.SidebarItem[] = [
+  {
+    text: '流程定义',
+    collapsed: false,
+    items: [
+      { text: '流程定义类型', link: '/reference/schema' },
+      { text: '问题码', link: '/reference/issues' },
+    ],
+  },
+  {
+    text: 'API',
+    collapsed: false,
+    items: [
+      { text: '模型层 core', link: '/reference/core' },
+    ],
+  },
 ]
 
 // 每个顶部导航板块各自一份侧栏，由路径前缀决定用哪一份；首页是 layout: home，不落任何一份。
 const sidebar: DefaultTheme.Sidebar = {
+  '/reference/': referenceSidebar,
   '/': guideSidebar,
 }
 
 const nav: DefaultTheme.NavItem[] = [
   { text: '指南', link: '/introduction', activeMatch: '^/(introduction|quickstart|guide/.*)$' },
+  { text: '参考', link: '/reference/schema', activeMatch: '^/reference/' },
   {
     text: '生态',
     items: [
@@ -100,6 +128,12 @@ export default defineXiHanConfig({
     site: 'https://flow.docs.xihanfun.com',
     sections: [
       { dir: '.', label: '开始' },
+      { dir: 'guide', label: '指南' },
+      { dir: 'reference', label: '参考' },
+    ],
+    bundles: [
+      { name: 'guide', label: '指南', dirs: ['guide'] },
+      { name: 'reference', label: '参考', dirs: ['reference'] },
     ],
     transform: machineReadable,
   },

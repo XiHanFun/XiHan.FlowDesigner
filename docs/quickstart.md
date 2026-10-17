@@ -58,4 +58,5 @@ pnpm add @xihan-flow/core @xihan-flow/runtime @xihan-ui/styles
 
 ## 下一步
 
+- [流程定义结构](./guide/schema)：节点、连线、业务数据与扩展数据。
 - [介绍](./introduction)：包与入口、工作流程。
