@@ -66,7 +66,7 @@
 
 | 名称 | 种类 | 说明 |
 | --- | --- | --- |
-| `createNode` | 函数 | 按节点类型新建节点：尺寸、标签与 data 取类型默认值，init 中给出的字段优先。 |
+| `createNode` | 函数 | 按节点类型新建节点：尺寸、标签与 data 取类型默认值，init 中给出的字段优先；再把属性描述的缺省值写进还没有值的路径。 |
 | `createNodeTypeRegistry` | 函数 | 创建节点类型登记表；定义不合法时抛错。 |
 | `findPort` | 函数 | 查找节点类型上的端口。 |
 | `FlowConnectionRule` | 接口 | 连接约束。 |
@@ -80,7 +80,7 @@
 | `FlowPortDirection` | 类型 | 端口方向：只入、只出或双向。 |
 | `FlowPortPreset` | 类型 | 端口预设：in 为左侧入口 in，out 为右侧出口 out，both 为两者都有，none 为无端口。 |
 | `FlowPortSide` | 类型 | 端口所在的节点边。 |
-| `FlowPropertyControl` | 类型 | 节点属性的编辑方式：内建七种之外，宿主可以用自己的种类（如受理人选择），由宿主提供编辑器。 |
+| `FlowPropertyControl` | 类型 | 节点属性的编辑方式：内建的编辑方式之外，扩展可以登记自己的种类（如受理人选择），编辑器由设计器层的扩展提供。 |
 | `FlowPropertyDescriptor` | 类型 | 节点属性描述：path 相对节点本身，如 ['data', 'properties', 'Url']、['label']。 |
 | `getPortPosition` | 函数 | 计算端口在世界坐标系中的位置。 |
 | `portAllows` | 函数 | 判断端口能否作为连线的指定一端：起点需可出，终点需可入。 |

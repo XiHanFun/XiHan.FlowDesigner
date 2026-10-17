@@ -21,11 +21,13 @@ export type FlowPortPreset = 'in' | 'out' | 'both' | 'none'
 
 /** 具名端口定义。 */
 export interface FlowPortDefinition {
+  /** 端口 id，连线端点的 port 写它；同一节点类型里不能重复。 */
   readonly id: string
   readonly direction: FlowPortDirection
   readonly side: FlowPortSide
   /** 沿所在边从左到右或从上到下的相对位置，取值 0 到 1，缺省 0.5。 */
   readonly offset?: number
+  /** 端口的显示名；内核与内置渲染不解释。 */
   readonly label?: string
   /** 该端口最多连接的连线数。 */
   readonly maxConnections?: number
@@ -58,20 +60,29 @@ export type FlowPropertyDescriptor = PropertyDescriptor<FlowPropertyControl>
 
 /** 新建节点时的默认值。 */
 export interface FlowNodeDefaults {
+  /** 新节点的标签。 */
   readonly label?: string
+  /** 新节点的 data，每次新建时深拷贝一份。 */
   readonly data?: JsonObject
 }
 
 /** 节点类型定义：同时驱动物料面板、属性面板、连线约束与结构校验。 */
 export interface FlowNodeTypeDefinition {
+  /** 类型名，节点的 type 写它。 */
   readonly type: string
+  /** 显示名：物料面板、属性面板的标题与问题说明里用它，不给时显示 type；节点自己没写标签时画布上也显示它。 */
   readonly label?: string
+  /** 物料面板里的类别，按它分组。 */
   readonly category?: string
+  /** 图标名；内核与内置渲染不解释，自定义的节点渲染可以从节点类型上读它。 */
   readonly icon?: string
   /** 新建节点的尺寸。 */
   readonly size: FlowSize
+  /** 端口：预设，或具名端口的列表。 */
   readonly ports: FlowPortPreset | readonly FlowPortDefinition[]
+  /** 新建节点时写入的标签与 data。 */
   readonly defaults?: FlowNodeDefaults
+  /** 连接约束：入出线条数与能连的节点类型。 */
   readonly connection?: FlowConnectionRule
   /** 作为可达性分析的起点，且不要求有入线。 */
   readonly entry?: boolean
@@ -81,9 +92,11 @@ export interface FlowNodeTypeDefinition {
   readonly minCount?: number
   /** 文档中该类型节点的最多个数。 */
   readonly maxCount?: number
+  /** 属性面板里的属性，path 相对节点本身；校验按它们检查取值。 */
   readonly properties?: readonly FlowPropertyDescriptor[]
   /** 从这类节点连出的连线多出的属性，path 相对连线本身，如决策节点出线的条件与是否默认分支。 */
   readonly outgoingEdges?: readonly FlowPropertyDescriptor[]
+  /** 扩展自用的数据；内核不解释。 */
   readonly meta?: JsonObject
 }
 

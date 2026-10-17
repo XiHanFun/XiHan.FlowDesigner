@@ -1,0 +1,109 @@
+# 扩展
+
+节点类型、属性、编辑方式、规则、节点渲染、属性编辑器、命令与面板，都经扩展登记。扩展是普通对象，按实例交给元素的 `extensions`，没有全局注册：同一页面上的两个设计器可以装不同的扩展。完整的字段见[扩展参考](../reference/extensions)。
+
+## 三层
+
+| 层 | 类型 | 所在的包 | 在下一层之上加了什么 | 谁读 |
+| --- | --- | --- | --- | --- |
+| core | `FlowCoreExtension` | `@xihan-flow/core` | 节点类型、连线与流程定义级属性、编辑方式、规则、问题说明 | 校验、编辑操作、查看器、设计器 |
+| 运行时 | `FlowRuntimeExtension` | `@xihan-flow/runtime` | 节点内容的渲染 `nodeRenderers` | 查看器、设计器 |
+| 设计器 | `FlowDesignerExtension` | `@xihan-flow/designer` | 属性编辑器、命令、面板、`setup` | 设计器 |
+
+下层的扩展对象可以直接交给上层的元素，core 层的扩展同时交给查看器、设计器与 `validateDocument`。服务端或 Node.js 里只装 core 层，校验结论与设计器一致。
+
+- `id` 全局唯一，用包名加功能名，如 `@example/leave`。它也是节点、连线与流程定义上扩展数据的键，见[业务数据与扩展数据](./schema#业务数据与扩展数据)。
+- 内置扩展排在最前，传入的按数组顺序排在后面；物料、属性与命令都按这个顺序。
+- 同一个扩展对象换了引用会当作卸下再装上，宿主要保持扩展数组与其中对象的引用稳定。
+
+下面用一个请假流程走一遍：core 层登记四种节点、一种编辑方式与一条规则，设计器层再加编辑器、命令、面板与 `setup`。
+
+## 节点类型
+
+<<< @/examples/schemas/leave.ts#node-types
+
+- `type` 是类型名，节点的 `type` 写它；`label` 是显示名，物料面板、属性面板与问题说明都用它。
+- `category` 是物料面板里的类别，设计器的 `paletteGroupOrder` 与 `paletteGroupLabels` 按类别排序、换标题。
+- `size` 是新建节点的尺寸，`defaults` 是新建时写入的标签与 `data`。
+- `ports` 写预设或具名端口。预设 `in` 是左侧一个入口，`out` 是右侧一个出口，`both` 两者都有，`none` 没有端口；具名端口写 `id`、方向（`in`、`out`、`both`）、所在的边与沿边的相对位置，还可以限制连线条数。连线的端点不写端口时，取方向相符的第一个端口。
+- `entry` 的节点是可达性分析的起点，不要求有入线；`terminal` 的节点不要求有出线。`minCount`、`maxCount` 限制这类节点的个数。
+- `connection` 是连接约束：入线、出线的最多条数，能连向、能接受的节点类型，以及是否允许连向自己。设计器拖动连线时按它判断能不能连，校验也按它报问题。
+
+## 属性
+
+`properties` 是属性面板里列出的属性，`path` 相对节点本身：`['label']` 是标签，`['data', …]` 写进节点的业务数据。每个属性写编辑方式 `control`，内建的有 `text`、`number`、`boolean`、`select`、`tags`、`color`、`json` 等，全部种类与取值约束见 XiHan.UI 的 [designer-kit](https://ui.docs.xihanfun.com/runtime/designer-kit)。
+
+- `group` 是属性面板里的分组，设计器的 `propertyGroupOrder` 与 `propertyGroupLabels` 按分组排序、换标题；`label` 是字段名。
+- `required` 的属性必须填写；`default` 是新建节点或连线时写入的缺省值；`visibleWhen` 按别的属性的值决定显不显示。
+- 校验按属性描述检查取值：必填没填、类型不对、超出范围、不在选项里等，问题码见[问题码](../reference/issues)。
+
+连线的属性有两处：节点类型的 `outgoingEdges` 只加在从这类节点连出的连线上，如审批的结果；扩展的 `edgeProperties` 加在所有连线上。连线的标签与虚线是内置的连线属性。扩展的 `documentProperties` 是流程定义级的属性，什么都没选中时属性面板编辑它们。
+
+## 编辑方式
+
+内建的编辑方式不够用时，在 `controls` 里登记新的种类，键就是属性描述里的 `control.kind`，不能与内建的重名。`check` 检查已经填写的取值，返回问题码表示不合格：
+
+<<< @/examples/schemas/leave.ts#control
+
+core 层只管取值对不对；属性面板里用什么控件编辑它，由设计器层的扩展按种类提供编辑器，见下文的[属性编辑器](#属性编辑器)。没有登记的种类在校验时报 `unknown-control`。
+
+## 规则
+
+规则检查节点类型与属性描述表达不了的约束，拿到流程定义与合并后的节点类型，返回问题：
+
+<<< @/examples/schemas/leave.ts#rules
+
+- 问题码必须以扩展 id 的末段加点开头，`@example/leave` 的规则写 `leave.` 开头的码，不符时校验当场抛 `TypeError`。
+- `path` 从流程定义的根算起；带上 `target` 时，设计器在问题列表里点这条问题会选中并显露那个对象，节点上也会标出问题。
+- `severity` 不写按错误处理。宿主可以用 `validateOptions.severity` 按问题码改写，扩展的问题码也认。
+
+问题的说明由扩展的 `issueText` 给出，返回 `undefined` 时交给设计器的文案：
+
+<<< @/examples/schemas/leave.ts#extension
+
+## 设计器层
+
+设计器层的扩展可以与 core 层的分开写，一起放进 `extensions`。下面的示例里，审批人用下拉框选，工具栏多了「加一个审批」与「吸附网格」，右侧多了一块统计，双击节点时连同它的出线一起选中：
+
+<FlowDemo name="extension" />
+
+<<< @/examples/demos/extension.ts#use
+
+### 属性编辑器
+
+编辑器是一个函数，拿到上下文，返回放进属性面板的元素，值或只读状态变化时设计器调用 `update`：
+
+<<< @/examples/demos/extension.ts#editor
+
+- 上下文里有当前值、属性描述、全部被编辑的对象与是否只读。`setValue` 写入新值，`undefined` 表示清除；`commit` 表示一次编辑结束，之后的写入另起一步撤销。
+- `editors` 有三张表：`byControl` 按编辑方式的种类，`byPath` 按属性路径，`byTarget` 按对象种类再按属性路径。对象种类是节点类型，连线是 `edge`，流程定义是 `document`；路径键是 `formatJsonPath` 的写法，如 `data.approver`。
+- 查找时先看 `byTarget`，再看 `byPath`，最后看 `byControl`；后面的扩展压过前面的。
+
+### 命令
+
+<<< @/examples/demos/extension.ts#commands
+
+- `id` 用扩展 id 加点加名字。`placement` 写缺省出现在哪里：`toolbar`、`menu:node`、`menu:edge`、`menu:blank`，扩展命令排在内置命令之后，自成一组；不写时只能经快捷键或 `commandLayout` 出现。
+- `enabled` 不写时总是可用；写了 `checked` 就是开关式命令，按钮与菜单项显示选中状态；`tone` 写 `danger` 时按危险操作的颜色显示。
+- `shortcut` 写成 `['Mod', 'Shift', 'P']` 这样的键序列，`Mod` 在 macOS 上是 ⌘，其它系统是 Ctrl，画布有焦点时生效。
+- `run` 与其它回调拿到的上下文里有设计器本身与此刻的文案。
+
+### 面板
+
+<<< @/examples/demos/extension.ts#panel
+
+- `region` 是面板占的区：`name` 不能与内置区（`toolbar`、`palette`、`canvas`、`properties`、`issues`）或别的扩展的重名，`position` 是 `top`、`start`、`end`、`bottom` 之一，同一位置的区上下排列。
+- `create` 在给 `extensions` 赋值、装上这个扩展时调用一次；之后设计器每次更新都调用 `update`，扩展被换下前调用 `destroy`。
+- 宿主写了设计器的 `panels` 时，扩展面板的区名也要列进去才显示。
+
+### setup
+
+`setup` 在设计器连上文档时调用，返回的函数在断开或扩展被换下时调用，适合加监听、开定时器这类要清理的事：
+
+<<< @/examples/demos/extension.ts#extension
+
+## 冲突
+
+节点类型、属性路径、编辑方式、命令 id、快捷键、面板的区名或扩展 id 在两个扩展里重复时，给 `extensions` 赋值当场抛 `DesignerExtensionError`（从 `@xihan-ui/designer-kit` 导入），元素保持原来的扩展。错误上带冲突的名字空间、名字与两个扩展的 id：
+
+<<< @/examples/snippets/conflict.ts#conflict

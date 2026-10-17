@@ -7,7 +7,7 @@
 // 问题码与缺省严重程度取自 @xihan-flow/core，问题的中文说明取自 flowZhCN。
 // 带 --check 时只比对，与已提交的页面不一致就列出并以非零退出。
 
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import process from 'node:process'
@@ -113,8 +113,9 @@ function sourceFile(file) {
   return source
 }
 
+/** 节点源码并成一行；类型声明文件里类型字面量的分号分隔换成逗号，与源码的写法一致。 */
 function flat(node) {
-  return node.getText().replace(/\s+/g, ' ').trim()
+  return node.getText().replace(/\s+/g, ' ').trim().replace(/;\s*\}/g, ' }').replace(/;\s+/g, ', ')
 }
 
 /** 节点的注释原文：按行去掉注释符号，文中的 @xihan-ui/... 之类不当作标签。 */
@@ -286,15 +287,22 @@ function methodTable(methods) {
   return table(['方法', '说明'], methods.map(method => [code(method.signature, true), cellDoc(method.doc)]))
 }
 
-function interfaceSection(file, name, level = '###', intro = '') {
+/** 类型参数写成一句；没有时为空串。 */
+function typeParametersLine(node) {
+  return node.typeParameters === undefined ? '' : `类型参数 ${node.typeParameters.map(item => code(flat(item))).join('、')}。`
+}
+
+/** 接口的说明与成员表；omit 里的成员不列出。 */
+function interfaceSection(file, name, level = '###', intro = '', omit = []) {
   const { node } = declaration(file, name)
-  const members = interfaceMembers(file, name)
+  const members = interfaceMembers(file, name).filter(member => !omit.includes(member.name))
   const heritage = heritageOf(node)
   const methods = members.filter(member => member.kind === 'method')
   return [
     `${level} ${name} {#${anchorOf(name)}}`,
     blockDoc(jsdoc(node)),
     intro,
+    typeParametersLine(node),
     heritage.length > 0 ? `继承 ${heritage.map(item => code(item)).join('、')}。` : '',
     memberTable(members),
     methodTable(methods),
@@ -493,7 +501,8 @@ function corePage() {
 /** 类型别名写成 TypeScript 代码块。 */
 function typeSection(file, name) {
   const { node } = declaration(file, name)
-  return [`### ${name} {#${anchorOf(name)}}`, `\`\`\`ts\ntype ${name} = ${flat(node.type)}\n\`\`\``, blockDoc(jsdoc(node))].filter(Boolean).join('\n\n')
+  const parameters = node.typeParameters === undefined ? '' : `<${node.typeParameters.map(flat).join(', ')}>`
+  return [`### ${name} {#${anchorOf(name)}}`, `\`\`\`ts\ntype ${name}${parameters} = ${flat(node.type)}\n\`\`\``, blockDoc(jsdoc(node))].filter(Boolean).join('\n\n')
 }
 
 function viewerPage() {
@@ -598,6 +607,79 @@ function designerPage() {
   ])
 }
 
+// —— 扩展 ——
+
+/** 已安装的 @xihan-ui 包里声明了 name 的类型声明文件。 */
+function uiDeclaration(pkg, name) {
+  const dir = join(docsDir, 'node_modules', '@xihan-ui', pkg, 'dist')
+  for (const file of readdirSync(dir).filter(item => item.endsWith('.d.ts')).sort()) {
+    const path = join(dir, file)
+    if (declarationsOf(sourceFile(path)).has(name))
+      return path
+  }
+  throw new Error(`[gen-reference] ${name} not found in @xihan-ui/${pkg}`)
+}
+
+function extensionsPage() {
+  const core = packageSource('core', 'src')
+  const coreExtensions = join(core, 'extensions.ts')
+  const registry = join(core, 'registry.ts')
+  const designer = packageSource('designer', 'src')
+  const designerExtensions = join(designer, 'extensions.ts')
+  const properties = join(designer, 'panels', 'properties.ts')
+  const kit = name => uiDeclaration('designer-kit', name)
+  const shell = name => uiDeclaration('designer-shell', name)
+  const inherited = name => `${code(name)} 从 XiHan.UI 继承的字段。`
+  return page('扩展', `扩展分三层：core 层登记节点类型、属性、编辑方式与规则，校验与编辑操作只读这一层；运行时层再加节点内容的渲染，见[查看器参考](./viewer#flowruntimeextension)；设计器层再加属性编辑器、命令、面板与 ${code('setup')}。下层的扩展对象可以直接交给上层的元素。用法见[扩展](../guide/extensions)。`, [
+    '## core 层',
+    interfaceSection(coreExtensions, 'FlowCoreExtension'),
+    interfaceSection(kit('DesignerExtensionCore'), 'DesignerExtensionCore', '###', inherited('FlowCoreExtension')),
+    typeSection(kit('SchemaRule'), 'SchemaRule'),
+    interfaceSection(coreExtensions, 'FlowRuleContext'),
+    interfaceSection(kit('ControlKind'), 'ControlKind'),
+    functionSection(coreExtensions, 'createFlowModel'),
+    interfaceSection(coreExtensions, 'FlowModel'),
+    '## 节点类型',
+    interfaceSection(registry, 'FlowNodeTypeDefinition'),
+    typeSection(registry, 'FlowPortPreset'),
+    interfaceSection(registry, 'FlowPortDefinition'),
+    typeSection(registry, 'FlowPortDirection'),
+    typeSection(registry, 'FlowPortSide'),
+    interfaceSection(registry, 'FlowConnectionRule'),
+    interfaceSection(registry, 'FlowNodeDefaults'),
+    '## 属性描述',
+    typeSection(registry, 'FlowPropertyDescriptor'),
+    typeSection(registry, 'FlowPropertyControl'),
+    interfaceSection(kit('PropertyDescriptor'), 'PropertyDescriptor'),
+    typeSection(kit('PropertyCondition'), 'PropertyCondition'),
+    '## 设计器层',
+    interfaceSection(designerExtensions, 'FlowDesignerExtension'),
+    interfaceSection(kit('DesignerExtensionBase'), 'DesignerExtensionBase', '###', `${inherited('FlowDesignerExtension')}${code('importers')}、${code('exporters')} 两个字段流程设计器不读取。`, ['importers', 'exporters']),
+    interfaceSection(shell('DesignerShellExtension'), 'DesignerShellExtension', '###', inherited('FlowDesignerExtension')),
+    interfaceSection(designerExtensions, 'FlowDesignerContext'),
+    functionSection(designerExtensions, 'createFlowDesignerModel'),
+    interfaceSection(designerExtensions, 'FlowDesignerModel'),
+    '## 命令',
+    typeSection(designerExtensions, 'FlowDesignerCommand'),
+    interfaceSection(kit('DesignerCommand'), 'DesignerCommand'),
+    typeSection(kit('DesignerCommandPlacement'), 'DesignerCommandPlacement'),
+    '## 面板',
+    interfaceSection(shell('DesignerPanel'), 'DesignerPanel'),
+    interfaceSection(shell('DesignerPanelInstance'), 'DesignerPanelInstance'),
+    interfaceSection(shell('DesignerFrameRegion'), 'DesignerFrameRegion'),
+    typeSection(shell('DesignerFramePosition'), 'DesignerFramePosition'),
+    '## 属性编辑器',
+    typeSection(properties, 'FlowPropertyEditor'),
+    typeSection(properties, 'FlowPropertyEditorContext'),
+    typeSection(properties, 'FlowPropertyEditorInstance'),
+    typeSection(properties, 'FlowPropertyTarget'),
+    interfaceSection(kit('PropertyEditorTable'), 'PropertyEditorTable'),
+    interfaceSection(kit('PropertyEditorContext'), 'PropertyEditorContext'),
+    interfaceSection(kit('PropertyEditorInstance'), 'PropertyEditorInstance'),
+    interfaceSection(shell('DesignerPropertyTarget'), 'DesignerPropertyTarget'),
+  ])
+}
+
 // —— 输出 ——
 
 const pages = {
@@ -605,6 +687,7 @@ const pages = {
   'reference/issues.md': issuesPage(),
   'reference/viewer.md': viewerPage(),
   'reference/designer.md': designerPage(),
+  'reference/extensions.md': extensionsPage(),
   'reference/core.md': corePage(),
 }
 

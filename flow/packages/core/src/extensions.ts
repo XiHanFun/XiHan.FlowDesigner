@@ -15,6 +15,7 @@ import { createNodeTypeRegistry } from './registry'
 
 /** 规则拿到的上下文：合并后的节点类型。 */
 export interface FlowRuleContext {
+  /** 全部扩展登记的节点类型。 */
   readonly nodeTypes: FlowNodeTypeRegistry
 }
 
@@ -23,6 +24,7 @@ export interface FlowRuleContext {
  * 运行时层与设计器层的扩展在它之上再加渲染、命令与面板，core 函数只读这里的字段。
  */
 export interface FlowCoreExtension extends DesignerExtensionCore<FlowDocument, FlowRuleContext> {
+  /** 节点类型；类型名在全部扩展里不能重复。 */
   readonly nodeTypes?: readonly FlowNodeTypeDefinition[]
   /** 不随源节点类型的连线属性，path 相对连线本身，追加在内置之后；随源节点类型的写在节点类型的 outgoingEdges 上。 */
   readonly edgeProperties?: readonly FlowPropertyDescriptor[]
@@ -52,10 +54,13 @@ export const FLOW_EXTENSION_SPACES: ExtensionKeySpaces<FlowCoreExtension> = {
 export interface FlowModel {
   /** 内置扩展在前，传入的按顺序在后。 */
   readonly extensions: readonly FlowCoreExtension[]
+  /** 全部扩展登记的节点类型。 */
   readonly nodeTypes: FlowNodeTypeRegistry
   /** 不随源节点类型的连线属性。 */
   readonly edgeProperties: readonly FlowPropertyDescriptor[]
+  /** 流程定义级属性。 */
   readonly documentProperties: readonly FlowPropertyDescriptor[]
+  /** 扩展登记的编辑方式。 */
   readonly controls: Readonly<Record<string, ControlKind>>
   /** 某条连线的属性：不随源节点类型的，加上源节点类型的 outgoingEdges；源节点类型未知时只有前者。 */
   readonly edgePropertiesOf: (sourceType: string | undefined) => readonly FlowPropertyDescriptor[]

@@ -31,6 +31,7 @@ const guideSidebar: DefaultTheme.SidebarItem[] = [
       { text: '流程定义结构', link: '/guide/schema' },
       { text: '查看器', link: '/guide/viewer' },
       { text: '设计器', link: '/guide/designer' },
+      { text: '扩展', link: '/guide/extensions' },
     ],
   },
 ]
@@ -51,6 +52,7 @@ const referenceSidebar: DefaultTheme.SidebarItem[] = [
     items: [
       { text: '查看器', link: '/reference/viewer' },
       { text: '设计器', link: '/reference/designer' },
+      { text: '扩展', link: '/reference/extensions' },
       { text: '模型层 core', link: '/reference/core' },
     ],
   },

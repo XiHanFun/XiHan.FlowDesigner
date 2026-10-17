@@ -17,6 +17,7 @@ import { extensionCommands, extensionEditors } from '@xihan-ui/designer-kit'
 
 /** 命令、面板与扩展装上时拿到的上下文。 */
 export interface FlowDesignerContext {
+  /** 这台设计器。 */
   readonly designer: XhFlowDesigner
   /** 此刻生效的设计器文案。 */
   readonly translations: FlowDesignerTranslations
@@ -25,7 +26,7 @@ export interface FlowDesignerContext {
 /** 设计器的命令。 */
 export type FlowDesignerCommand = DesignerCommand<FlowDesignerContext>
 
-/** 流程设计器层的扩展：运行时层的全部字段，加上属性编辑器、命令、面板、导入导出与 setup。 */
+/** 流程设计器层的扩展：运行时层的全部字段，加上属性编辑器、命令、面板与 setup。 */
 export interface FlowDesignerExtension extends FlowRuntimeExtension, DesignerShellExtension<FlowDesignerContext, FlowPropertyEditor, FlowDocument, FlowRuleContext> {}
 
 /** 取值是字符串的文案键。 */
@@ -126,8 +127,11 @@ export interface FlowDesignerModel {
   readonly list: readonly FlowDesignerExtension[]
   /** 再加上 core 层内置扩展的全部扩展，面板与命令按它的顺序。 */
   readonly extensions: readonly FlowDesignerExtension[]
+  /** 运行时模型：节点类型、属性与节点渲染。 */
   readonly runtime: FlowRuntimeModel
+  /** 命令 id → 命令，内置在前。 */
   readonly commands: DesignerCommandTable<FlowDesignerContext>
+  /** 各扩展登记的属性编辑器叠成的一张表。 */
   readonly editors: PropertyEditorTable<FlowPropertyEditor>
 }
 

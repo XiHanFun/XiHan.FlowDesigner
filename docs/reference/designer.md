@@ -267,7 +267,7 @@ type FlowDesignerPanel = 'toolbar' | 'palette' | 'properties' | 'issues' | 'mini
 | `FLOW_TOOLBAR_LAYOUT` | 常量 | 工具栏的缺省排列；commandLayout 没写 toolbar 时用它，再把 placement 含 toolbar 的扩展命令追加成一组。 |
 | `FlowDesignerCommand` | 类型 | 设计器的命令。 |
 | `FlowDesignerContext` | 接口 | 命令、面板与扩展装上时拿到的上下文。 |
-| `FlowDesignerExtension` | 接口 | 流程设计器层的扩展：运行时层的全部字段，加上属性编辑器、命令、面板、导入导出与 setup。 |
+| `FlowDesignerExtension` | 接口 | 流程设计器层的扩展：运行时层的全部字段，加上属性编辑器、命令、面板与 setup。 |
 | `FlowDesignerModel` | 接口 | 一组设计器扩展合出的东西：交给 core 函数的列表、运行时模型、命令表与属性编辑器表。 |
 | `flowMenuLayout` | 函数 | 右键菜单的缺省排列：节点菜单在选中两个以上时加对齐，三个以上时加分布。 |
 | `FlowMenuSubject` | 类型 | 右键菜单落在哪类对象上。 |
