@@ -43,6 +43,7 @@ import type { FlowAutoLayoutOptions, FlowClipboard, FlowEditor, FlowSelection } 
 import type { FlowDesignerContext, FlowDesignerExtension, FlowDesignerModel, FlowMenuSubject } from './extensions'
 import { getPortPosition, portAllows } from '@xihan-flow/core'
 import { buildScene, createOrthogonalRouter } from '@xihan-flow/runtime'
+import { detectKbdPlatform } from '@xihan-ui/core/hotkey'
 import {
   centerOn,
   commandForShortcut,
@@ -78,7 +79,6 @@ import {
   XhDesignerPropertiesElement,
   XhDesignerTransformElement,
 } from '@xihan-ui/designer-shell'
-import { detectKbdPlatform } from '@xihan-ui/headless'
 import { createPointerSession, resolveSessionDoc, shouldActivate, wheelPixels } from '@xihan-ui/pointer'
 import {
   createGeneratedElement,
