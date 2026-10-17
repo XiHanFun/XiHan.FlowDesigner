@@ -68,6 +68,12 @@ function issueText(issue: FlowIssue, names: FlowIssueNames): string {
       return '不在可选项里'
     case 'invalid-color':
       return '不是有效的颜色'
+    case 'invalid-value':
+      return '取值不合法'
+    case 'unknown-key':
+      return '含有不认识的字段'
+    case 'unknown-control':
+      return '没有这种编辑方式'
     default:
       return issue.code
   }
