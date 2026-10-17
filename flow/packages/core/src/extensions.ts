@@ -6,6 +6,7 @@
 import type { JsonObject } from '@xihan-ui/core/json'
 import type { DesignerExtensionCore, ExtensionKeySpaces } from '@xihan-ui/designer-kit'
 import type { ControlKind } from '@xihan-ui/designer-kit/properties'
+import type { FlowIssue } from './issues'
 import type { FlowNodeTypeDefinition, FlowNodeTypeRegistry, FlowPropertyDescriptor } from './registry'
 import type { FlowDocument } from './schema'
 import { formatJsonPath } from '@xihan-ui/core/json'
@@ -27,6 +28,8 @@ export interface FlowCoreExtension extends DesignerExtensionCore<FlowDocument, F
   readonly edgeProperties?: readonly FlowPropertyDescriptor[]
   /** 流程定义级属性，path 相对文档本身，没选中任何对象时属性面板显示它们。 */
   readonly documentProperties?: readonly FlowPropertyDescriptor[]
+  /** 这个扩展自己的问题码的说明文字；返回 undefined 时交给设计器的文案。 */
+  readonly issueText?: (issue: FlowIssue) => string | undefined
 }
 
 /** 内置扩展：连线的标签与虚线。 */
@@ -56,6 +59,8 @@ export interface FlowModel {
   readonly controls: Readonly<Record<string, ControlKind>>
   /** 某条连线的属性：不随源节点类型的，加上源节点类型的 outgoingEdges；源节点类型未知时只有前者。 */
   readonly edgePropertiesOf: (sourceType: string | undefined) => readonly FlowPropertyDescriptor[]
+  /** 问题的说明文字：按扩展顺序取第一个给出的；都不给时为 undefined。 */
+  readonly issueText: (issue: FlowIssue) => string | undefined
 }
 
 const MODELS = new WeakMap<readonly FlowCoreExtension[], FlowModel>()
@@ -92,6 +97,14 @@ export function createFlowModel(extensions: readonly FlowCoreExtension[] = NO_EX
     edgePropertiesOf: (sourceType) => {
       const outgoing = sourceType === undefined ? undefined : nodeTypes.get(sourceType)?.outgoingEdges
       return outgoing === undefined ? edgeProperties : [...edgeProperties, ...outgoing]
+    },
+    issueText: (issue) => {
+      for (const extension of list) {
+        const text = extension.issueText?.(issue)
+        if (text !== undefined)
+          return text
+      }
+      return undefined
     },
   }
   MODELS.set(extensions, model)

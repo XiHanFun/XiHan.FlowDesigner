@@ -16,6 +16,7 @@ export default defineConfig({
   resolve: {
     alias: [
       { find: /^@xihan-flow\/core$/, replacement: local('core/src/index.ts') },
+      { find: /^@xihan-flow\/core\/presets\/xihan-workflow$/, replacement: local('core/src/presets/xihan-workflow/index.ts') },
       { find: /^@xihan-flow\/runtime$/, replacement: local('runtime/src/index.ts') },
       { find: /^@xihan-flow\/runtime\/locale$/, replacement: local('runtime/src/locale.ts') },
       { find: /^@xihan-flow\/runtime\/style\.css$/, replacement: local('runtime/style.css') },

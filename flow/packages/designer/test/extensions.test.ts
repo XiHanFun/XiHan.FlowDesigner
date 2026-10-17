@@ -6,6 +6,7 @@
 // @vitest-environment jsdom
 
 import type { FlowDesignerContext, FlowDesignerExtension, XhFlowDesigner } from '../src'
+import { createXihanWorkflow, fromWorkflowDefinition, xihanWorkflowZhCN } from '@xihan-flow/core/presets/xihan-workflow'
 import { DesignerExtensionError } from '@xihan-ui/designer-kit'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defineFlowDesigner, FLOW_DESIGNER_TAG } from '../src'
@@ -178,12 +179,16 @@ describe('扩展', () => {
       nodeTypes: [{ type: 'task', label: '任务', size: { width: 100, height: 40 }, ports: 'both' }],
       nodeRenderers: { task: (container, context) => (container.textContent = `#${context.label}`) },
       rules: [document => document.nodes.length > 2 ? [{ code: 'tasks.too-many', path: [], severity: 'warning' }] : []],
+      issueText: issue => (issue.code === 'tasks.too-many' ? '任务太多' : undefined),
     }
     const base: FlowDesignerExtension = { id: 'test', nodeTypes: definitions.filter(definition => definition.type !== 'task') }
     const designer = await mount(element => (element.extensions = [base, tasks]))
     const text = (id: string): string => designer.querySelector(`[data-part="node"][data-node-id="${id}"]`)!.textContent!
     expect(text('t')).toBe('#任务')
     expect(designer.validate().map(issue => issue.code)).toContain('tasks.too-many')
+    await settle(designer)
+    await designer.querySelector<HTMLElement & { updateComplete: Promise<unknown> }>('xh-designer-issues')!.updateComplete
+    expect(Array.from(designer.querySelectorAll('xh-designer-issues [data-part="issue-message"]'), item => item.textContent)).toContain('任务太多')
 
     designer.extensions = [base]
     await settle(designer)
@@ -197,5 +202,36 @@ describe('扩展', () => {
     await settle(designer)
     expect(text('t')).toBe('#任务')
     expect(designer.validate().map(issue => issue.code)).not.toContain('node.unknown-type')
+  })
+
+  it('装上 XiHan 工作流预设：引擎定义换来的文档没有问题，物料按预设分类，没选中时编辑流程定义', async () => {
+    const preset = createXihanWorkflow({ texts: xihanWorkflowZhCN })
+    const designer = window.document.createElement(FLOW_DESIGNER_TAG)
+    designer.extensions = [preset]
+    designer.paletteGroupLabels = xihanWorkflowZhCN.categories
+    designer.schema = fromWorkflowDefinition({
+      code: 'leave',
+      name: '请假',
+      nodes: [
+        { id: 'start', name: '提交', activityType: 'Start' },
+        { id: 'task', name: '审批', activityType: 'UserTask', properties: { AssigneeRules: [{ type: 'Starter', values: [] }] } },
+        { id: 'end', name: '结束', activityType: 'End' },
+      ],
+      transitions: [{ id: 'a', sourceNodeId: 'start', targetNodeId: 'task' }, { id: 'b', sourceNodeId: 'task', targetNodeId: 'end' }],
+    })
+    window.document.body.append(designer)
+    await settle(designer)
+    expect(designer.validate()).toEqual([])
+    expect(designer.querySelector('[data-part="node"][data-node-id="task"]')!.textContent).toBe('审批')
+    const panel = designer.querySelector('xh-designer-properties')!
+    expect(Array.from(panel.querySelectorAll<HTMLElement>('[data-part="property"]'), item => item.dataset.path))
+      .toEqual(['data.code', 'data.name', 'data.category', 'data.description', 'data.variables', 'data.enableCompensation'])
+
+    designer.execute([{ type: 'updateNode', id: 'task', patch: { data: null } }])
+    await settle(designer)
+    await designer.querySelector<HTMLElement & { updateComplete: Promise<unknown> }>('xh-designer-issues')!.updateComplete
+    expect(Array.from(designer.querySelectorAll('xh-designer-issues [data-part="issue-message"]'), item => item.textContent))
+      .toContain('配置受理人规则、受理人或受理人表达式')
+    designer.remove()
   })
 })

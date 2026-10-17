@@ -30,6 +30,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./presets/xihan-workflow": {
+      "types": "./dist/presets/xihan-workflow.d.ts",
+      "import": "./dist/presets/xihan-workflow.js"
     }
   },
   "main": "./dist/index.js",
