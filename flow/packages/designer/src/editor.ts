@@ -5,6 +5,7 @@
 
 import type {
   FlowConnectionProblem,
+  FlowCoreExtension,
   FlowDocument,
   FlowEdge,
   FlowEdgeEnd,
@@ -12,17 +13,17 @@ import type {
   FlowEdgeStyle,
   FlowEndpoint,
   FlowIssue,
+  FlowModel,
   FlowNode,
   FlowNodePatch,
-  FlowNodeTypeRegistry,
   FlowOperation,
   FlowValidateOptions,
 } from '@xihan-flow/core'
 import type { JsonObject, JsonPath, JsonValue } from '@xihan-ui/core/json'
 import type { AlignMode, DistributeAxis, ExecuteOptions, History, HistoryChangeKind, Point } from '@xihan-ui/designer-kit'
 import type { LayeredDirection } from '@xihan-ui/viz/graph'
-import { applyOperation, checkConnection, createNode, validateDocument } from '@xihan-flow/core'
-import { formatJsonPath, getJsonAt, jsonEquals, setJsonAt } from '@xihan-ui/core/json'
+import { applyOperation, checkConnection, createFlowModel, createNode, validateDocument } from '@xihan-flow/core'
+import { formatJsonPath, getJsonAt, isPlainObject, jsonEquals, setJsonAt } from '@xihan-ui/core/json'
 import { alignRects, createHistory, distributeRects, nextFreeId, remapIds, unionRects } from '@xihan-ui/designer-kit'
 import { layered } from '@xihan-ui/viz/graph'
 
@@ -41,9 +42,9 @@ export interface FlowClipboard {
   readonly edges: readonly FlowEdge[]
 }
 
-/** 被写入属性的对象：节点或连线。 */
+/** 被写入属性的对象：节点、连线或流程定义本身（id 为空串）。 */
 export interface FlowPropertyRef {
-  readonly kind: 'node' | 'edge'
+  readonly kind: 'node' | 'edge' | 'document'
   readonly id: string
 }
 
@@ -57,7 +58,8 @@ export type FlowIdFactory = (kind: 'node' | 'edge', nodeType?: string) => string
 
 export interface FlowEditorOptions {
   readonly document: FlowDocument
-  readonly registry: FlowNodeTypeRegistry
+  /** 节点类型、属性与规则从这组扩展来，内置扩展自动排在最前。 */
+  readonly extensions?: readonly FlowCoreExtension[]
   /** 缺省时节点取 `${type}_${n}`，连线取 `edge_${n}`，n 为文档内同前缀的最大序号加一。 */
   readonly createId?: FlowIdFactory
   /** 撤销步数上限，缺省 100。 */
@@ -90,11 +92,12 @@ export interface FlowAutoLayoutOptions {
 
 export interface FlowEditor {
   readonly document: FlowDocument
-  readonly registry: FlowNodeTypeRegistry
+  /** 当前这组扩展合出的流程模型。 */
+  readonly model: FlowModel
   readonly history: History<FlowDocument, FlowOperation>
   readonly selection: FlowSelection
-  /** 换用新的节点类型登记表，文档与历史不变。 */
-  readonly setRegistry: (registry: FlowNodeTypeRegistry) => void
+  /** 换用新的一组扩展，文档与历史不变；冲突时抛 DesignerExtensionError、什么都不变。 */
+  readonly setExtensions: (extensions: readonly FlowCoreExtension[]) => void
   /** 装载新文档：清空历史与选择。 */
   readonly load: (document: FlowDocument) => void
   /** 执行一组操作并记为一步撤销；返回新文档。 */
@@ -122,16 +125,18 @@ export interface FlowEditor {
   readonly updateEdge: (id: string, patch: FlowEdgePatch, options?: ExecuteOptions) => void
   /**
    * 写入节点属性：path 相对节点本身，与属性描述的 path 相同。['label'] 写标签，以 'data' 开头的写进 data，
-   * 其余路径抛错；value 为 undefined 时删除。同一节点同一路径的连续写入不论停顿多久都合并为一步，seal() 后另起一步。
+   * 以 'extensions' 加扩展 id 开头的写进该扩展的数据，其余路径抛错；value 为 undefined 时删除。
+   * 同一节点同一路径的连续写入不论停顿多久都合并为一步，seal() 后另起一步。
    */
   readonly setNodeProperty: (id: string, path: JsonPath, value: JsonValue | undefined, options?: ExecuteOptions) => void
   /**
-   * 写入连线属性：path 相对连线本身。['label'] 写标签，以 'style' 或 'data' 开头的写进对应字段，
+   * 写入连线属性：path 相对连线本身。['label'] 写标签，以 'style'、'data' 或 'extensions' 加扩展 id 开头的写进对应字段，
    * 其余路径抛错；value 为 undefined 时删除。同一连线同一路径的连续写入不论停顿多久都合并为一步，seal() 后另起一步。
    */
   readonly setEdgeProperty: (id: string, path: JsonPath, value: JsonValue | undefined, options?: ExecuteOptions) => void
   /**
    * 给一组节点与连线写入同一属性，记为一步，规则同 setNodeProperty / setEdgeProperty；值都没变时什么都不做。
+   * 流程定义本身只认以 'data' 或 'extensions' 加扩展 id 开头的路径。
    * 同一组对象同一路径的连续写入不论停顿多久都合并为一步，seal() 后另起一步。
    */
   readonly setProperty: (targets: readonly FlowPropertyRef[], path: JsonPath, value: JsonValue | undefined, options?: ExecuteOptions) => void
@@ -154,7 +159,8 @@ export interface FlowEditor {
   readonly distribute: (axis: DistributeAxis, options?: ExecuteOptions) => void
   /** 按连线方向分层排布全部节点，左上角保持在原包围盒的左上角，并清除连线的手动拐点。 */
   readonly autoLayout: (options?: FlowAutoLayoutOptions) => void
-  readonly validate: (options?: FlowValidateOptions) => FlowIssue[]
+  /** 按当前这组扩展校验文档。 */
+  readonly validate: (options?: Omit<FlowValidateOptions, 'extensions'>) => FlowIssue[]
   readonly subscribe: (listener: (change: FlowEditorChange) => void) => () => void
 }
 
@@ -163,7 +169,8 @@ const DEFAULT_PASTE_OFFSET = 24
 
 /** 创建流程编辑器：在历史栈之上维护选择、剪贴板与编辑命令。 */
 export function createFlowEditor(options: FlowEditorOptions): FlowEditor {
-  let registry = options.registry
+  let extensions = options.extensions ?? []
+  let model = createFlowModel(extensions)
   let selection = EMPTY_SELECTION
   let clipboard: FlowClipboard | undefined
   let pasteCount = 0
@@ -268,8 +275,8 @@ export function createFlowEditor(options: FlowEditorOptions): FlowEditor {
     get document() {
       return document()
     },
-    get registry() {
-      return registry
+    get model() {
+      return model
     },
     history,
     get selection() {
@@ -279,8 +286,9 @@ export function createFlowEditor(options: FlowEditorOptions): FlowEditor {
       return clipboard !== undefined
     },
 
-    setRegistry(next) {
-      registry = next
+    setExtensions(next) {
+      model = createFlowModel(next)
+      extensions = next
     },
 
     load(next) {
@@ -316,7 +324,7 @@ export function createFlowEditor(options: FlowEditorOptions): FlowEditor {
     },
 
     addNode(type, init, executeOptions) {
-      const nodeType = registry.get(type)
+      const nodeType = model.nodeTypes.get(type)
       if (!nodeType)
         throw new Error(`[flow-designer] node type "${type}" is not registered`)
       const node = createNode(nodeType, { ...init, id: allocate('node', type) })
@@ -326,7 +334,7 @@ export function createFlowEditor(options: FlowEditorOptions): FlowEditor {
     },
 
     checkConnect: (source, target, ignoreEdge) =>
-      checkConnection(document(), registry, source, target, ignoreEdge === undefined ? {} : { ignoreEdge }),
+      checkConnection(document(), model.nodeTypes, source, target, ignoreEdge === undefined ? {} : { ignoreEdge }),
 
     connect(source, target, executeOptions) {
       const problems = editor.checkConnect(source, target)
@@ -391,6 +399,8 @@ export function createFlowEditor(options: FlowEditorOptions): FlowEditor {
 
     setProperty(targets, path, value, executeOptions) {
       const operations = targets.flatMap((target) => {
+        if (target.kind === 'document')
+          return documentPropertyOperation(document(), path, value) ?? []
         if (target.kind === 'node') {
           const node = nodeById(target.id)
           if (!node)
@@ -486,7 +496,7 @@ export function createFlowEditor(options: FlowEditorOptions): FlowEditor {
       ], { label: layoutOptions.label })
     },
 
-    validate: validateOptions => validateDocument(document(), registry, validateOptions),
+    validate: validateOptions => validateDocument(document(), { ...validateOptions, extensions }),
 
     subscribe(listener) {
       listeners.add(listener)
@@ -525,6 +535,10 @@ function nodePropertyOperation(node: FlowNode, path: JsonPath, value: JsonValue 
       throw new Error('[flow-designer] node label must be a string')
     return node.label === value ? undefined : { type: 'updateNode', id: node.id, patch: { label: value === undefined ? null : value } }
   }
+  if (isExtensionPath(path)) {
+    const extensions = writeExtensionData(node.extensions, path, value)
+    return extensions === undefined ? undefined : { type: 'updateNode', id: node.id, patch: { extensions } }
+  }
   if (path[0] !== 'data' || path.length < 2)
     throw new Error(`[flow-designer] node property path "${formatJsonPath(path)}" is not writable`)
   const inner = path.slice(1)
@@ -541,6 +555,10 @@ function edgePropertyOperation(edge: FlowEdge, path: JsonPath, value: JsonValue 
       throw new Error('[flow-designer] edge label must be a string')
     return edge.label === value ? undefined : { type: 'updateEdge', id: edge.id, patch: { label: value === undefined ? null : value } }
   }
+  if (isExtensionPath(path)) {
+    const extensions = writeExtensionData(edge.extensions, path, value)
+    return extensions === undefined ? undefined : { type: 'updateEdge', id: edge.id, patch: { extensions } }
+  }
   const field = path[0]
   if ((field !== 'style' && field !== 'data') || path.length < 2)
     throw new Error(`[flow-designer] edge property path "${formatJsonPath(path)}" is not writable`)
@@ -551,6 +569,42 @@ function edgePropertyOperation(edge: FlowEdge, path: JsonPath, value: JsonValue 
   const next = setJsonAt(current ?? {}, inner, value, { createMissing: true }).root
   const empty = Object.keys(next).length === 0
   return { type: 'updateEdge', id: edge.id, patch: field === 'style' ? { style: empty ? null : next as FlowEdgeStyle } : { data: empty ? null : next } }
+}
+
+/** 写入流程定义属性的操作；值没变时为 undefined。 */
+function documentPropertyOperation(document: FlowDocument, path: JsonPath, value: JsonValue | undefined): FlowOperation | undefined {
+  if (isExtensionPath(path)) {
+    const extensions = writeExtensionData(document.extensions, path, value)
+    return extensions === undefined ? undefined : { type: 'updateDocument', patch: { extensions } }
+  }
+  if (path[0] !== 'data' || path.length < 2)
+    throw new Error(`[flow-designer] document property path "${formatJsonPath(path)}" is not writable`)
+  const inner = path.slice(1)
+  if (jsonEquals(getJsonAt(document.data, inner), value))
+    return undefined
+  const data = setJsonAt(document.data ?? {}, inner, value, { createMissing: true }).root
+  return { type: 'updateDocument', patch: { data: Object.keys(data).length === 0 ? null : data } }
+}
+
+/** 路径落在某个扩展的数据里：['extensions', 扩展 id, ...]。 */
+function isExtensionPath(path: JsonPath): boolean {
+  return path[0] === 'extensions' && typeof path[1] === 'string' && path.length >= 3
+}
+
+/**
+ * 在对象原有的 extensions 上写某个扩展数据里的一个字段，得到 patch.extensions 的值；值没变时为 undefined。
+ * 写完这个扩展的数据为空时去掉它，全部去完时为 null。
+ */
+function writeExtensionData(current: JsonObject | undefined, path: JsonPath, value: JsonValue | undefined): JsonObject | null | undefined {
+  const inner = path.slice(1)
+  if (jsonEquals(getJsonAt(current, inner), value))
+    return undefined
+  const next = { ...setJsonAt(current ?? {}, inner, value, { createMissing: true }).root as JsonObject }
+  const id = path[1] as string
+  const data = next[id]
+  if (isPlainObject(data) && Object.keys(data).length === 0)
+    delete next[id]
+  return Object.keys(next).length === 0 ? null : next
 }
 
 function sameClipboard(a: FlowClipboard, b: FlowClipboard): boolean {

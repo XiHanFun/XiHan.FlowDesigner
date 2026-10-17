@@ -7,7 +7,8 @@
 
 export { decodeFlowClipboard, encodeFlowClipboard } from './clipboard'
 export type { FlowClipboard } from './editor'
+export { createFlowDesignerModel, FLOW_DESIGNER_EXTENSION, FLOW_TOOLBAR_LAYOUT, flowMenuLayout } from './extensions'
+export type { FlowDesignerCommand, FlowDesignerContext, FlowDesignerExtension, FlowDesignerModel, FlowMenuSubject } from './extensions'
 export { defineFlowDesigner, FLOW_DESIGNER_TAG, XhFlowDesigner } from './flow-designer'
 export type { FlowDesignerEventMap, FlowDesignerPanel, FlowSchemaChangeKind } from './flow-designer'
-export { DEFAULT_EDGE_PROPERTIES } from './panels/properties'
 export type { FlowPropertyEditor, FlowPropertyEditorContext, FlowPropertyEditorInstance, FlowPropertyTarget } from './panels/properties'

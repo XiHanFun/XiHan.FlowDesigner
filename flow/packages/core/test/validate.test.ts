@@ -3,13 +3,14 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-import type { FlowDocument, FlowEdge, FlowIssue, FlowNode, FlowNodeTypeDefinition } from '../src'
+import type { FlowCoreExtension, FlowDocument, FlowEdge, FlowIssue, FlowNode, FlowNodeTypeDefinition } from '../src'
+import { DesignerExtensionError } from '@xihan-ui/designer-kit'
 import { describe, expect, it } from 'vitest'
-import { checkConnection, createNodeTypeRegistry, DEFAULT_ISSUE_SEVERITY, resolveEndpointPort, validateDocument } from '../src'
+import { checkConnection, createFlowModel, createNodeTypeRegistry, DEFAULT_ISSUE_SEVERITY, resolveEndpointPort, validateDocument } from '../src'
 
 const size = { width: 100, height: 40 }
 
-const registry = createNodeTypeRegistry([
+const nodeTypes: readonly FlowNodeTypeDefinition[] = [
   { type: 'start', size, ports: 'out', entry: true, minCount: 1, maxCount: 1 },
   { type: 'task', size, ports: 'both' },
   { type: 'end', size, ports: 'in', terminal: true },
@@ -25,7 +26,9 @@ const registry = createNodeTypeRegistry([
   },
   { type: 'sink', size, ports: 'both', terminal: true, connection: { maxIncoming: 1, allowedSources: ['task'] } },
   { type: 'loop', size, ports: 'both', connection: { allowSelfLoop: true, maxOutgoing: 1, allowedTargets: ['loop', 'end'] } },
-])
+]
+const registry = createNodeTypeRegistry(nodeTypes)
+const extensions: readonly FlowCoreExtension[] = [{ id: 'test', nodeTypes }]
 
 function node(id: string, type: string, extra: Partial<FlowNode> = {}): FlowNode {
   return { id, type, x: 0, y: 0, width: 100, height: 40, ...extra }
@@ -57,14 +60,14 @@ function chain(): FlowDocument {
 
 describe('validateDocument', () => {
   it('合法文档没有问题', () => {
-    expect(validateDocument(chain(), registry)).toEqual([])
+    expect(validateDocument(chain(), { extensions })).toEqual([])
   })
 
   it('重复 id 与未知类型', () => {
     const issues = validateDocument(doc(
       [node('s', 'start'), node('t', 'task'), node('t', 'task'), node('x', 'ghost')],
       [edge('e1', 's', 't'), edge('e1', 't', 'x')],
-    ), registry)
+    ), { extensions })
     expect(issues.slice(0, 3)).toEqual([
       { code: 'node.duplicate-id', severity: 'error', path: ['nodes', 2], target: { kind: 'node', id: 't' }, params: { id: 't' } },
       { code: 'node.unknown-type', severity: 'error', path: ['nodes', 3], target: { kind: 'node', id: 'x' }, params: { type: 'ghost' } },
@@ -73,7 +76,7 @@ describe('validateDocument', () => {
   })
 
   it('悬空引用按端报告', () => {
-    const issues = validateDocument(doc([node('s', 'start')], [edge('e1', 's', 'missing'), edge('e2', 'gone', 's')]), registry)
+    const issues = validateDocument(doc([node('s', 'start')], [edge('e1', 's', 'missing'), edge('e2', 'gone', 's')]), { extensions })
     expect(brief(issues)).toEqual([
       'edge.dangling@edge:e1.target',
       'edge.dangling@edge:e2.source',
@@ -90,7 +93,7 @@ describe('validateDocument', () => {
         edge('e2', 'g', 'e', { source: { node: 'g', port: 'maybe' } }),
         edge('e3', 'e', 's'),
       ],
-    ), registry)
+    ), { extensions })
     expect(brief(issues)).toEqual([
       'edge.invalid-direction@edge:e1.target',
       'edge.unknown-port@edge:e2.source',
@@ -103,14 +106,14 @@ describe('validateDocument', () => {
   })
 
   it('无端口的节点不参与连通性检查', () => {
-    expect(validateDocument(doc([...chain().nodes, node('n', 'note')], chain().edges), registry)).toEqual([])
+    expect(validateDocument(doc([...chain().nodes, node('n', 'note')], chain().edges), { extensions })).toEqual([])
   })
 
   it('自环缺省不允许，类型声明后允许', () => {
     const issues = validateDocument(doc(
       [node('s', 'start'), node('t', 'task'), node('l', 'loop')],
       [edge('e1', 's', 't'), edge('e2', 't', 't'), edge('e3', 't', 'l'), edge('e4', 'l', 'l')],
-    ), registry)
+    ), { extensions })
     expect(brief(issues)).toEqual(['edge.self-loop@edge:e2'])
     expect(issues[0]!.params).toEqual({ node: 't' })
   })
@@ -119,7 +122,7 @@ describe('validateDocument', () => {
     const issues = validateDocument(doc(
       [node('s', 'start'), node('l', 'loop'), node('t', 'task'), node('k', 'sink')],
       [edge('e1', 's', 'l'), edge('e2', 'l', 't'), edge('e3', 's', 'k')],
-    ), registry)
+    ), { extensions })
     expect(brief(issues)).toContain('edge.target-not-allowed@edge:e2.target')
     expect(brief(issues)).toContain('edge.source-not-allowed@edge:e3.source')
     expect(issues.find(issue => issue.code === 'edge.target-not-allowed')!.params).toEqual({ sourceType: 'loop', targetType: 'task' })
@@ -140,7 +143,7 @@ describe('validateDocument', () => {
         edge('i', 'l', 'e1'),
         edge('j', 'l', 'e2'),
       ],
-    ), registry)
+    ), { extensions })
     const limits = issues.filter(issue => ['node.max-incoming', 'node.max-outgoing', 'port.max-connections'].includes(issue.code))
     expect(limits).toEqual([
       { code: 'node.max-incoming', severity: 'error', path: ['nodes', 3], target: { kind: 'node', id: 'k' }, params: { max: 1, count: 2 } },
@@ -153,15 +156,15 @@ describe('validateDocument', () => {
     const issues = validateDocument(doc(
       [node('s', 'start'), node('g', 'gate'), node('e1', 'end'), node('e2', 'end')],
       [edge('a', 's', 'g'), edge('b', 'g', 'e1'), edge('c', 'g', 'e2', { source: { node: 'g', port: 'yes' } })],
-    ), registry)
+    ), { extensions })
     expect(brief(issues)).toEqual(['port.max-connections@node:g'])
   })
 
   it('类型个数上下限', () => {
-    expect(validateDocument(doc([node('t', 'task')]), registry).filter(issue => issue.target === undefined)).toEqual([
+    expect(validateDocument(doc([node('t', 'task')]), { extensions }).filter(issue => issue.target === undefined)).toEqual([
       { code: 'type.min-count', severity: 'error', path: [], params: { type: 'start', min: 1, count: 0 } },
     ])
-    const twoStarts = validateDocument(doc([node('a', 'start'), node('b', 'start'), node('e', 'end')], [edge('x', 'a', 'e'), edge('y', 'b', 'e')]), registry)
+    const twoStarts = validateDocument(doc([node('a', 'start'), node('b', 'start'), node('e', 'end')], [edge('x', 'a', 'e'), edge('y', 'b', 'e')]), { extensions })
     expect(twoStarts).toEqual([
       { code: 'type.max-count', severity: 'error', path: [], params: { type: 'start', max: 1, count: 2 } },
     ])
@@ -171,7 +174,7 @@ describe('validateDocument', () => {
     const issues = validateDocument(doc(
       [node('s', 'start'), node('t', 'task'), node('lonely', 'task'), node('u', 'task'), node('e', 'end'), node('k', 'sink')],
       [edge('a', 's', 't'), edge('b', 'u', 'e'), edge('c', 't', 'k')],
-    ), registry)
+    ), { extensions })
     expect(brief(issues)).toEqual([
       'node.isolated@node:lonely',
       'node.missing-incoming@node:u',
@@ -182,8 +185,8 @@ describe('validateDocument', () => {
   })
 
   it('只有入口类型才是可达性起点，无入口节点时不报告不可达', () => {
-    const noEntry = createNodeTypeRegistry([{ type: 'task', size, ports: 'both', terminal: true }])
-    const issues = validateDocument(doc([node('a', 'task'), node('b', 'task')], [edge('x', 'a', 'b')]), noEntry)
+    const noEntry: readonly FlowCoreExtension[] = [{ id: 'test', nodeTypes: [{ type: 'task', size, ports: 'both', terminal: true }] }]
+    const issues = validateDocument(doc([node('a', 'task'), node('b', 'task')], [edge('x', 'a', 'b')]), { extensions: noEntry })
     expect(brief(issues)).toEqual(['node.missing-incoming@node:a'])
   })
 
@@ -191,60 +194,107 @@ describe('validateDocument', () => {
     const issues = validateDocument(doc(
       [node('s', 'start'), node('a', 'task'), node('b', 'task'), node('e', 'end')],
       [edge('1', 's', 'a'), edge('2', 'a', 'b'), edge('3', 'b', 'a'), edge('4', 'b', 'e')],
-    ), registry)
+    ), { extensions })
     expect(issues).toEqual([])
   })
 
-  it('节点属性：显示中的必填与内建编辑方式的取值', () => {
-    const typed = createNodeTypeRegistry([{
-      type: 'task',
-      size,
-      ports: 'none',
-      properties: [
-        { path: ['data', 'props', 'url'], control: { kind: 'text' }, required: true },
-        { path: ['data', 'props', 'fallback'], control: { kind: 'text' }, required: true, visibleWhen: { path: ['data', 'props', 'mode'], equals: 'fallback' } },
-        { path: ['data', 'props', 'retries'], control: { kind: 'number', integer: true, min: 0 } },
-        { path: ['data', 'props', 'rules'], control: { kind: 'assignees' } },
-      ],
-    }])
+  it('节点属性：显示中的必填与编辑方式的取值，登记的编辑方式交给它的 check', () => {
+    const typed: readonly FlowCoreExtension[] = [{
+      id: 'test',
+      controls: { assignees: { check: value => (Array.isArray(value) ? undefined : 'invalid-value') } },
+      nodeTypes: [{
+        type: 'task',
+        size,
+        ports: 'none',
+        properties: [
+          { path: ['data', 'props', 'url'], control: { kind: 'text' }, required: true },
+          { path: ['data', 'props', 'fallback'], control: { kind: 'text' }, required: true, visibleWhen: { path: ['data', 'props', 'mode'], equals: 'fallback' } },
+          { path: ['data', 'props', 'retries'], control: { kind: 'number', integer: true, min: 0 } },
+          { path: ['data', 'props', 'rules'], control: { kind: 'assignees' } },
+        ],
+      }],
+    }]
     const issues = validateDocument(doc([
       node('a', 'task'),
       node('b', 'task', { data: { props: { url: 'x', mode: 'fallback', fallback: '' } } }),
       node('c', 'task', { data: { props: { url: 'x', mode: 'other', retries: 1.5, rules: 'anything' } } }),
-    ]), typed)
+    ]), { extensions: typed })
     expect(issues).toEqual([
       { code: 'required', severity: 'error', path: ['nodes', 0, 'data', 'props', 'url'], target: { kind: 'node', id: 'a' } },
       { code: 'required', severity: 'error', path: ['nodes', 1, 'data', 'props', 'fallback'], target: { kind: 'node', id: 'b' } },
       { code: 'not-integer', severity: 'error', path: ['nodes', 2, 'data', 'props', 'retries'], target: { kind: 'node', id: 'c' } },
+      { code: 'invalid-value', severity: 'error', path: ['nodes', 2, 'data', 'props', 'rules'], target: { kind: 'node', id: 'c' } },
     ])
   })
 
-  it('连线属性：给了描述才检查，重复 id 的连线只查第一条', () => {
+  it('没登记的编辑方式报 unknown-control', () => {
+    const untyped: readonly FlowCoreExtension[] = [{ id: 'test', nodeTypes: [{ type: 'task', size, ports: 'none', properties: [{ path: ['data', 'who'], control: { kind: 'assignees' } }] }] }]
+    expect(brief(validateDocument(doc([node('a', 'task', { data: { who: [] } })]), { extensions: untyped }))).toEqual(['unknown-control@node:a.data'])
+  })
+
+  it('连线属性：内置的标签与虚线、扩展追加的，加上源节点类型的 outgoingEdges；重复 id 的连线只查第一条', () => {
     const document = doc(
-      [node('s', 'start'), node('t', 'task')],
-      [edge('a', 's', 't'), edge('b', 's', 't', { label: 'ok', data: { weight: 'heavy' } }), edge('a', 's', 't')],
-    )
-    expect(brief(validateDocument(document, registry)).filter(item => item.includes('edge:'))).toEqual(['edge.duplicate-id@edge:a'])
-    const issues = validateDocument(document, registry, {
-      edgeProperties: [
-        { path: ['label'], control: { kind: 'text' }, required: true },
-        { path: ['data', 'weight'], control: { kind: 'number' } },
+      [node('s', 'start'), node('t', 'task'), node('g', 'gate')],
+      [
+        edge('a', 's', 't', { style: { dashed: 'yes' as never } }),
+        edge('b', 's', 't', { label: 'ok', data: { weight: 'heavy' } }),
+        edge('a', 's', 't'),
+        { id: 'c', source: { node: 'g', port: 'yes' }, target: { node: 't' } },
       ],
-    })
-    expect(issues.filter(issue => issue.target?.kind === 'edge' && issue.code !== 'edge.duplicate-id')).toEqual([
-      { code: 'required', severity: 'error', path: ['edges', 0, 'label'], target: { kind: 'edge', id: 'a' } },
+    )
+    const withEdges: readonly FlowCoreExtension[] = [{
+      id: 'test',
+      nodeTypes: nodeTypes.map(type => (type.type === 'gate' ? { ...type, outgoingEdges: [{ path: ['data', 'condition'], control: { kind: 'text' }, required: true }] } : type)),
+      edgeProperties: [{ path: ['data', 'weight'], control: { kind: 'number' } }],
+    }]
+    const issues = validateDocument(document, { extensions: withEdges })
+    expect(issues.filter(issue => issue.target?.kind === 'edge' && !issue.code.startsWith('edge.'))).toEqual([
+      { code: 'invalid-type', severity: 'error', path: ['edges', 0, 'style', 'dashed'], target: { kind: 'edge', id: 'a' } },
       { code: 'invalid-type', severity: 'error', path: ['edges', 1, 'data', 'weight'], target: { kind: 'edge', id: 'b' } },
+      { code: 'required', severity: 'error', path: ['edges', 3, 'data', 'condition'], target: { kind: 'edge', id: 'c' } },
     ])
+  })
+
+  it('流程定义级属性与扩展数据的形状', () => {
+    const settings: readonly FlowCoreExtension[] = [{ id: 'test', nodeTypes, documentProperties: [{ path: ['data', 'name'], control: { kind: 'text' }, required: true }] }]
+    const base = chain()
+    const document: FlowDocument = { ...base, extensions: { 'my-app': 1 as never }, nodes: base.nodes.map(item => (item.id === 't' ? { ...item, extensions: [] as never } : item)) }
+    expect(validateDocument(document, { extensions: settings }).map(issue => [issue.code, issue.path, issue.target?.id])).toEqual([
+      ['required', ['data', 'name'], undefined],
+      ['invalid-type', ['extensions', 'my-app'], undefined],
+      ['invalid-type', ['nodes', 1, 'extensions'], 't'],
+    ])
+  })
+
+  it('扩展的规则逐条跑，问题与内置的一起定严重程度', () => {
+    const ruled: readonly FlowCoreExtension[] = [{
+      id: '@acme/limits',
+      nodeTypes,
+      rules: [(document, context) => (document.nodes.length > 2 ? [{ code: 'limits.too-many', path: ['nodes'], params: { types: context.nodeTypes.types.length } }] : [])],
+    }]
+    expect(validateDocument(chain(), { extensions: ruled, severity: { 'limits.too-many': 'warning' } })).toEqual([
+      { code: 'limits.too-many', severity: 'warning', path: ['nodes'], params: { types: 7 } },
+    ])
+  })
+
+  it('扩展冲突在合出模型时抛错：节点类型重名、连线属性与内置或源节点类型的出线属性同路径', () => {
+    expect(() => validateDocument(chain(), { extensions: [...extensions, { id: 'again', nodeTypes: [nodeTypes[0]!] }] })).toThrow(DesignerExtensionError)
+    expect(() => createFlowModel([{ id: 'x', edgeProperties: [{ path: ['label'], control: { kind: 'text' } }] }])).toThrow(DesignerExtensionError)
+    expect(() => createFlowModel([{ id: 'x', nodeTypes: [{ type: 'g', size, ports: 'both', outgoingEdges: [{ path: ['style', 'dashed'], control: { kind: 'boolean' } }] }] }]))
+      .toThrow(DesignerExtensionError)
+    const model = createFlowModel(extensions)
+    expect(createFlowModel(extensions)).toBe(model)
+    expect(model.edgePropertiesOf('gate').map(descriptor => descriptor.path)).toEqual([['label'], ['style', 'dashed']])
   })
 
   it('按问题码覆盖严重程度或关闭', () => {
     const document = doc([node('s', 'start'), node('t', 'task'), node('lonely', 'task')], [edge('a', 's', 't')])
-    const issues = validateDocument(document, registry, { severity: { 'node.isolated': 'error', 'node.missing-outgoing': 'off' } })
+    const issues = validateDocument(document, { extensions, severity: { 'node.isolated': 'error', 'node.missing-outgoing': 'off' } })
     expect(issues.map(issue => [issue.code, issue.severity])).toEqual([['node.isolated', 'error']])
   })
 
   it('缺省严重程度表覆盖全部校验问题码', () => {
-    expect(Object.keys(DEFAULT_ISSUE_SEVERITY)).toHaveLength(24)
+    expect(Object.keys(DEFAULT_ISSUE_SEVERITY)).toHaveLength(25)
   })
 })
 

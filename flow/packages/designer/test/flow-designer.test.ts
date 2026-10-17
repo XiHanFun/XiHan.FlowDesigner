@@ -6,18 +6,20 @@
 // @vitest-environment jsdom
 
 import type { FlowDocument } from '@xihan-flow/core'
-import type { XhFlowDesigner } from '../src'
-import { createNodeTypeRegistry } from '@xihan-flow/core'
+import type { FlowDesignerExtension, XhFlowDesigner } from '../src'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { decodeFlowClipboard, defineFlowDesigner, encodeFlowClipboard, FLOW_DESIGNER_TAG } from '../src'
 
 defineFlowDesigner()
 
-const registry = createNodeTypeRegistry([
-  { type: 'start', size: { width: 100, height: 40 }, ports: 'out', entry: true },
-  { type: 'task', size: { width: 100, height: 40 }, ports: 'both' },
-  { type: 'end', size: { width: 100, height: 40 }, ports: 'in', terminal: true },
-])
+const nodes: FlowDesignerExtension = {
+  id: 'test',
+  nodeTypes: [
+    { type: 'start', size: { width: 100, height: 40 }, ports: 'out', entry: true },
+    { type: 'task', size: { width: 100, height: 40 }, ports: 'both' },
+    { type: 'end', size: { width: 100, height: 40 }, ports: 'in', terminal: true },
+  ],
+}
 
 function sample(): FlowDocument {
   return {
@@ -35,7 +37,7 @@ const mounted: Element[] = []
 
 async function mount(setup: (designer: XhFlowDesigner) => void = () => {}): Promise<XhFlowDesigner> {
   const designer = window.document.createElement(FLOW_DESIGNER_TAG)
-  designer.nodeTypes = registry
+  designer.extensions = [nodes]
   designer.schema = sample()
   setup(designer)
   window.document.body.append(designer)

@@ -52,6 +52,19 @@ describe('readDocument', () => {
     expect(result.document.data).not.toBe(input.data)
   })
 
+  it('文档、节点与连线上的扩展数据原样读出；不是对象的报 invalid-type', () => {
+    const withExtensions = {
+      ...fullDocument,
+      extensions: { 'xihan-workflow': { code: 'leave' } },
+      nodes: [{ ...fullDocument.nodes[0]!, extensions: { '@acme/sim': { weight: 2 } } }, fullDocument.nodes[1]!],
+      edges: [{ ...fullDocument.edges[0]!, extensions: { '@acme/sim': {} } }],
+    }
+    const result = readDocument(JSON.parse(JSON.stringify(withExtensions)))
+    expect(result.ok && result.document).toEqual(withExtensions)
+    expect(summary(issuesOf({ ...withExtensions, extensions: { 'xihan-workflow': 1 }, edges: [{ ...withExtensions.edges[0]!, extensions: [] }] })))
+      .toEqual(['invalid-type edges[0].extensions object', 'invalid-type extensions["xihan-workflow"] object'])
+  })
+
   it('经 JSON 序列化往返后内容不变', () => {
     const result = readDocument(JSON.parse(JSON.stringify(fullDocument)))
     expect(result.ok && result.document).toEqual(fullDocument)

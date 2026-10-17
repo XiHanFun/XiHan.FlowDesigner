@@ -4,65 +4,69 @@
  */
 
 // 演示用的节点类型与审批流：开始 → 部门审批 → 金额分支 → 总经理审批 / 直接通过 → 结束，部门审批可驳回。
+// 节点类型与表达式这种编辑方式写成一个扩展，查看器与设计器共用。
 
-import type { FlowDocument, FlowNodeTypeRegistry } from '@xihan-flow/core'
-import { createNodeTypeRegistry } from '@xihan-flow/core'
+import type { FlowCoreExtension, FlowDocument } from '@xihan-flow/core'
 
-export const nodeTypes: FlowNodeTypeRegistry = createNodeTypeRegistry([
-  { type: 'Start', label: '开始', category: 'control', size: { width: 120, height: 40 }, ports: 'out', entry: true, minCount: 1, maxCount: 1 },
-  {
-    type: 'UserTask',
-    label: '审批',
-    category: 'human',
-    size: { width: 160, height: 48 },
-    ports: 'both',
-    defaults: { data: { properties: { CompletionPolicy: 'Any' } } },
-    properties: [
-      { path: ['label'], control: { kind: 'text' }, group: 'basic', label: '名称', required: true },
-      { path: ['data', 'properties', 'Title'], control: { kind: 'text', placeholder: '单据 {{billNo}} 审批' }, group: 'basic', label: '待办标题' },
-      { path: ['data', 'properties', 'Assignees'], control: { kind: 'tags' }, group: 'participants', label: '受理人', required: true },
-      {
-        path: ['data', 'properties', 'CompletionPolicy'],
-        control: { kind: 'select', options: [{ value: 'Any', label: '任一人通过' }, { value: 'All', label: '全部通过' }] },
-        group: 'participants',
-        label: '通过规则',
-      },
-      { path: ['data', 'timeoutSeconds'], control: { kind: 'number', integer: true, min: 0, unit: 's' }, group: 'execution', label: '超时（秒）' },
-    ],
-  },
-  {
-    type: 'Decision',
-    label: '条件分支',
-    category: 'control',
-    size: { width: 140, height: 48 },
-    ports: 'both',
-    properties: [
-      { path: ['label'], control: { kind: 'text' }, label: '名称', required: true },
-      {
-        path: ['data', 'properties', 'Expression'],
-        control: { kind: 'expression' },
-        label: '分支条件',
-        meta: { description: '宿主自定义的编辑器，例如 amount > 10000' },
-      },
-      { path: ['data', 'properties', 'Settings'], control: { kind: 'json' }, label: '高级设置' },
-    ],
-  },
-  {
-    type: 'End',
-    label: '结束',
-    category: 'control',
-    size: { width: 120, height: 40 },
-    ports: 'in',
-    terminal: true,
-    properties: [
-      {
-        path: ['data', 'properties', 'Outcome'],
-        control: { kind: 'select', options: [{ value: 'approved', label: '通过' }, { value: 'rejected', label: '驳回' }] },
-        label: '审批结果',
-      },
-    ],
-  },
-])
+export const approvalTypes: FlowCoreExtension = {
+  id: '@xihan-flow/playground',
+  controls: { expression: {} },
+  nodeTypes: [
+    { type: 'Start', label: '开始', category: 'control', size: { width: 120, height: 40 }, ports: 'out', entry: true, minCount: 1, maxCount: 1 },
+    {
+      type: 'UserTask',
+      label: '审批',
+      category: 'human',
+      size: { width: 160, height: 48 },
+      ports: 'both',
+      defaults: { data: { properties: { CompletionPolicy: 'Any' } } },
+      properties: [
+        { path: ['label'], control: { kind: 'text' }, group: 'basic', label: '名称', required: true },
+        { path: ['data', 'properties', 'Title'], control: { kind: 'text', placeholder: '单据 {{billNo}} 审批' }, group: 'basic', label: '待办标题' },
+        { path: ['data', 'properties', 'Assignees'], control: { kind: 'tags' }, group: 'participants', label: '受理人', required: true },
+        {
+          path: ['data', 'properties', 'CompletionPolicy'],
+          control: { kind: 'select', options: [{ value: 'Any', label: '任一人通过' }, { value: 'All', label: '全部通过' }] },
+          group: 'participants',
+          label: '通过规则',
+        },
+        { path: ['data', 'timeoutSeconds'], control: { kind: 'number', integer: true, min: 0, unit: 's' }, group: 'execution', label: '超时（秒）' },
+      ],
+    },
+    {
+      type: 'Decision',
+      label: '条件分支',
+      category: 'control',
+      size: { width: 140, height: 48 },
+      ports: 'both',
+      properties: [
+        { path: ['label'], control: { kind: 'text' }, label: '名称', required: true },
+        {
+          path: ['data', 'properties', 'Expression'],
+          control: { kind: 'expression' },
+          label: '分支条件',
+          meta: { description: '宿主自定义的编辑器，例如 amount > 10000' },
+        },
+        { path: ['data', 'properties', 'Settings'], control: { kind: 'json' }, label: '高级设置' },
+      ],
+    },
+    {
+      type: 'End',
+      label: '结束',
+      category: 'control',
+      size: { width: 120, height: 40 },
+      ports: 'in',
+      terminal: true,
+      properties: [
+        {
+          path: ['data', 'properties', 'Outcome'],
+          control: { kind: 'select', options: [{ value: 'approved', label: '通过' }, { value: 'rejected', label: '驳回' }] },
+          label: '审批结果',
+        },
+      ],
+    },
+  ],
+}
 
 export function approvalFlow(): FlowDocument {
   return {

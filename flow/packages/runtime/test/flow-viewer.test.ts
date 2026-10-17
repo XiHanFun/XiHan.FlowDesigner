@@ -6,8 +6,8 @@
 // @vitest-environment jsdom
 
 import type { FlowDocument } from '@xihan-flow/core'
-import type { XhFlowViewer } from '../src'
-import { createNodeTypeRegistry } from '@xihan-flow/core'
+import type { FlowRuntimeExtension, XhFlowViewer } from '../src'
+import { DesignerExtensionError } from '@xihan-ui/designer-kit'
 import { setXhConfig } from '@xihan-ui/web-components'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineFlowViewer, FLOW_VIEWER_TAG } from '../src'
@@ -15,10 +15,13 @@ import { flowZhCN } from '../src/locale'
 
 defineFlowViewer()
 
-const registry = createNodeTypeRegistry([
-  { type: 'start', label: '开始', size: { width: 100, height: 40 }, ports: 'out' },
-  { type: 'task', label: '任务', size: { width: 100, height: 40 }, ports: 'both' },
-])
+const nodes: FlowRuntimeExtension = {
+  id: 'test',
+  nodeTypes: [
+    { type: 'start', label: '开始', size: { width: 100, height: 40 }, ports: 'out' },
+    { type: 'task', label: '任务', size: { width: 100, height: 40 }, ports: 'both' },
+  ],
+}
 
 const document: FlowDocument = {
   version: 1,
@@ -35,7 +38,7 @@ const mounted: Element[] = []
 
 async function mount(setup: (viewer: XhFlowViewer) => void = () => {}): Promise<XhFlowViewer> {
   const viewer = window.document.createElement(FLOW_VIEWER_TAG)
-  viewer.nodeTypes = registry
+  viewer.extensions = [nodes]
   viewer.schema = document
   setup(viewer)
   window.document.body.append(viewer)
@@ -93,11 +96,25 @@ describe('<xh-flow-viewer>', () => {
       container.textContent = `${context.label}:${context.status ?? '-'}`
     })
     const viewer = await mount((element) => {
-      element.renderNode = render
+      element.extensions = [nodes, { id: 'render', nodeRenderers: { start: render, task: render } }]
       element.statuses = { t: 'waiting' }
     })
     expect((part(viewer, 'node') as HTMLElement[]).map(node => node.textContent)).toEqual(['开始:-', '审批:waiting'])
     expect(render).toHaveBeenCalledTimes(2)
+  })
+
+  it('同一类型的渲染给了两次时赋值当场抛错，属性保持原值', async () => {
+    const viewer = await mount()
+    const before = viewer.extensions
+    const render = (container: HTMLElement): void => {
+      container.textContent = '-'
+    }
+    const clash = [nodes, { id: 'a', nodeRenderers: { task: render } }, { id: 'b', nodeRenderers: { task: render } }]
+    expect(() => (viewer.extensions = clash)).toThrow(DesignerExtensionError)
+    expect(viewer.extensions).toBe(before)
+    expect(() => (viewer.extensions = [nodes, { id: 'test', nodeTypes: [] }])).toThrow(DesignerExtensionError)
+    await viewer.updateComplete
+    expect(part(viewer, 'node')).toHaveLength(2)
   })
 
   it('点击节点、连线与空白处派发对应事件', async () => {

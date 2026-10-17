@@ -5,8 +5,7 @@
 
 // @vitest-environment jsdom
 
-import type { XhFlowDesigner } from '../src'
-import { createNodeTypeRegistry } from '@xihan-flow/core'
+import type { FlowDesignerExtension, XhFlowDesigner } from '../src'
 import { setXhConfig } from '@xihan-ui/web-components'
 import { afterEach, describe, expect, it } from 'vitest'
 import { defineFlowDesigner } from '../src'
@@ -203,11 +202,14 @@ describe('物料面板', () => {
 })
 
 describe('问题列表', () => {
-  const typed = createNodeTypeRegistry([
-    ...definitions.filter(definition => definition.type !== 'task'),
-    { type: 'task', label: '任务', size: { width: 100, height: 40 }, ports: 'both', properties: [{ path: ['data', 'owner'], control: { kind: 'text' }, label: '负责人', required: true }] },
-    { type: 'single', size: { width: 100, height: 40 }, ports: 'none', minCount: 1 },
-  ])
+  const typed: FlowDesignerExtension = {
+    id: 'test',
+    nodeTypes: [
+      ...definitions.filter(definition => definition.type !== 'task'),
+      { type: 'task', label: '任务', size: { width: 100, height: 40 }, ports: 'both', properties: [{ path: ['data', 'owner'], control: { kind: 'text' }, label: '负责人', required: true }] },
+      { type: 'single', size: { width: 100, height: 40 }, ports: 'none', minCount: 1 },
+    ],
+  }
 
   function list(designer: Element): HTMLElement & { updateComplete: Promise<unknown> } {
     return designer.querySelector('xh-designer-issues')!
@@ -226,7 +228,7 @@ describe('问题列表', () => {
   }
 
   it('列出问题与错误、警告数，错误在前；落在属性上的带属性名，节点上标出最严重的一级', async () => {
-    const designer = await mount(element => element.nodeTypes = typed)
+    const designer = await mount(element => element.extensions = [typed])
     await settle(designer)
     expect(rows(designer).map(item => [item.tagName, item.dataset.severity, item.querySelector('[data-part="issue-subject"]')!.textContent, item.querySelector('[data-part="issue-message"]')!.textContent])).toEqual([
       ['DIV', 'error', 'Flow', 'At least 1 single required, found 0'],
@@ -243,7 +245,7 @@ describe('问题列表', () => {
   })
 
   it('点问题选中并显露所在节点，落在属性上时把焦点交给那个字段', async () => {
-    const designer = await mount(element => element.nodeTypes = typed)
+    const designer = await mount(element => element.extensions = [typed])
     placeCanvas(designer, 200, 100)
     designer.setViewport({ x: -1000, y: -1000, zoom: 1 })
     await settle(designer)

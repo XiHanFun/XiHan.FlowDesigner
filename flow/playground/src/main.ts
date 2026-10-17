@@ -13,7 +13,7 @@ import { mergeXhConfig, setXhConfig } from '@xihan-ui/web-components'
 import { defineXhElements } from '@xihan-ui/web-components/define'
 import { zhCN } from '@xihan-ui/web-components/locale'
 import { expressionEditor } from './expression-editor'
-import { approvalFlow, nodeTypes, runSteps } from './sample'
+import { approvalFlow, approvalTypes, runSteps } from './sample'
 import '@xihan-ui/styles/index.css'
 import '@xihan-ui/designer-shell/style.css'
 import '@xihan-flow/runtime/style.css'
@@ -33,7 +33,7 @@ function toolbar(label: string, run: (action: string) => void): void {
 }
 
 const viewer = document.querySelector('xh-flow-viewer')!
-viewer.nodeTypes = nodeTypes
+viewer.extensions = [approvalTypes]
 viewer.schema = approvalFlow()
 let step = 0
 let highlighted = false
@@ -77,12 +77,11 @@ toolbar('查看器操作', (action) => {
 
 const designer = document.querySelector('xh-flow-designer')!
 const log = document.querySelector<HTMLElement>('#log')!
-designer.nodeTypes = nodeTypes
+designer.extensions = [approvalTypes, { id: '@xihan-flow/playground/editors', editors: { byControl: { expression: expressionEditor } } }]
 designer.paletteGroupOrder = ['human', 'control']
 designer.paletteGroupLabels = { human: '人工处理', control: '流程控制' }
 designer.propertyGroupOrder = ['basic', 'participants', 'execution']
 designer.propertyGroupLabels = { basic: '基本', participants: '参与人', execution: '执行' }
-designer.propertyEditors = { byControl: { expression: expressionEditor } }
 designer.schema = approvalFlow()
 
 function write(line: string): void {

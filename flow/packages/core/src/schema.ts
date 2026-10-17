@@ -30,6 +30,8 @@ export interface FlowNode extends FlowRect {
   readonly type: string
   readonly label?: string
   readonly data?: JsonObject
+  /** 各扩展自己的数据，键是扩展 id，每一块是 JSON 对象；与业务数据 data 分开。 */
+  readonly extensions?: JsonObject
 }
 
 /** 连线端点：节点与可选端口。 */
@@ -53,6 +55,8 @@ export interface FlowEdge {
   readonly data?: JsonObject
   /** 途经折点，按从起点到终点的顺序排列。 */
   readonly vertices?: readonly FlowPoint[]
+  /** 各扩展自己的数据，键是扩展 id。 */
+  readonly extensions?: JsonObject
 }
 
 /** 流程图文档；数组顺序即绘制层级，靠后的在上层。 */
@@ -62,6 +66,8 @@ export interface FlowDocument {
   readonly edges: readonly FlowEdge[]
   /** 文档级业务数据。 */
   readonly data?: JsonObject
+  /** 各扩展自己的数据，键是扩展 id。 */
+  readonly extensions?: JsonObject
 }
 
 /** 创建空文档。 */

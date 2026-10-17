@@ -8,8 +8,7 @@
 // 只调 defineFlowDesigner()、宿主不全量注册 UI 元素时，设计器用到的每个 xh-* 元素都要由它注册并升级：
 // 选中一个铺满七种编辑器的节点、问题列表有条目、右键菜单打开，页面上出现的 xh-* 元素逐个核对。
 
-import type { XhFlowDesigner } from '../src'
-import { createNodeTypeRegistry } from '@xihan-flow/core'
+import type { FlowDesignerExtension, XhFlowDesigner } from '../src'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineFlowDesigner } from '../src'
 import { definitions, mount, unmountAll } from './helpers'
@@ -47,9 +46,9 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-const typed = createNodeTypeRegistry([
-  ...definitions.filter(definition => definition.type !== 'task'),
-  {
+const typed: FlowDesignerExtension = {
+  id: 'test',
+  nodeTypes: [...definitions.filter(definition => definition.type !== 'task'), {
     type: 'task',
     label: '任务',
     category: '活动',
@@ -65,8 +64,8 @@ const typed = createNodeTypeRegistry([
       { path: ['data', 'color'], control: { kind: 'color' }, label: '颜色' },
       { path: ['data', 'extra'], control: { kind: 'json' }, label: '扩展' },
     ],
-  },
-])
+  }],
+}
 
 async function settle(designer: XhFlowDesigner): Promise<void> {
   for (let round = 0; round < 4; round++) {
@@ -90,7 +89,7 @@ function notUpgraded(): string[] {
 
 describe('defineFlowDesigner 按需注册', () => {
   it('只调 defineFlowDesigner：工具栏、物料、属性面板七种编辑器、问题列表、小地图与右键菜单里的 xh-* 元素都已升级', async () => {
-    const designer = await mount(element => element.nodeTypes = typed)
+    const designer = await mount(element => element.extensions = [typed])
     designer.select({ nodes: ['t'] })
     await settle(designer)
     designer.querySelector('[data-part="node"][data-node-id="t"]')!.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }))
