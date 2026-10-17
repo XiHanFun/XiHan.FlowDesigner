@@ -8,6 +8,7 @@ import type { PropertyControl, PropertyDescriptor } from '@xihan-ui/designer-kit
 import type { FlowEdgeEnd } from './issues'
 import type { FlowNode, FlowPoint, FlowRect, FlowSize } from './schema'
 import { cloneJson, findJsonViolation, formatJsonPath, getJsonAt } from '@xihan-ui/core/json'
+import { applyDefaults } from '@xihan-ui/designer-kit/properties'
 
 /** 端口方向：只入、只出或双向。 */
 export type FlowPortDirection = 'in' | 'out' | 'both'
@@ -49,7 +50,7 @@ export interface FlowConnectionRule {
   readonly allowSelfLoop?: boolean
 }
 
-/** 节点属性的编辑方式：内建七种之外，宿主可以用自己的种类（如受理人选择），由宿主提供编辑器。 */
+/** 节点属性的编辑方式：内建的编辑方式之外，扩展可以登记自己的种类（如受理人选择），编辑器由设计器层的扩展提供。 */
 export type FlowPropertyControl = PropertyControl | { readonly kind: string }
 
 /** 节点属性描述：path 相对节点本身，如 ['data', 'properties', 'Url']、['label']。 */
@@ -137,11 +138,14 @@ export function createNodeTypeRegistry(definitions: readonly FlowNodeTypeDefinit
   }
 }
 
-/** 按节点类型新建节点：尺寸、标签与 data 取类型默认值，init 中给出的字段优先。 */
+/**
+ * 按节点类型新建节点：尺寸、标签与 data 取类型默认值，init 中给出的字段优先；
+ * 再把属性描述的缺省值写进还没有值的路径。
+ */
 export function createNode(nodeType: FlowNodeType, init: FlowNodeInit): FlowNode {
   const label = init.label ?? nodeType.defaults?.label
   const data = init.data ?? (nodeType.defaults?.data === undefined ? undefined : cloneJson(nodeType.defaults.data))
-  return {
+  const node: FlowNode = {
     id: init.id,
     type: nodeType.type,
     x: init.x,
@@ -151,6 +155,7 @@ export function createNode(nodeType: FlowNodeType, init: FlowNodeInit): FlowNode
     ...(label === undefined ? {} : { label }),
     ...(data === undefined ? {} : { data }),
   }
+  return applyDefaults(node as unknown as JsonObject, nodeType.properties ?? []) as unknown as FlowNode
 }
 
 /** 查找节点类型上的端口。 */
