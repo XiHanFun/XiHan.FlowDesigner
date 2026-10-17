@@ -251,6 +251,18 @@ describe('<xh-flow-designer>', () => {
     expect(part(designer, 'marquee')[0]!.hidden).toBe(true)
   })
 
+  it('视口变了之后覆盖层的选中框跟着缩放与平移', async () => {
+    const designer = await mount()
+    designer.select({ nodes: ['t'] })
+    await designer.updateComplete
+    const overlay = designer.querySelector<HTMLElement & { updateComplete: Promise<unknown> }>('xh-designer-transform')!
+    designer.setViewport({ x: 10, y: 20, zoom: 2 })
+    await overlay.updateComplete
+    const frame = overlay.querySelector<HTMLElement>('[data-part="frame"]')!
+    expect(frame.style.inlineSize).toBe('200px')
+    expect(frame.style.transform).toContain('translate(410px, 20px)')
+  })
+
   it('拖空白平移视口', async () => {
     const designer = await mount()
     press(part(designer, 'viewport')[0]!, 100, 100)
