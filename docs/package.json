@@ -21,6 +21,8 @@
     "dev": "vitepress dev",
     "build": "vitepress build",
     "preview": "vitepress preview",
+    "gen": "node scripts/gen-reference.mjs",
+    "gate:gen": "node scripts/gen-reference.mjs --check",
     "check:examples": "node scripts/check-examples.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint .",
