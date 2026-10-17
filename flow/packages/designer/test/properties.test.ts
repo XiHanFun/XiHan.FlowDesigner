@@ -5,8 +5,7 @@
 
 // @vitest-environment jsdom
 
-import type { FlowPropertyEditor, FlowPropertyEditorContext, FlowPropertyTarget, XhFlowDesigner } from '../src'
-import { createNodeTypeRegistry } from '@xihan-flow/core'
+import type { FlowDesignerExtension, FlowPropertyEditor, FlowPropertyEditorContext, FlowPropertyTarget, XhFlowDesigner } from '../src'
 import { setXhConfig } from '@xihan-ui/web-components'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineFlowDesigner } from '../src'
@@ -49,9 +48,10 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-const typed = createNodeTypeRegistry([
-  ...definitions.filter(definition => definition.type !== 'task'),
-  {
+const typed: FlowDesignerExtension = {
+  id: 'test',
+  controls: { assignees: {} },
+  nodeTypes: [...definitions.filter(definition => definition.type !== 'task'), {
     type: 'task',
     label: '任务',
     size: { width: 100, height: 40 },
@@ -67,12 +67,12 @@ const typed = createNodeTypeRegistry([
       { path: ['data', 'note'], control: { kind: 'text', multiline: true }, label: '备注', visibleWhen: { path: ['data', 'urgent'], equals: true } },
       { path: ['data', 'who'], control: { kind: 'assignees' }, label: '受理人' },
     ],
-  },
-])
+  }],
+}
 
 async function mountTyped(setup: (designer: XhFlowDesigner) => void = () => {}): Promise<XhFlowDesigner> {
   return mount((designer) => {
-    designer.nodeTypes = typed
+    designer.extensions = [typed]
     setup(designer)
   })
 }
@@ -223,7 +223,7 @@ describe('属性面板', () => {
       element.dataset.custom = ''
       return { element, update: next => contexts.push(next) }
     }
-    const designer = await mountTyped(element => element.propertyEditors = { byControl: { assignees: editor }, byPath: { 'data.color': editor } })
+    const designer = await mountTyped(element => element.extensions = [typed, { id: 'host', editors: { byControl: { assignees: editor }, byPath: { 'data.color': editor } } }])
     designer.select({ nodes: ['t'] })
     await settle(designer)
     expect(row(designer, 'data.who').querySelector('[data-control="custom"] [data-custom]')).not.toBeNull()
@@ -242,7 +242,7 @@ describe('属性面板', () => {
     expect(contexts.at(-1)!.value).toBeUndefined()
   })
 
-  it('连线缺省编辑标签与虚线；宿主可换成自己的连线属性', async () => {
+  it('连线缺省编辑标签与虚线；扩展追加的连线属性与源节点类型的出线属性接在后面', async () => {
     const designer = await mountTyped()
     designer.select({ edges: ['st'] })
     await settle(designer)
@@ -252,10 +252,39 @@ describe('属性面板', () => {
     emit(row(designer, 'style.dashed').querySelector('xh-switch')!, 'checked-change', { checked: true })
     expect(designer.schema.edges[0]).toMatchObject({ label: '同意', style: { dashed: true } })
 
-    designer.edgeProperties = [{ path: ['data', 'condition'], control: { kind: 'text' }, label: '条件', required: true }]
+    const withOutgoing: FlowDesignerExtension = {
+      ...typed,
+      nodeTypes: typed.nodeTypes!.map(type => type.type === 'start' ? { ...type, outgoingEdges: [{ path: ['data', 'priority'], control: { kind: 'number' }, label: '优先级' }] } : type),
+    }
+    designer.extensions = [withOutgoing, { id: 'host', edgeProperties: [{ path: ['data', 'condition'], control: { kind: 'text' }, label: '条件', required: true }] }]
     await settle(designer)
-    expect(inPanel(designer, 'property').map(item => item.dataset.path)).toEqual(['data.condition'])
+    expect(inPanel(designer, 'property').map(item => item.dataset.path)).toEqual(['label', 'style.dashed', 'data.condition', 'data.priority'])
     expect(designer.validate().map(issue => `${issue.code}@${issue.target?.id}`)).toContain('required@st')
+  })
+
+  it('什么都没选中时编辑流程定义级属性，扩展的数据写进 extensions 下自己的那块', async () => {
+    const definition: FlowDesignerExtension = {
+      id: 'acme',
+      documentProperties: [
+        { path: ['data', 'code'], control: { kind: 'text' }, label: '编码', required: true },
+        { path: ['extensions', 'acme', 'weight'], control: { kind: 'number' }, label: '权重' },
+      ],
+    }
+    const designer = await mountTyped(element => (element.extensions = [typed, definition]))
+    await settle(designer)
+    expect(inPanel(designer, 'heading')[0]!.textContent).toBe('Flow')
+    expect(inPanel(designer, 'property').map(item => item.dataset.path)).toEqual(['data.code', 'extensions.acme.weight'])
+    expect(row(designer, 'data.code').querySelector('xh-field')!.hasAttribute('invalid')).toBe(true)
+    emit(row(designer, 'data.code').querySelector('xh-text-field')!, 'value-change', { value: 'leave' })
+    emit(row(designer, 'extensions.acme.weight').querySelector('xh-number-field')!, 'value-change', { value: '2', valueAsNumber: 2 })
+    expect([designer.schema.data, designer.schema.extensions]).toEqual([{ code: 'leave' }, { acme: { weight: 2 } }])
+    await settle(designer)
+    expect(row(designer, 'data.code').querySelector('xh-field')!.hasAttribute('invalid')).toBe(false)
+    emit(row(designer, 'extensions.acme.weight').querySelector('xh-number-field')!, 'value-change', { value: '', valueAsNumber: Number.NaN })
+    expect(designer.schema).not.toHaveProperty('extensions')
+    designer.select({ nodes: ['t'] })
+    await settle(designer)
+    expect(inPanel(designer, 'heading')[0]!.textContent).toBe('任务 · t')
   })
 
   it('只读时字段只读、写入无效；panels 里没列属性面板时收起', async () => {

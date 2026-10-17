@@ -5,7 +5,7 @@
 
 // 设计器的问题列表：把最近一次校验的问题换好文字交给 <xh-designer-issues>，点一条落在节点或连线上的问题就选中并显露它。
 
-import type { FlowDocument, FlowIssue, FlowNodeTypeRegistry, FlowPropertyDescriptor } from '@xihan-flow/core'
+import type { FlowDocument, FlowIssue, FlowModel, FlowPropertyDescriptor } from '@xihan-flow/core'
 import type { FlowDesignerTranslations } from '@xihan-flow/runtime'
 import type { DesignerIssueItem, DesignerIssuesEventMap, XhDesignerIssuesElement } from '@xihan-ui/designer-shell'
 import { formatJsonPath } from '@xihan-ui/core/json'
@@ -15,9 +15,8 @@ import { createGeneratedElement } from '@xihan-ui/web-components/authoring'
 export interface IssuesHost {
   readonly ownerDocument: Document
   readonly document: () => FlowDocument
-  readonly registry: () => FlowNodeTypeRegistry
+  readonly model: () => FlowModel
   readonly issues: () => readonly FlowIssue[]
-  readonly edgeProperties: () => readonly FlowPropertyDescriptor[]
   /** 选中问题所在的对象并显露它。 */
   readonly locate: (issue: FlowIssue) => void
 }
@@ -39,7 +38,7 @@ export class IssuesPanel {
   update(t: FlowDesignerTranslations): void {
     this.element.emptyText = t.issuesEmpty
     const issues = this.#host.issues()
-    const inputs = [issues, this.#host.document(), this.#host.registry(), this.#host.edgeProperties(), t.issue, t.propertyIssue, t.propertyLabel, t.edge, t.flow]
+    const inputs = [issues, this.#host.document(), this.#host.model(), t.issue, t.propertyIssue, t.propertyLabel, t.edge, t.flow]
     if (inputs.length === this.#rendered.length && inputs.every((input, index) => input === this.#rendered[index]))
       return
     this.#rendered = inputs
@@ -50,7 +49,7 @@ export class IssuesPanel {
     const target = issue.target
     if (target?.kind === 'node') {
       const node = this.#host.document().nodes.find(item => item.id === target.id)
-      return node?.label ?? (node && this.#host.registry().get(node.type)?.label) ?? target.id
+      return node?.label ?? (node && this.#host.model().nodeTypes.get(node.type)?.label) ?? target.id
     }
     if (target?.kind === 'edge') {
       const edge = this.#host.document().edges.find(item => item.id === target.id)
@@ -61,24 +60,33 @@ export class IssuesPanel {
 
   /** 问题说明；落在属性上的问题带上属性名。 */
   #message(issue: FlowIssue, t: FlowDesignerTranslations): string {
-    const registry = this.#host.registry()
+    const registry = this.#host.model().nodeTypes
     const text = t.issue(issue, { nodeType: type => registry.get(type)?.label ?? type })
     const property = this.#property(issue)
     return property === undefined ? text : t.propertyIssue(property.label ?? t.propertyLabel(formatJsonPath(property.path)), text)
   }
 
+  /** 问题落在的属性：节点与连线的属性路径从 path 第三段起，流程定义级属性的问题不带 target，path 就是属性路径。 */
   #property(issue: FlowIssue): FlowPropertyDescriptor | undefined {
     const target = issue.target
-    if (!target || issue.path.length <= 2)
+    const model = this.#host.model()
+    const document = this.#host.document()
+    if (!target) {
+      const key = formatJsonPath(issue.path)
+      return issue.path.length === 0 ? undefined : model.documentProperties.find(descriptor => formatJsonPath(descriptor.path) === key)
+    }
+    if (issue.path.length <= 2)
       return undefined
     const key = formatJsonPath(issue.path.slice(2))
     let descriptors: readonly FlowPropertyDescriptor[] = []
     if (target.kind === 'node') {
-      const node = this.#host.document().nodes.find(item => item.id === target.id)
-      descriptors = (node && this.#host.registry().get(node.type)?.properties) ?? []
+      const node = document.nodes.find(item => item.id === target.id)
+      descriptors = (node && model.nodeTypes.get(node.type)?.properties) ?? []
     }
     else if (target.kind === 'edge') {
-      descriptors = this.#host.edgeProperties()
+      const edge = document.edges.find(item => item.id === target.id)
+      const source = edge && document.nodes.find(item => item.id === edge.source.node)
+      descriptors = model.edgePropertiesOf(source?.type)
     }
     return descriptors.find(descriptor => formatJsonPath(descriptor.path) === key)
   }

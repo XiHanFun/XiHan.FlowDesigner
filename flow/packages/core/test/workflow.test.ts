@@ -10,7 +10,7 @@ import { setJsonAt } from '@xihan-ui/core/json'
 import { groupProperties } from '@xihan-ui/designer-kit/properties'
 import { describe, expect, it } from 'vitest'
 import { readDocument, validateDocument } from '../src'
-import { approvalDefinition, fromDefinition, toDefinition, workflowRegistry } from './fixtures/workflow'
+import { approvalDefinition, fromDefinition, toDefinition, workflowExtension, workflowRegistry } from './fixtures/workflow'
 
 function normalize(definition: WorkflowDefinitionJson): unknown {
   return { ...definition, extraProperties: { ...definition.extraProperties, designerLayout: JSON.parse(definition.extraProperties.designerLayout!) } }
@@ -40,7 +40,7 @@ describe('工作流定义的表达', () => {
   })
 
   it('合法的审批流程没有问题', () => {
-    expect(validateDocument(fromDefinition(approvalDefinition()), workflowRegistry)).toEqual([])
+    expect(validateDocument(fromDefinition(approvalDefinition()), { extensions: [workflowExtension] })).toEqual([])
   })
 
   it('受理人规则缺失、开始节点重复与死路都能报告', () => {
@@ -57,7 +57,7 @@ describe('工作流定义的表达', () => {
       ],
       edges: [...document.edges, { id: 't5', source: { node: 'start2' }, target: { node: 'http' } }],
     }
-    expect(validateDocument(broken, workflowRegistry).map(issue => `${issue.code}:${issue.target?.kind === 'node' ? issue.target.id : ''}`)).toEqual([
+    expect(validateDocument(broken, { extensions: [workflowExtension] }).map(issue => `${issue.code}:${issue.target?.kind === 'node' ? issue.target.id : ''}`)).toEqual([
       'type.max-count:',
       'node.missing-outgoing:http',
       'required:approve',
@@ -81,8 +81,8 @@ describe('工作流定义的表达', () => {
       const document = fromDefinition(approvalDefinition())
       return { ...document, nodes: document.nodes.map(node => node.id === 'approve' ? { ...node, data: value } : node) }
     }
-    expect(validateDocument(withNode(data('Fault')), workflowRegistry)).toEqual([])
-    expect(validateDocument(withNode(data('Fallback')), workflowRegistry).map(issue => [issue.code, issue.target?.id, issue.path.slice(2)])).toEqual([
+    expect(validateDocument(withNode(data('Fault')), { extensions: [workflowExtension] })).toEqual([])
+    expect(validateDocument(withNode(data('Fallback')), { extensions: [workflowExtension] }).map(issue => [issue.code, issue.target?.id, issue.path.slice(2)])).toEqual([
       ['required', 'approve', ['data', 'properties', 'FallbackAssigneeRules']],
     ])
   })

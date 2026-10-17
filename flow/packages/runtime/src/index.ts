@@ -5,6 +5,8 @@
 
 // 导出 @xihan-flow/runtime 的公共接口。元素不在 import 时注册，调用 defineFlowViewer() 才注册。
 
+export { createFlowRuntimeModel } from './extensions'
+export type { FlowRuntimeExtension, FlowRuntimeModel } from './extensions'
 export { defineFlowViewer, FLOW_VIEWER_TAG, XhFlowViewer } from './flow-viewer'
 export type { FlowNodeRenderContext, FlowNodeRenderer, FlowViewerEventMap } from './flow-viewer'
 export { createOrthogonalRouter } from './router'

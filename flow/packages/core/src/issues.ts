@@ -30,6 +30,7 @@ export type FlowValidationIssueCode
     | 'node.missing-outgoing'
     | 'node.unreachable'
     | 'required'
+    | 'unknown-control'
     | PropertyValueIssueCode
 
 /** 全部问题码。 */
@@ -42,4 +43,4 @@ export type FlowEdgeEnd = 'source' | 'target'
  * 一条问题：问题码、从文档根算起的路径、所在对象（节点为 { kind: 'node', id }，连线为 { kind: 'edge', id }）、
  * 严重程度与参数，不带文案。
  */
-export type FlowIssue<C extends FlowIssueCode = FlowIssueCode> = SchemaIssue<C>
+export type FlowIssue<C extends string = FlowIssueCode | (string & {})> = SchemaIssue<C>

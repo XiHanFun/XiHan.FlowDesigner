@@ -6,10 +6,11 @@
 // <xh-flow-viewer>：只读流程图查看器。按流程定义与节点类型画出节点、连线、箭头与标签，叠加运行状态与高亮；
 // 拖动平移，Ctrl / ⌘ + 滚轮缩放，滚轮平移；获得焦点后 + / - / 0 缩放、方向键平移。
 
-import type { FlowDocument, FlowEdgeRouter, FlowNode, FlowNodeType, FlowNodeTypeRegistry, FlowRect } from '@xihan-flow/core'
+import type { FlowDocument, FlowEdgeRouter, FlowNode, FlowNodeType, FlowRect } from '@xihan-flow/core'
 import type { Viewport } from '@xihan-ui/designer-kit'
 import type { PointerSession } from '@xihan-ui/pointer'
 import type { KeyedChildren, PropertyValues } from '@xihan-ui/web-components/authoring'
+import type { FlowRuntimeExtension, FlowRuntimeModel } from './extensions'
 import type { FlowNodeStatus, FlowScene, FlowSceneEdge, FlowSceneNode } from './scene'
 import type { FlowViewerTranslations } from './translations'
 import { centerOn, DEFAULT_VIEWPORT, expandRect, fitRect, panBy, revealRect, wheelZoomFactor, zoomBy } from '@xihan-ui/designer-kit'
@@ -24,6 +25,7 @@ import {
   XhConfigController,
   XhReactiveElement,
 } from '@xihan-ui/web-components/authoring'
+import { createFlowRuntimeModel } from './extensions'
 import { createOrthogonalRouter } from './router'
 import { buildScene } from './scene'
 
@@ -70,24 +72,24 @@ interface Layers {
 export class XhFlowViewer extends XhReactiveElement {
   static override properties = {
     schema: { attribute: false },
-    nodeTypes: { attribute: false },
+    extensions: { attribute: false },
     statuses: { attribute: false },
     highlighted: { attribute: false },
-    renderNode: { attribute: false },
     router: { attribute: false },
     translations: { attribute: false },
   }
 
   /** 要显示的流程定义；从无到有时重新自动适配。 */
   declare schema: FlowDocument | undefined
-  /** 节点类型登记表，决定端口位置与缺省标签。 */
-  declare nodeTypes: FlowNodeTypeRegistry | undefined
+  /**
+   * 扩展：节点类型、节点渲染等都从这里来，内置扩展自动排在最前。赋值时当场合并查重，冲突抛 DesignerExtensionError、
+   * 属性保持原值；同一个扩展对象换了引用当作卸下再装上，宿主要保持引用稳定。
+   */
+  declare extensions: readonly FlowRuntimeExtension[] | undefined
   /** 节点 id → 运行状态；null 表示没有状态。 */
   declare statuses: Readonly<Record<string, FlowNodeStatus | null>> | undefined
   /** 高亮的节点 id。 */
   declare highlighted: readonly string[] | undefined
-  /** 自定义节点内容。 */
-  declare renderNode: FlowNodeRenderer | undefined
   /** 连线路由器，缺省为直角路由。 */
   declare router: FlowEdgeRouter | undefined
   /** 元素自己的文案，压在全局配置之上。 */
@@ -122,8 +124,17 @@ export class XhFlowViewer extends XhReactiveElement {
     this.#layers?.root.removeAttribute('data-panning')
   }
 
-  /** 定义从无到有时重新开启自动适配。 */
+  /** 定义从无到有时重新开启自动适配；extensions 赋值时当场合并查重，冲突时退回原值再抛。 */
   override requestUpdate(name?: PropertyKey, oldValue?: unknown): void {
+    if (name === 'extensions') {
+      try {
+        createFlowRuntimeModel(this.extensions)
+      }
+      catch (error) {
+        this.extensions = oldValue as readonly FlowRuntimeExtension[] | undefined
+        throw error
+      }
+    }
     if (name === 'schema' && oldValue === undefined && this.schema !== undefined)
       this.#startAutoFit()
     super.requestUpdate(name, oldValue)
@@ -134,8 +145,8 @@ export class XhFlowViewer extends XhReactiveElement {
     const layers = this.#ensureLayers()
     const t = this.#config.translations<FlowViewerTranslations>('xh-flow-viewer', DEFAULT_TRANSLATIONS, this.translations)
     layers.root.setAttribute('aria-label', t.label)
-    if (!this.#scene || changed.has('schema') || changed.has('nodeTypes') || changed.has('router'))
-      this.#scene = this.schema && this.nodeTypes ? buildScene(this.schema, this.nodeTypes, { route: this.#route() }) : undefined
+    if (!this.#scene || changed.has('schema') || changed.has('extensions') || changed.has('router'))
+      this.#scene = this.schema ? buildScene(this.schema, this.#model().nodeTypes, { route: this.#route() }) : undefined
     this.#renderEdges(layers)
     this.#renderLabels(layers)
     this.#renderNodes(layers)
@@ -312,10 +323,15 @@ export class XhFlowViewer extends XhReactiveElement {
     element.style.top = `${rect.y}px`
     element.style.width = `${rect.width}px`
     element.style.height = `${rect.height}px`
-    if (this.renderNode)
-      this.renderNode(element, { node, nodeType: sceneNode.nodeType, label: sceneNode.label, status, highlighted })
+    const render = this.#model().renderers.get(node.type)
+    if (render)
+      render(element, { node, nodeType: sceneNode.nodeType, label: sceneNode.label, status, highlighted })
     else if (element.textContent !== sceneNode.label)
       element.textContent = sceneNode.label
+  }
+
+  #model(): FlowRuntimeModel {
+    return createFlowRuntimeModel(this.extensions)
   }
 
   #startAutoFit(): void {

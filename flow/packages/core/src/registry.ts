@@ -81,6 +81,8 @@ export interface FlowNodeTypeDefinition {
   /** 文档中该类型节点的最多个数。 */
   readonly maxCount?: number
   readonly properties?: readonly FlowPropertyDescriptor[]
+  /** 从这类节点连出的连线多出的属性，path 相对连线本身，如决策节点出线的条件与是否默认分支。 */
+  readonly outgoingEdges?: readonly FlowPropertyDescriptor[]
   readonly meta?: JsonObject
 }
 
@@ -201,23 +203,28 @@ function normalizeNodeType(definition: FlowNodeTypeDefinition): FlowNodeType {
     portIds.add(port.id)
   }
 
+  checkPaths(type, 'property', definition.properties)
+  checkPaths(type, 'outgoing edge property', definition.outgoingEdges)
+
+  return { ...definition, ports }
+}
+
+function checkPaths(type: string, name: string, descriptors: readonly FlowPropertyDescriptor[] | undefined): void {
   const paths = new Set<string>()
-  for (const descriptor of definition.properties ?? []) {
+  for (const descriptor of descriptors ?? []) {
     if (descriptor.path.length === 0)
-      fail(type, 'property path must not be empty')
+      fail(type, `${name} path must not be empty`)
     try {
       getJsonAt(undefined, descriptor.path)
     }
     catch {
-      fail(type, `property path ${JSON.stringify(descriptor.path)} is invalid`)
+      fail(type, `${name} path ${JSON.stringify(descriptor.path)} is invalid`)
     }
     const key = formatJsonPath(descriptor.path)
     if (paths.has(key))
-      fail(type, `property ${key} is declared more than once`)
+      fail(type, `${name} ${key} is declared more than once`)
     paths.add(key)
   }
-
-  return { ...definition, ports }
 }
 
 function presetPorts(type: string, preset: FlowPortPreset): readonly FlowPort[] {

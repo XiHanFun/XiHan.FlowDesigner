@@ -18,9 +18,9 @@ export type FlowReadResult
 
 type Sink = IssueSink<FlowSchemaIssueCode>
 
-const DOCUMENT_KEYS = ['version', 'nodes', 'edges', 'data']
-const NODE_KEYS = ['id', 'type', 'x', 'y', 'width', 'height', 'label', 'data']
-const EDGE_KEYS = ['id', 'source', 'target', 'label', 'style', 'data', 'vertices']
+const DOCUMENT_KEYS = ['version', 'nodes', 'edges', 'data', 'extensions']
+const NODE_KEYS = ['id', 'type', 'x', 'y', 'width', 'height', 'label', 'data', 'extensions']
+const EDGE_KEYS = ['id', 'source', 'target', 'label', 'style', 'data', 'vertices', 'extensions']
 const ENDPOINT_KEYS = ['node', 'port']
 const STYLE_KEYS = ['dashed']
 const POINT_KEYS = ['x', 'y']
@@ -50,12 +50,17 @@ export function readDocument(value: unknown): FlowReadResult {
   const nodes = readItems(sink, fields.nodes, ['nodes'], readNode)
   const edges = readItems(sink, fields.edges, ['edges'], readEdge)
   const data = readData(sink, fields.data, ['data'])
+  const extensions = readExtensions(sink, fields.extensions, ['extensions'])
 
   if (sink.issues.length > 0 || !nodes || !edges)
     return fail()
-  const document: FlowDocument = data === undefined
-    ? { version: FLOW_DOCUMENT_VERSION, nodes, edges }
-    : { version: FLOW_DOCUMENT_VERSION, nodes, edges, data }
+  const document: FlowDocument = {
+    version: FLOW_DOCUMENT_VERSION,
+    nodes,
+    edges,
+    ...(data === undefined ? {} : { data }),
+    ...(extensions === undefined ? {} : { extensions }),
+  }
   return { ok: true, document }
 }
 
@@ -74,6 +79,17 @@ function readItems<T>(sink: Sink, value: unknown, path: JsonPath, readItem: (sin
       result.push(read)
   })
   return failed ? undefined : result
+}
+
+/** 读取扩展数据：键是扩展 id，每一块都必须是 JSON 对象，里面不看；深拷贝。 */
+function readExtensions(sink: Sink, value: unknown, path: JsonPath): JsonObject | undefined {
+  const fields = readObject(sink, value, path)
+  if (!fields)
+    return undefined
+  const before = sink.issues.length
+  for (const [id, data] of Object.entries(fields))
+    readData(sink, data, [...path, id])
+  return sink.issues.length === before ? cloneJson(fields as JsonValue) as JsonObject : undefined
 }
 
 /** 读取 JSON 对象并深拷贝。 */
@@ -96,6 +112,7 @@ function readNode(sink: Sink, value: unknown, path: JsonPath): FlowNode | undefi
   const height = readNumber(sink, fields.height, [...path, 'height'], { min: 0 })
   const label = readString(sink, fields.label, [...path, 'label'])
   const data = readData(sink, fields.data, [...path, 'data'])
+  const extensions = readExtensions(sink, fields.extensions, [...path, 'extensions'])
   if (id === undefined || type === undefined || x === undefined || y === undefined || width === undefined || height === undefined)
     return undefined
   return {
@@ -107,6 +124,7 @@ function readNode(sink: Sink, value: unknown, path: JsonPath): FlowNode | undefi
     height,
     ...(label === undefined ? {} : { label }),
     ...(data === undefined ? {} : { data }),
+    ...(extensions === undefined ? {} : { extensions }),
   }
 }
 
@@ -121,6 +139,7 @@ function readEdge(sink: Sink, value: unknown, path: JsonPath): FlowEdge | undefi
   const style = readStyle(sink, fields.style, [...path, 'style'])
   const data = readData(sink, fields.data, [...path, 'data'])
   const vertices = readItems(sink, fields.vertices, [...path, 'vertices'], readPoint)
+  const extensions = readExtensions(sink, fields.extensions, [...path, 'extensions'])
   if (id === undefined || source === undefined || target === undefined)
     return undefined
   return {
@@ -131,6 +150,7 @@ function readEdge(sink: Sink, value: unknown, path: JsonPath): FlowEdge | undefi
     ...(style === undefined ? {} : { style }),
     ...(data === undefined ? {} : { data }),
     ...(vertices === undefined ? {} : { vertices }),
+    ...(extensions === undefined ? {} : { extensions }),
   }
 }
 

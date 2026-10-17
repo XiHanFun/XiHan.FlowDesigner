@@ -5,6 +5,8 @@
 
 // 导出 @xihan-flow/core 的公共接口。
 
+export { createFlowModel, FLOW_CORE_EXTENSION, FLOW_EXTENSION_SPACES, patchExtensionData } from './extensions'
+export type { FlowCoreExtension, FlowModel, FlowRuleContext } from './extensions'
 export { computeEdgeGeometry, resolveEdgeAnchor } from './geometry'
 export type { FlowEdgeAnchor, FlowEdgeGeometry, FlowEdgeRouter, FlowRouteRequest } from './geometry'
 export type { FlowEdgeEnd, FlowIssue, FlowIssueCode, FlowSchemaIssueCode, FlowValidationIssueCode } from './issues'

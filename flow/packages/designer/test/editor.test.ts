@@ -3,17 +3,20 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-import type { FlowDocument } from '@xihan-flow/core'
+import type { FlowCoreExtension, FlowDocument } from '@xihan-flow/core'
 import type { FlowEditorChange } from '../src/editor'
-import { createNodeTypeRegistry } from '@xihan-flow/core'
+import { DesignerExtensionError } from '@xihan-ui/designer-kit'
 import { describe, expect, it } from 'vitest'
 import { createFlowEditor } from '../src/editor'
 
-const registry = createNodeTypeRegistry([
-  { type: 'start', size: { width: 100, height: 40 }, ports: 'out', entry: true, defaults: { label: '开始' } },
-  { type: 'task', size: { width: 120, height: 60 }, ports: 'both', defaults: { data: { assignee: '' } } },
-  { type: 'end', size: { width: 100, height: 40 }, ports: 'in', terminal: true, connection: { maxIncoming: 1 } },
-])
+const extensions: readonly FlowCoreExtension[] = [{
+  id: 'test',
+  nodeTypes: [
+    { type: 'start', size: { width: 100, height: 40 }, ports: 'out', entry: true, defaults: { label: '开始' } },
+    { type: 'task', size: { width: 120, height: 60 }, ports: 'both', defaults: { data: { assignee: '' } } },
+    { type: 'end', size: { width: 100, height: 40 }, ports: 'in', terminal: true, connection: { maxIncoming: 1 } },
+  ],
+}]
 
 function sample(): FlowDocument {
   return {
@@ -31,7 +34,7 @@ function sample(): FlowDocument {
 }
 
 function setup(document: FlowDocument = sample()) {
-  const editor = createFlowEditor({ document, registry })
+  const editor = createFlowEditor({ document, extensions })
   const changes: FlowEditorChange[] = []
   editor.subscribe(change => changes.push(change))
   return { editor, changes }
@@ -50,7 +53,7 @@ describe('新建节点与连线', () => {
 
   it('使用方给出的 createId 优先', () => {
     let next = 0
-    const editor = createFlowEditor({ document: sample(), registry, createId: (kind, type) => `${kind}:${type ?? ''}:${++next}` })
+    const editor = createFlowEditor({ document: sample(), extensions, createId: (kind, type) => `${kind}:${type ?? ''}:${++next}` })
     expect(editor.addNode('start', { x: 0, y: 0 }).id).toBe('node:start:1')
     const result = editor.connect({ node: 'node:start:1' }, { node: 't' })
     expect(result.ok && result.edge.id).toBe('edge::2')
@@ -137,7 +140,7 @@ describe('删除与移动', () => {
 describe('节点数据', () => {
   it('同一路径的连续写入不论停顿多久都合并为一步，封口后另起一步', () => {
     let time = 0
-    const editor = createFlowEditor({ document: sample(), registry, now: () => time })
+    const editor = createFlowEditor({ document: sample(), extensions, now: () => time })
     editor.setNodeProperty('t', ['data', 'assignee'], 'b')
     time += 60_000
     editor.setNodeProperty('t', ['data', 'assignee'], 'bc')
@@ -171,12 +174,28 @@ describe('节点数据', () => {
     expect(() => editor.setNodeProperty('t', ['data'], {})).toThrow(/not writable/)
     expect(() => editor.setNodeProperty('t', ['label'], 1)).toThrow(/must be a string/)
   })
+
+  it('extensions 加扩展 id 开头的路径写进该扩展的数据，别的扩展的数据原样保留，清空后去掉', () => {
+    const { editor } = setup()
+    editor.execute([{ type: 'updateNode', id: 't', patch: { extensions: { other: { keep: true } } } }])
+    editor.setNodeProperty('t', ['extensions', 'acme', 'weight'], 2)
+    expect(editor.document.nodes[1]!.extensions).toEqual({ other: { keep: true }, acme: { weight: 2 } })
+    editor.setNodeProperty('t', ['extensions', 'acme', 'weight'], undefined)
+    expect(editor.document.nodes[1]!.extensions).toEqual({ other: { keep: true } })
+    editor.setEdgeProperty('st', ['extensions', 'acme', 'flag'], true)
+    editor.setProperty([{ kind: 'document', id: '' }], ['extensions', 'acme', 'code'], 'x')
+    expect([editor.document.edges[0]!.extensions, editor.document.extensions]).toEqual([{ acme: { flag: true } }, { acme: { code: 'x' } }])
+    editor.setEdgeProperty('st', ['extensions', 'acme', 'flag'], undefined)
+    expect(editor.document.edges[0]).not.toHaveProperty('extensions')
+    expect(() => editor.setNodeProperty('t', ['extensions', 'acme'], {})).toThrow(/not writable/)
+    expect(() => editor.setProperty([{ kind: 'document', id: '' }], ['nodes'], [])).toThrow(/not writable/)
+  })
 })
 
 describe('连线属性', () => {
   it('写标签、外观与 data，同一路径连续写入合并，清空后删除字段', () => {
     let time = 0
-    const editor = createFlowEditor({ document: sample(), registry, now: () => time })
+    const editor = createFlowEditor({ document: sample(), extensions, now: () => time })
     editor.setEdgeProperty('st', ['label'], '同')
     time += 100
     editor.setEdgeProperty('st', ['label'], '同意')
@@ -293,7 +312,7 @@ describe('排列', () => {
     expect(e!.y).toBe(t!.y + 60 + 40)
     expect(editor.document.edges.every(edge => edge.vertices === undefined)).toBe(true)
     expect(editor.history.undoCount).toBe(1)
-    createFlowEditor({ document: { version: 1, nodes: [], edges: [] }, registry }).autoLayout()
+    createFlowEditor({ document: { version: 1, nodes: [], edges: [] }, extensions }).autoLayout()
   })
 })
 
@@ -307,10 +326,15 @@ describe('装载与校验', () => {
     expect(editor.document).toEqual(sample())
   })
 
-  it('按当前登记表校验', () => {
+  it('按当前扩展校验；换扩展时冲突抛错、什么都不变', () => {
     const { editor } = setup()
     expect(editor.validate()).toEqual([])
-    editor.setRegistry(createNodeTypeRegistry([]))
+    const model = editor.model
+    expect(() => editor.setExtensions([...extensions, { id: 'again', nodeTypes: [{ type: 'task', size: { width: 1, height: 1 }, ports: 'both' }] }]))
+      .toThrow(DesignerExtensionError)
+    expect(editor.model).toBe(model)
+    expect(editor.validate()).toEqual([])
+    editor.setExtensions([])
     expect(editor.validate().map(issue => issue.code)).toContain('node.unknown-type')
   })
 })

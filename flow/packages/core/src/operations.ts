@@ -19,6 +19,8 @@ export interface FlowNodePosition {
 export interface FlowNodePatch {
   readonly label?: string | null
   readonly data?: JsonObject | null
+  /** 整份替换扩展数据；只改某个扩展的那一块时用 patchExtensionData 算出新值。 */
+  readonly extensions?: JsonObject | null
 }
 
 /** 连线字段补丁：缺省表示不变，null 表示删除该字段。 */
@@ -27,11 +29,13 @@ export interface FlowEdgePatch {
   readonly style?: FlowEdgeStyle | null
   readonly data?: JsonObject | null
   readonly vertices?: readonly FlowPoint[] | null
+  readonly extensions?: JsonObject | null
 }
 
 /** 文档字段补丁：缺省表示不变，null 表示删除该字段。 */
 export interface FlowDocumentPatch {
   readonly data?: JsonObject | null
+  readonly extensions?: JsonObject | null
 }
 
 /** 编辑操作；所有操作都是纯 JSON。 */
@@ -78,9 +82,9 @@ export class FlowOperationError extends Error {
 
 type Op<T extends FlowOperationType> = Extract<FlowOperation, { type: T }>
 
-const NODE_PATCH_KEYS: readonly string[] = ['label', 'data']
-const EDGE_PATCH_KEYS: readonly string[] = ['label', 'style', 'data', 'vertices']
-const DOCUMENT_PATCH_KEYS: readonly string[] = ['data']
+const NODE_PATCH_KEYS: readonly string[] = ['label', 'data', 'extensions']
+const EDGE_PATCH_KEYS: readonly string[] = ['label', 'style', 'data', 'vertices', 'extensions']
+const DOCUMENT_PATCH_KEYS: readonly string[] = ['data', 'extensions']
 
 /**
  * 应用一个编辑操作，返回新文档与逆操作，不修改输入文档；未改动的节点与连线沿用原引用。

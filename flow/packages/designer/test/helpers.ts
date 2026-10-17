@@ -6,8 +6,7 @@
 // 设计器用例共用的挂载与指针工具。
 
 import type { FlowDocument, FlowNodeTypeDefinition } from '@xihan-flow/core'
-import type { XhFlowDesigner } from '../src'
-import { createNodeTypeRegistry } from '@xihan-flow/core'
+import type { FlowDesignerExtension, XhFlowDesigner } from '../src'
 import { FLOW_DESIGNER_TAG } from '../src'
 
 export const definitions: readonly FlowNodeTypeDefinition[] = [
@@ -17,7 +16,8 @@ export const definitions: readonly FlowNodeTypeDefinition[] = [
   { type: 'note', size: { width: 80, height: 40 }, ports: 'none' },
 ]
 
-export const registry = createNodeTypeRegistry(definitions)
+/** 用例的节点类型，以一个扩展交给设计器。 */
+export const nodes: FlowDesignerExtension = { id: 'test', nodeTypes: definitions }
 
 export function sample(): FlowDocument {
   return {
@@ -35,7 +35,7 @@ const mounted: Element[] = []
 
 export async function mount(setup: (designer: XhFlowDesigner) => void = () => {}): Promise<XhFlowDesigner> {
   const designer = window.document.createElement(FLOW_DESIGNER_TAG)
-  designer.nodeTypes = registry
+  designer.extensions = [nodes]
   designer.schema = sample()
   setup(designer)
   window.document.body.append(designer)

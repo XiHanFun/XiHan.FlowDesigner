@@ -4,7 +4,7 @@
  */
 
 import type { JsonObject, JsonValue } from '@xihan-ui/core/json'
-import type { FlowDocument, FlowEdge, FlowNode, FlowNodeTypeDefinition, FlowNodeTypeRegistry } from '../../src'
+import type { FlowCoreExtension, FlowDocument, FlowEdge, FlowNode, FlowNodeTypeDefinition, FlowNodeTypeRegistry } from '../../src'
 import { createNodeTypeRegistry } from '../../src'
 
 /** 工作流活动节点类型：节点 type 即活动类型，活动属性位于 data.properties；属性路径相对节点。 */
@@ -87,6 +87,16 @@ export const workflowNodeTypes: readonly FlowNodeTypeDefinition[] = [
 ]
 
 export const workflowRegistry: FlowNodeTypeRegistry = createNodeTypeRegistry(workflowNodeTypes)
+
+/** 受理人规则与重试策略由宿主的编辑器填写，这里只要求是数组与对象。 */
+export const workflowExtension: FlowCoreExtension = {
+  id: 'xihan-workflow',
+  nodeTypes: workflowNodeTypes,
+  controls: {
+    assignees: { check: value => (Array.isArray(value) ? undefined : 'invalid-type') },
+    retry: { check: value => (typeof value === 'object' && value !== null && !Array.isArray(value) ? undefined : 'invalid-type') },
+  },
+}
 
 interface DefinitionNode {
   id: string

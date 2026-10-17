@@ -9,6 +9,7 @@
 // 选中一条连线后拖端点改连、拖拐点挪动、拖线段中点加拐点、双击拐点删掉它，
 // 物料拖进画布新建节点；Ctrl / ⌘ + 滚轮缩放，键盘删除、撤销重做、复制粘贴与微移。
 // 右键节点、连线或空白处弹出内置菜单，宿主取消对应的 *-contextmenu 事件即不弹。
+// 节点类型、节点渲染、属性编辑器、命令与面板都从 extensions 来，内置命令也是一个扩展；工具栏与菜单的排列可由 commandLayout 改写。
 // 面板用 @xihan-ui/web-components 的元素，defineFlowDesigner() 会一并注册它们。
 
 import type {
@@ -19,25 +20,33 @@ import type {
   FlowEndpoint,
   FlowIssue,
   FlowNode,
-  FlowNodeTypeRegistry,
   FlowOperation,
   FlowPoint,
-  FlowPropertyDescriptor,
   FlowRect,
   FlowValidateOptions,
 } from '@xihan-flow/core'
-import type { FlowDesignerTranslations, FlowNodeRenderer, FlowScene, FlowSceneEdge, FlowSceneNode } from '@xihan-flow/runtime'
-import type { AlignMode, DistributeAxis, ExecuteOptions, Viewport } from '@xihan-ui/designer-kit'
-import type { PropertyEditorTable } from '@xihan-ui/designer-kit/properties'
-import type { DesignerFrameRegion, DesignerSnapOptions, DesignerTransformEventMap, DropOver, PanRequestDetail } from '@xihan-ui/designer-shell'
+import type { FlowDesignerTranslations, FlowScene, FlowSceneEdge, FlowSceneNode } from '@xihan-flow/runtime'
+import type { AlignMode, DistributeAxis, ExecuteOptions, ExtensionHost, Viewport } from '@xihan-ui/designer-kit'
+import type {
+  CommandToolbar,
+  DesignerCommandLayout,
+  DesignerFrameRegion,
+  DesignerPanelHost,
+  DesignerSnapOptions,
+  DesignerTransformEventMap,
+  DropOver,
+  PanRequestDetail,
+} from '@xihan-ui/designer-shell'
 import type { PointerSession } from '@xihan-ui/pointer'
 import type { KeyedChildren, PropertyValues } from '@xihan-ui/web-components/authoring'
 import type { FlowAutoLayoutOptions, FlowClipboard, FlowEditor, FlowSelection } from './editor'
-import type { FlowPropertyEditor } from './panels/properties'
-import { createNodeTypeRegistry, getPortPosition, portAllows } from '@xihan-flow/core'
+import type { FlowDesignerContext, FlowDesignerExtension, FlowDesignerModel, FlowMenuSubject } from './extensions'
+import { getPortPosition, portAllows } from '@xihan-flow/core'
 import { buildScene, createOrthogonalRouter } from '@xihan-flow/runtime'
 import {
   centerOn,
+  commandForShortcut,
+  createExtensionHost,
   DEFAULT_VIEWPORT,
   expandRect,
   fitRect,
@@ -53,10 +62,15 @@ import {
   zoomBy,
 } from '@xihan-ui/designer-kit'
 import {
+  arrangeCommands,
+  createCommandToolbar,
+  createPanelHost,
   defineDesignerShellElement,
   DESIGNER_FRAME_REGIONS,
   parseDesignerPanels,
   registerDropTarget,
+  renderCommandMenu,
+  runCommand,
   XhDesignerFrameElement,
   XhDesignerIssuesElement,
   XhDesignerMinimapElement,
@@ -64,6 +78,7 @@ import {
   XhDesignerPropertiesElement,
   XhDesignerTransformElement,
 } from '@xihan-ui/designer-shell'
+import { detectKbdPlatform } from '@xihan-ui/headless'
 import { createPointerSession, resolveSessionDoc, shouldActivate, wheelPixels } from '@xihan-ui/pointer'
 import {
   createGeneratedElement,
@@ -78,12 +93,12 @@ import {
 import { defineXhElement, XhContextMenuElement, XhToolbarElement } from '@xihan-ui/web-components/define'
 import { encodeFlowClipboard, readFlowClipboard, writeFlowClipboard } from './clipboard'
 import { createFlowEditor } from './editor'
+import { createFlowDesignerModel, FLOW_DESIGNER_EXTENSION, FLOW_TOOLBAR_LAYOUT, flowMenuLayout } from './extensions'
 import { ContextMenuPanel } from './panels/context-menu'
 import { IssuesPanel } from './panels/issues'
 import { MinimapPanel } from './panels/minimap'
 import { paletteNodeType, PalettePanel } from './panels/palette'
-import { DEFAULT_EDGE_PROPERTIES, PropertiesPanel } from './panels/properties'
-import { ToolbarPanel } from './panels/toolbar'
+import { PropertiesPanel } from './panels/properties'
 import { DEFAULT_TRANSLATIONS } from './translations'
 
 /** 设计器的标签名。 */
@@ -111,6 +126,7 @@ export interface FlowDesignerEventMap {
 export type FlowDesignerPanel = 'toolbar' | 'palette' | 'properties' | 'issues' | 'minimap'
 
 const EMPTY_SCHEMA: FlowDocument = { version: 1, nodes: [], edges: [] }
+const NO_EXTENSIONS: readonly FlowDesignerExtension[] = []
 const ZOOM_STEP = 1.2
 const PAN_STEP = 48
 const FIT_PADDING = 24
@@ -135,12 +151,16 @@ interface Layers {
   readonly overlay: SVGSVGElement
   readonly dropPreview: HTMLElement
   readonly transform: XhDesignerTransformElement
-  readonly toolbar: ToolbarPanel
+  /** 工具栏区里的容器，放命令工具栏。 */
+  readonly toolbar: HTMLElement
+  readonly commandBar: CommandToolbar<FlowDesignerContext>
   readonly palette: PalettePanel
   readonly properties: PropertiesPanel
   readonly issues: IssuesPanel
   readonly minimap: MinimapPanel
   readonly menu: ContextMenuPanel
+  /** 扩展登记的面板。 */
+  readonly panels: DesignerPanelHost<FlowDesignerContext>
 }
 
 interface Gesture {
@@ -157,25 +177,20 @@ interface ConnectPreview {
 
 export class XhFlowDesigner extends XhReactiveElement {
   static override properties = {
-    nodeTypes: { attribute: false },
     readonly: { type: Boolean },
     grid: { attribute: false },
     snap: { attribute: false },
     panels: { converter: { fromAttribute: (value: string | null) => value ?? undefined } },
     paletteGroupOrder: { attribute: false },
     paletteGroupLabels: { attribute: false },
-    propertyEditors: { attribute: false },
     propertyGroupOrder: { attribute: false },
     propertyGroupLabels: { attribute: false },
-    edgeProperties: { attribute: false },
+    commandLayout: { attribute: false },
     validateOptions: { attribute: false },
-    renderNode: { attribute: false },
     router: { attribute: false },
     translations: { attribute: false },
   }
 
-  /** 节点类型登记表，决定端口、连线约束与属性。 */
-  declare nodeTypes: FlowNodeTypeRegistry | undefined
   /** 只读：可以选择与浏览，不能修改。 */
   declare readonly: boolean
   /** 拖动与新建节点时吸附的网格边长，false 不吸附网格；缺省 16。 */
@@ -191,21 +206,17 @@ export class XhFlowDesigner extends XhReactiveElement {
   declare paletteGroupOrder: readonly string[] | undefined
   /** 物料面板的类别标题，缺省直接显示 category。 */
   declare paletteGroupLabels: Readonly<Record<string, string>> | undefined
-  /**
-   * 属性面板的自定义编辑器：按编辑方式（byControl）、属性路径（byPath）或对象种类 + 路径（byTarget）查找，
-   * 节点的对象种类是节点类型名，连线是 edge；查不到的内建编辑方式用面板自带的编辑器。
-   */
-  declare propertyEditors: PropertyEditorTable<FlowPropertyEditor> | undefined
   /** 属性面板里先列出的分组及其顺序，其余分组按首次出现的顺序排在后面。 */
   declare propertyGroupOrder: readonly string[] | undefined
   /** 属性面板的分组标题，缺省直接显示分组 id。 */
   declare propertyGroupLabels: Readonly<Record<string, string>> | undefined
-  /** 连线的属性描述，path 相对连线本身；缺省可编辑标签与虚线。 */
-  declare edgeProperties: readonly FlowPropertyDescriptor[] | undefined
-  /** 校验选项：按问题码覆盖严重程度。 */
-  declare validateOptions: FlowValidateOptions | undefined
-  /** 自定义节点内容。 */
-  declare renderNode: FlowNodeRenderer | undefined
+  /**
+   * 工具栏与各右键菜单的命令排列：toolbar、menu:node、menu:edge、menu:blank → 若干组命令 id。
+   * 写了某个位置就只显示列出的命令；没写的位置用内置排列，再把 placement 含它的扩展命令追加成一组。
+   */
+  declare commandLayout: DesignerCommandLayout | undefined
+  /** 校验选项：按问题码覆盖严重程度，扩展规则的问题码也认。 */
+  declare validateOptions: Omit<FlowValidateOptions, 'extensions'> | undefined
   /** 连线路由器，缺省为直角路由。 */
   declare router: FlowEdgeRouter | undefined
   /** 元素自己的文案，压在全局配置之上。 */
@@ -214,8 +225,17 @@ export class XhFlowDesigner extends XhReactiveElement {
   readonly #config = new XhConfigController(this)
   #frameRegionsKey = ''
   #frameRegionList: readonly DesignerFrameRegion[] = DESIGNER_FRAME_REGIONS
+  #frameRegionsModel: FlowDesignerModel | undefined
   readonly #keys: KeyedChildren = new WeakMap()
-  readonly #editor: FlowEditor = createFlowEditor({ document: EMPTY_SCHEMA, registry: createNodeTypeRegistry([]) })
+  #extensions: readonly FlowDesignerExtension[] | undefined
+  #model: FlowDesignerModel = createFlowDesignerModel(NO_EXTENSIONS)
+  readonly #editor: FlowEditor = createFlowEditor({ document: EMPTY_SCHEMA, extensions: this.#model.list })
+  readonly #host: ExtensionHost<FlowDesignerExtension> = createExtensionHost<FlowDesignerExtension, FlowDesignerContext>({
+    builtins: [FLOW_DESIGNER_EXTENSION],
+    context: () => this.#context(),
+  })
+
+  #platform: 'mac' | 'other' | undefined
   #layers: Layers | undefined
   #defaultRouter: FlowEdgeRouter | undefined
   #scene: FlowScene | undefined
@@ -291,6 +311,31 @@ export class XhFlowDesigner extends XhReactiveElement {
     this.#editor.load(value)
   }
 
+  /**
+   * 扩展：节点类型、节点渲染、属性编辑器、命令与面板都从这里来，内置扩展自动排在最前。
+   * 赋值时当场合并查重，冲突抛 DesignerExtensionError、什么都不变；各扩展的 setup 在元素连上文档时调用、断开时清理。
+   * 同一个扩展对象换了引用当作卸下再装上，宿主要保持引用稳定。
+   */
+  get extensions(): readonly FlowDesignerExtension[] | undefined {
+    return this.#extensions
+  }
+
+  set extensions(value: readonly FlowDesignerExtension[] | undefined) {
+    if (value === this.#extensions)
+      return
+    const model = createFlowDesignerModel(value ?? NO_EXTENSIONS)
+    this.#ensureLayers().panels.assign(model.extensions, this.#context())
+    if (this.isConnected)
+      this.#host.assign(value ?? NO_EXTENSIONS)
+    const old = this.#extensions
+    this.#extensions = value
+    this.#model = model
+    this.#editor.setExtensions(model.list)
+    this.#sceneStale = true
+    this.#scheduleIssues()
+    this.requestUpdate('extensions', old)
+  }
+
   get canUndo(): boolean {
     return this.#editor.history.canUndo
   }
@@ -318,6 +363,7 @@ export class XhFlowDesigner extends XhReactiveElement {
       this.#resizeObserver ??= new ResizeObserver(() => this.#onResize())
       this.#resizeObserver.observe(layers.root)
     }
+    this.#host.assign(this.#extensions ?? NO_EXTENSIONS)
   }
 
   override disconnectedCallback(): void {
@@ -326,6 +372,7 @@ export class XhFlowDesigner extends XhReactiveElement {
       this.ownerDocument.removeEventListener(type, this.#onClipboard)
     this.#resizeObserver?.disconnect()
     this.#cancelGesture()
+    this.#host.dispose()
   }
 
   protected override update(changed: PropertyValues): void {
@@ -333,21 +380,16 @@ export class XhFlowDesigner extends XhReactiveElement {
     const layers = this.#ensureLayers()
     const t = this.#translations()
     layers.menu.trigger.setAttribute('aria-label', t.label)
-    if (changed.has('nodeTypes')) {
-      this.#editor.setRegistry(this.nodeTypes ?? createNodeTypeRegistry([]))
-      this.#sceneStale = true
-      this.#scheduleIssues()
-    }
     if (changed.has('router'))
       this.#sceneStale = true
-    if (changed.has('edgeProperties') || changed.has('validateOptions'))
+    if (changed.has('validateOptions'))
       this.#scheduleIssues()
     if (this.readonly)
       this.setAttribute('data-readonly', '')
     else
       this.removeAttribute('data-readonly')
     if (this.#sceneStale || !this.#scene) {
-      this.#scene = buildScene(this.#editor.document, this.#editor.registry, { route: this.#route() })
+      this.#scene = buildScene(this.#editor.document, this.#editor.model.nodeTypes, { route: this.#route() })
       this.#sceneStale = false
     }
     const selection = this.#editor.selection
@@ -383,7 +425,7 @@ export class XhFlowDesigner extends XhReactiveElement {
 
   /** 新建节点并选中：at 是节点中心的世界坐标，缺省放在视口中央；位置吸附网格。 */
   addNode(type: string, at?: FlowPoint): FlowNode {
-    const nodeType = this.#editor.registry.get(type)
+    const nodeType = this.#editor.model.nodeTypes.get(type)
     if (!nodeType)
       throw new Error(`[flow-designer] node type "${type}" is not registered`)
     const center = at ?? this.#viewportCenter()
@@ -444,9 +486,9 @@ export class XhFlowDesigner extends XhReactiveElement {
       this.#editor.autoLayout(options)
   }
 
-  /** 按当前节点类型登记表、连线属性描述与校验选项校验定义。 */
+  /** 按当前扩展与校验选项校验定义。 */
   validate(): FlowIssue[] {
-    return this.#editor.validate({ ...this.validateOptions, edgeProperties: this.edgeProperties ?? DEFAULT_EDGE_PROPERTIES })
+    return this.#editor.validate(this.validateOptions)
   }
 
   getViewport(): Viewport {
@@ -501,9 +543,17 @@ export class XhFlowDesigner extends XhReactiveElement {
       this.setViewport(next)
   }
 
-  /** 选中问题所在的节点或连线并显露它；问题落在属性上时把焦点交给属性面板里的那个字段。 */
+  /**
+   * 选中问题所在的节点或连线并显露它；问题落在属性上时把焦点交给属性面板里的那个字段。
+   * 流程定义级属性的问题不带 target：清空选择，属性面板换成流程定义后聚焦那个字段。
+   */
   #locate(issue: FlowIssue): void {
     const target = issue.target
+    if (!target && issue.path.length > 0 && this.#editor.model.documentProperties.length > 0) {
+      this.#editor.clearSelection()
+      this.#focusProperty(issue.path)
+      return
+    }
     if (target?.kind === 'node') {
       this.#editor.select({ nodes: [target.id] })
       this.revealNode(target.id)
@@ -521,11 +571,32 @@ export class XhFlowDesigner extends XhReactiveElement {
     }
     if (!target || issue.path.length <= 2)
       return
-    const path = issue.path.slice(2)
+    this.#focusProperty(issue.path.slice(2))
+  }
+
+  /** 等属性面板更新后把焦点交给 path（相对对象）的字段。 */
+  #focusProperty(path: readonly (string | number)[]): void {
     const properties = this.#ensureLayers().properties
     void this.updateComplete
       .then(() => properties.element.updateComplete)
       .then(() => properties.focusField(path))
+  }
+
+  /** 交给命令、面板与扩展 setup 的上下文。 */
+  #context(): FlowDesignerContext {
+    return { designer: this, translations: this.#translations() }
+  }
+
+  #kbdPlatform(): 'mac' | 'other' {
+    this.#platform ??= detectKbdPlatform()
+    return this.#platform
+  }
+
+  /** 按对象换上右键菜单的条目；条目的可用状态取此刻设计器的状态。 */
+  #prepareMenu(menu: ContextMenuPanel, subject: FlowMenuSubject): void {
+    const { commands } = this.#model
+    const groups = arrangeCommands(`menu:${subject}`, commands, flowMenuLayout(subject, this.#editor.selection.nodes.length), this.commandLayout)
+    renderCommandMenu(menu.content, groups, commands, this.#context(), { platform: this.#kbdPlatform() })
   }
 
   /** 浏览器视口坐标换成画布的世界坐标。 */
@@ -579,7 +650,7 @@ export class XhFlowDesigner extends XhReactiveElement {
   }
 
   #ensureLayers(): Layers {
-    if (this.#layers?.frame.isConnected && this.#layers.frame.parentElement === this)
+    if (this.#layers?.frame.parentElement === this)
       return this.#layers
     const doc = this.ownerDocument
     const canvas = createGeneratedElement(doc, 'div')
@@ -618,11 +689,13 @@ export class XhFlowDesigner extends XhReactiveElement {
           this.setViewport(centerOn(this.#viewport, point, size))
       },
     })
-    const menu = new ContextMenuPanel(this, root)
-    menu.prepare('blank', this.#translations())
+    const menu = new ContextMenuPanel(doc, root, id => runCommand(this.#model.commands, id, this.#context()))
     menu.trigger.addEventListener('keydown', this.#onKeyDown)
     canvas.append(menu.element, minimap.element)
-    const toolbar = new ToolbarPanel(this)
+    const commandBar = createCommandToolbar<FlowDesignerContext>(doc)
+    const toolbar = createGeneratedElement(doc, 'div')
+    toolbar.dataset.part = 'toolbar'
+    toolbar.append(commandBar.element)
     const palette = new PalettePanel({
       ownerDocument: doc,
       isReadonly: () => this.readonly,
@@ -639,32 +712,33 @@ export class XhFlowDesigner extends XhReactiveElement {
       editor: this.#editor,
       isReadonly: () => this.readonly,
       issues: () => this.#issues,
-      editors: () => this.propertyEditors,
+      editors: () => this.#model.editors,
       groupOrder: () => this.propertyGroupOrder,
       groupLabels: () => this.propertyGroupLabels,
-      edgeProperties: () => this.edgeProperties,
     })
     const issues = new IssuesPanel({
       ownerDocument: doc,
       document: () => this.#editor.document,
-      registry: () => this.#editor.registry,
+      model: () => this.#editor.model,
       issues: () => this.#issues,
-      edgeProperties: () => this.edgeProperties ?? DEFAULT_EDGE_PROPERTIES,
       locate: issue => this.#locate(issue),
     })
     const frame = createGeneratedElement(doc, 'xh-designer-frame', { 'data-part': 'frame' })
-    toolbar.element.slot = 'toolbar'
+    toolbar.slot = 'toolbar'
     palette.element.slot = 'palette'
     canvas.slot = 'canvas'
     properties.element.slot = 'properties'
     issues.element.slot = 'issues'
-    frame.append(toolbar.element, palette.element, canvas, properties.element, issues.element)
+    frame.append(toolbar, palette.element, canvas, properties.element, issues.element)
+    const panels = createPanelHost<FlowDesignerContext>(frame)
     this.append(frame)
     root.addEventListener('pointerdown', this.#onPointerDown)
     root.addEventListener('dblclick', this.#onDoubleClick)
     root.addEventListener('contextmenu', this.#onContextMenu)
     root.addEventListener('wheel', this.#onWheel, { passive: false })
-    this.#layers = { frame, canvas, root, world, edges, labels, nodes, ports, handles, overlay, dropPreview, transform, toolbar, palette, properties, issues, minimap, menu }
+    this.#layers = { frame, canvas, root, world, edges, labels, nodes, ports, handles, overlay, dropPreview, transform, toolbar, commandBar, palette, properties, issues, minimap, menu, panels }
+    panels.assign(this.#model.extensions, this.#context())
+    this.#prepareMenu(menu, 'blank')
     return this.#layers
   }
 
@@ -714,8 +788,9 @@ export class XhFlowDesigner extends XhReactiveElement {
     element.style.top = `${rect.y}px`
     element.style.width = `${rect.width}px`
     element.style.height = `${rect.height}px`
-    if (this.renderNode)
-      this.renderNode(element, { node, nodeType: sceneNode.nodeType, label: sceneNode.label, status: undefined, highlighted: false })
+    const render = this.#model.runtime.renderers.get(node.type)
+    if (render)
+      render(element, { node, nodeType: sceneNode.nodeType, label: sceneNode.label, status: undefined, highlighted: false })
     else if (element.textContent !== sceneNode.label)
       element.textContent = sceneNode.label
   }
@@ -801,7 +876,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     return shown === undefined || shown.has(panel)
   }
 
-  /** 外框的命名区，带上本地化的区名，分隔条的无障碍名称要用。 */
+  /** 外框的命名区：内置区带上本地化的区名（分隔条的无障碍名称要用），后面接扩展面板的区。 */
   #frameRegions(t: FlowDesignerTranslations): readonly DesignerFrameRegion[] {
     const labels: Readonly<Record<string, string>> = {
       toolbar: t.toolbar,
@@ -811,9 +886,13 @@ export class XhFlowDesigner extends XhReactiveElement {
       issues: this.#config.translations<{ title: string }>('xh-designer-issues', { title: 'Problems' }).title,
     }
     const key = JSON.stringify(labels)
-    if (key !== this.#frameRegionsKey) {
+    if (key !== this.#frameRegionsKey || this.#frameRegionsModel !== this.#model) {
       this.#frameRegionsKey = key
-      this.#frameRegionList = DESIGNER_FRAME_REGIONS.map(region => ({ ...region, label: labels[region.name] ?? region.name }))
+      this.#frameRegionsModel = this.#model
+      this.#frameRegionList = [
+        ...DESIGNER_FRAME_REGIONS.map(region => ({ ...region, label: labels[region.name] ?? region.name })),
+        ...this.#model.extensions.flatMap(extension => (extension.panels ?? []).map(panel => panel.region)),
+      ]
     }
     return this.#frameRegionList
   }
@@ -822,16 +901,19 @@ export class XhFlowDesigner extends XhReactiveElement {
     layers.frame.panels = this.panels
     layers.frame.regions = this.#frameRegions(t)
     layers.minimap.element.hidden = !this.#shows('minimap')
+    const context: FlowDesignerContext = { designer: this, translations: t }
+    const { commands } = this.#model
     if (this.#shows('toolbar'))
-      layers.toolbar.update(t)
+      layers.commandBar.update(arrangeCommands('toolbar', commands, FLOW_TOOLBAR_LAYOUT, this.commandLayout), commands, context, t.toolbar)
     if (this.#shows('palette'))
-      layers.palette.update(this.#editor.registry, { order: this.paletteGroupOrder, labels: this.paletteGroupLabels }, t)
+      layers.palette.update(this.#editor.model.nodeTypes, { order: this.paletteGroupOrder, labels: this.paletteGroupLabels }, t)
     if (this.#shows('properties'))
       layers.properties.update(t)
     if (this.#shows('issues'))
       layers.issues.update(t)
     if (this.#shows('minimap'))
       layers.minimap.update()
+    layers.panels.update(context)
   }
 
   #startAutoFit(): void {
@@ -1215,7 +1297,7 @@ export class XhFlowDesigner extends XhReactiveElement {
   /** 物料拖到画布上：按节点类型的尺寸在指针处画落点（吸附网格）；只读或不是物料时不接受。 */
   #dropOver(point: FlowPoint, payload: unknown): DropOver {
     const type = paletteNodeType(payload)
-    const nodeType = type === undefined ? undefined : this.#editor.registry.get(type)
+    const nodeType = type === undefined ? undefined : this.#editor.model.nodeTypes.get(type)
     if (this.readonly || !nodeType) {
       this.#clearDrop()
       return { accept: false }
@@ -1312,7 +1394,8 @@ export class XhFlowDesigner extends XhReactiveElement {
       event.stopPropagation()
       return
     }
-    this.#layers?.menu.prepare(target?.kind ?? 'blank', this.#translations())
+    if (this.#layers)
+      this.#prepareMenu(this.#layers.menu, target?.kind ?? 'blank')
   }
 
   #translations(): FlowDesignerTranslations {
@@ -1359,7 +1442,8 @@ export class XhFlowDesigner extends XhReactiveElement {
   readonly #onKeyDown = (event: KeyboardEvent): void => {
     if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) {
       const { nodes, edges } = this.#editor.selection
-      this.#layers?.menu.prepare(nodes.length > 0 ? 'node' : edges.length > 0 ? 'edge' : 'blank', this.#translations())
+      if (this.#layers)
+        this.#prepareMenu(this.#layers.menu, nodes.length > 0 ? 'node' : edges.length > 0 ? 'edge' : 'blank')
       return
     }
     if (event.key === 'Escape' && this.#gesture) {
@@ -1369,6 +1453,13 @@ export class XhFlowDesigner extends XhReactiveElement {
     }
     if (this.#gesture)
       return
+    const context = this.#context()
+    const hit = commandForShortcut(this.#model.commands.values(), event, context, this.#kbdPlatform())
+    if (hit) {
+      hit.run(context)
+      event.preventDefault()
+      return
+    }
     const command = event.ctrlKey || event.metaKey
     if (command && !event.altKey && this.#onCommandKey(event))
       event.preventDefault()
@@ -1376,50 +1467,28 @@ export class XhFlowDesigner extends XhReactiveElement {
       event.preventDefault()
   }
 
+  /** 没有命令占用的修饰键组合：Ctrl / ⌘ + S 派发 save，Ctrl / ⌘ + Y 重做。 */
   #onCommandKey(event: KeyboardEvent): boolean {
     const key = event.key.toLowerCase()
     if (key === 's') {
       emitEvent(this, 'save', {})
       return true
     }
-    if (key === 'a') {
-      this.#editor.selectAll()
-      return true
-    }
-    if (this.readonly)
-      return false
-    if (key === 'z') {
-      if (event.shiftKey)
-        this.#editor.redo()
-      else
-        this.#editor.undo()
-      return true
-    }
-    if (key === 'y') {
+    if (key === 'y' && !this.readonly) {
       this.#editor.redo()
-      return true
-    }
-    if (key === 'd') {
-      this.duplicate()
       return true
     }
     return false
   }
 
+  /** 没有命令占用的单键：Backspace 删除，= 与按着 Shift 的 + 放大，方向键微移选中的节点或平移视口。 */
   #onPlainKey(event: KeyboardEvent): boolean {
     switch (event.key) {
-      case 'Delete':
       case 'Backspace':
         return this.deleteSelection()
       case '+':
       case '=':
         this.zoomIn()
-        return true
-      case '-':
-        this.zoomOut()
-        return true
-      case '0':
-        this.zoomToFit()
         return true
     }
     const delta = nudgeDelta(event.key, { large: event.shiftKey, largeStep: this.#gridStep() })

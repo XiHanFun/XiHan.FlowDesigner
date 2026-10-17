@@ -6,12 +6,15 @@
 import type { JsonObject, JsonPath } from '@xihan-ui/core/json'
 import type { IssueParamValue, IssueSeverity, SchemaIssueTarget } from '@xihan-ui/designer-kit/schema'
 import type { GraphLink } from '@xihan-ui/viz/graph'
+import type { FlowCoreExtension } from './extensions'
 import type { FlowEdgeEnd, FlowIssue, FlowValidationIssueCode } from './issues'
-import type { FlowNodeType, FlowNodeTypeRegistry, FlowPort, FlowPropertyDescriptor } from './registry'
+import type { FlowNodeType, FlowNodeTypeRegistry, FlowPort } from './registry'
 import type { FlowDocument, FlowEndpoint, FlowNode } from './schema'
+import { checkExtensionData, runExtensionRules } from '@xihan-ui/designer-kit'
 import { checkProperties } from '@xihan-ui/designer-kit/properties'
 import { withSeverity } from '@xihan-ui/designer-kit/schema'
 import { reachableFrom } from '@xihan-ui/viz/graph'
+import { createFlowModel } from './extensions'
 import { portAllows } from './registry'
 
 /** 各问题码的缺省严重程度。 */
@@ -40,14 +43,15 @@ export const DEFAULT_ISSUE_SEVERITY: Readonly<Record<FlowValidationIssueCode, Is
   'not-integer': 'error',
   'invalid-option': 'error',
   'invalid-color': 'error',
+  'unknown-control': 'error',
 }
 
 /** 校验选项。 */
 export interface FlowValidateOptions {
-  /** 按问题码覆盖严重程度，off 表示不报告。 */
-  readonly severity?: Readonly<Partial<Record<FlowValidationIssueCode, IssueSeverity | 'off'>>>
-  /** 连线的属性描述，path 相对连线本身；给了就逐条连线检查必填与取值，问题落在连线上。 */
-  readonly edgeProperties?: readonly FlowPropertyDescriptor[]
+  /** 节点类型、属性、编辑方式与规则都从这组扩展来，内置扩展自动排在最前；与设计器、查看器的 extensions 是同一份。 */
+  readonly extensions?: readonly FlowCoreExtension[]
+  /** 按问题码覆盖严重程度，off 表示不报告；扩展规则的问题码也认。 */
+  readonly severity?: Readonly<Partial<Record<FlowValidationIssueCode | (string & {}), IssueSeverity | 'off'>>>
 }
 
 /** 连接检查可能给出的问题码。 */
@@ -167,18 +171,18 @@ export function checkConnection(
 }
 
 /**
- * 按节点类型登记表校验文档结构，返回全部问题，每条都带上严重程度。
+ * 按扩展合出的流程模型校验文档结构，返回全部问题，每条都带上严重程度。
  * 覆盖重复 id、未知类型、悬空引用、端口方向、自环、允许的连接类型、入度 / 出度与端口连接数、
- * 类型个数、孤立 / 缺少入线或出线 / 从入口不可达的节点，以及节点属性（显示中的必填与内建编辑方式的取值）。
+ * 类型个数、孤立 / 缺少入线或出线 / 从入口不可达的节点，节点、连线与流程定义级属性（显示中的必填与编辑方式的取值），
+ * 文档与各对象上扩展数据的形状，以及各扩展的规则。
  * 问题落在节点上时路径为 ['nodes', 下标]，落在连线上时为 ['edges', 下标]（指明一端时再加 source / target），
- * 并带 target；类型个数的问题路径为空。重复 id 的节点只按首次出现的那个参与引用解析与连通性分析。
+ * 并带 target；类型个数与流程定义级属性的问题落在文档上。重复 id 的节点只按首次出现的那个参与引用解析与连通性分析。
+ * 扩展冲突时抛 DesignerExtensionError。
  */
-export function validateDocument(
-  document: FlowDocument,
-  registry: FlowNodeTypeRegistry,
-  options: FlowValidateOptions = {},
-): FlowIssue[] {
-  const issues: FlowIssue<FlowValidationIssueCode>[] = []
+export function validateDocument(document: FlowDocument, options: FlowValidateOptions = {}): FlowIssue[] {
+  const model = createFlowModel(options.extensions)
+  const registry = model.nodeTypes
+  const issues: FlowIssue[] = []
   interface Location { readonly path: JsonPath, readonly target?: SchemaIssueTarget }
   const report = (code: FlowValidationIssueCode, location: Location, params?: JsonObject): void => {
     issues.push({ code, ...location, ...(params === undefined || Object.keys(params).length === 0 ? {} : { params: params as Readonly<Record<string, IssueParamValue>> }) })
@@ -306,26 +310,31 @@ export function validateDocument(
     })
   }
 
+  const { controls } = model
+  issues.push(...checkProperties(model.documentProperties, document as unknown as JsonObject, { controls }))
+  issues.push(...checkExtensionData(document as unknown as JsonObject))
+
   document.nodes.forEach((node, index) => {
-    const nodeType = types[index]
-    if (!nodeType?.properties || !primary(index))
+    if (!primary(index))
       return
-    const found = checkProperties(nodeType.properties, node as unknown as JsonObject, nodeAt(index))
-    for (const issue of found)
-      issues.push(issue as FlowIssue<FlowValidationIssueCode>)
+    issues.push(...checkExtensionData(node as unknown as JsonObject, ['nodes', index]).map(issue => ({ ...issue, target: nodeAt(index).target })))
+    const nodeType = types[index]
+    if (nodeType?.properties)
+      issues.push(...checkProperties(nodeType.properties, node as unknown as JsonObject, { ...nodeAt(index), controls }))
   })
 
-  const edgeProperties = options.edgeProperties ?? []
-  if (edgeProperties.length > 0) {
-    const checked = new Set<string>()
-    document.edges.forEach((edge, index) => {
-      if (checked.has(edge.id))
-        return
-      checked.add(edge.id)
-      for (const issue of checkProperties(edgeProperties, edge as unknown as JsonObject, edgeAt(index)))
-        issues.push(issue as FlowIssue<FlowValidationIssueCode>)
-    })
-  }
+  const checked = new Set<string>()
+  document.edges.forEach((edge, index) => {
+    if (checked.has(edge.id))
+      return
+    checked.add(edge.id)
+    issues.push(...checkExtensionData(edge as unknown as JsonObject, ['edges', index]).map(issue => ({ ...issue, target: edgeAt(index).target })))
+    const sourceIndex = nodeIndex.get(edge.source.node)
+    const sourceType = sourceIndex === undefined ? undefined : document.nodes[sourceIndex]!.type
+    issues.push(...checkProperties(model.edgePropertiesOf(sourceType), edge as unknown as JsonObject, { ...edgeAt(index), controls }))
+  })
+
+  issues.push(...runExtensionRules(model.extensions, document, { nodeTypes: registry }))
 
   return withSeverity(issues, DEFAULT_ISSUE_SEVERITY, options.severity)
 }
