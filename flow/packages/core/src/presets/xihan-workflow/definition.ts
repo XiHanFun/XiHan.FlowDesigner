@@ -20,40 +20,59 @@ import { xihanWorkflowNodeSize } from './activities'
 
 /** 引擎定义里的节点。 */
 export interface XihanWorkflowNode {
+  /** 节点 id，流程定义内唯一。 */
   readonly id: string
+  /** 节点名称，即节点的 label。 */
   readonly name?: string
+  /** 活动类型，即节点的 type；引擎内置的见 XIHAN_WORKFLOW_ACTIVITY_TYPES，也可以是应用登记的活动。 */
   readonly activityType: string
   /** 活动属性，键名由各活动约定。 */
   readonly properties?: JsonObject
+  /** 重试策略；为空不重试。 */
   readonly retryPolicy?: { readonly maxAttempts?: number, readonly firstDelaySeconds?: number, readonly backoffFactor?: number } | null
+  /** 挂起超时的秒数，只对会挂起的节点生效；为空不超时。 */
   readonly timeoutSeconds?: number | null
+  /** 失败续行：节点最终失败时不让整个实例故障，以 error 结果继续流转。 */
   readonly continueOnError?: boolean
 }
 
 /** 引擎定义里的连线。 */
 export interface XihanWorkflowTransition {
+  /** 连线 id，流程定义内唯一。 */
   readonly id?: string
+  /** 连线名称，即连线的 label。 */
   readonly name?: string | null
+  /** 源节点 id。 */
   readonly sourceNodeId: string
+  /** 目标节点 id。 */
   readonly targetNodeId: string
+  /** 转移条件表达式；为空表示无条件。 */
   readonly condition?: string | null
+  /** 优先级：条件分支按数值从小到大逐条求值，取第一条满足的。 */
   readonly priority?: number
+  /** 默认分支：条件分支的条件都不满足时走它。 */
   readonly isDefault?: boolean
 }
 
 /** 引擎的流程定义；没列出的字段原样保留。 */
 export interface XihanWorkflowDefinition {
   readonly id?: string
+  /** 流程编码；同一编码可以有多个版本。 */
   readonly code?: string
   readonly name?: string
+  /** 版本号，同一编码内从 1 开始递增。 */
   readonly version?: number
   readonly description?: string | null
   readonly category?: string | null
+  /** 状态，如 Draft、Published。 */
   readonly status?: string
+  /** 启用补偿：实例被取消时按执行的逆序执行可补偿活动的补偿逻辑。 */
   readonly enableCompensation?: boolean
   readonly nodes?: readonly XihanWorkflowNode[]
   readonly transitions?: readonly XihanWorkflowTransition[]
+  /** 启动变量的声明。 */
   readonly variables?: readonly JsonObject[]
+  /** 租户 id；为空是平台级定义。 */
   readonly tenantId?: number | null
   readonly creationTime?: string
   readonly publishTime?: string | null

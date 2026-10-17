@@ -32,6 +32,7 @@ const guideSidebar: DefaultTheme.SidebarItem[] = [
       { text: '查看器', link: '/guide/viewer' },
       { text: '设计器', link: '/guide/designer' },
       { text: '扩展', link: '/guide/extensions' },
+      { text: 'XiHan 工作流引擎预设', link: '/guide/xihan-workflow' },
     ],
   },
 ]
@@ -53,6 +54,7 @@ const referenceSidebar: DefaultTheme.SidebarItem[] = [
       { text: '查看器', link: '/reference/viewer' },
       { text: '设计器', link: '/reference/designer' },
       { text: '扩展', link: '/reference/extensions' },
+      { text: 'XiHan 工作流引擎预设', link: '/reference/xihan-workflow' },
       { text: '模型层 core', link: '/reference/core' },
     ],
   },
