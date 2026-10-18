@@ -140,6 +140,18 @@ describe('设置', () => {
     expect(designer.extensions).toBe(before)
   })
 
+  it('工具栏显示方式取设置里的 general.toolbarDisplay，缺省只显示图标', async () => {
+    const designer = await mount()
+    const shell = (): Element => designer.querySelector('xh-tooltip[data-scope="designer-commands"]')!
+    expect(shell().getAttribute('data-display')).toBe('icon')
+    designer.settings = { 'general.toolbarDisplay': 'both' }
+    await designer.updateComplete
+    expect(shell().getAttribute('data-display')).toBe('both')
+    designer.settings = { 'general.toolbarDisplay': 'text' }
+    await designer.updateComplete
+    expect(shell().getAttribute('data-display')).toBe('text')
+  })
+
   it('吸附对齐按设置开关：关掉后拖动不吸附其它节点', async () => {
     const designer = await mount((element) => {
       element.settings = { 'flow.snap': false }

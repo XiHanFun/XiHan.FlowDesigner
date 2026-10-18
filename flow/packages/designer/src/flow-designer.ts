@@ -90,6 +90,7 @@ import {
   registerDropTarget,
   renderCommandMenu,
   runCommand,
+  toolbarDisplayOf,
   XhDesignerFrameElement,
   XhDesignerIssuesElement,
   XhDesignerMinimapElement,
@@ -1191,8 +1192,10 @@ export class XhFlowDesigner extends XhReactiveElement {
     const shared = this.#commandTranslations()
     const context: FlowDesignerContext = { designer: this, translations: t, commandTranslations: shared, settings: this.#resolvedSettings }
     const { commands } = this.#model
-    if (this.#shows('toolbar'))
+    if (this.#shows('toolbar')) {
+      layers.commandBar.setDisplay(toolbarDisplayOf(this.#resolvedSettings))
       layers.commandBar.update(arrangeCommands('toolbar', commands, flowToolbarLayout(this.canImport), this.commandLayout), commands, context, shared.toolbar)
+    }
     if (this.#shows('palette'))
       layers.palette.update(this.#editor.model.nodeTypes, { order: this.paletteGroupOrder, labels: this.paletteGroupLabels }, t)
     if (this.#shows('properties'))
