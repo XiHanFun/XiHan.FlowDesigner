@@ -80,6 +80,14 @@ export interface FlowDesignerTranslations {
   readonly settingsSnap: string
   /** 设置：吸附对齐开关的说明。 */
   readonly settingsSnapHint: string
+  /** 状态栏：缩放一项的标签。 */
+  readonly statusZoom: string
+  /** 状态栏：选中多个对象时左边写的话。 */
+  readonly statusSelected: (count: number) => string
+  /** 状态栏：什么都没选中时左边写流程里有多少节点与连线。 */
+  readonly statusDocument: (nodes: number, edges: number) => string
+  /** 状态栏：选中一个节点时写它的位置与尺寸（世界坐标，取整）。 */
+  readonly statusGeometry: (x: number, y: number, width: number, height: number) => string
   /** 不落在节点或连线上的问题（如节点个数）所属的对象名。 */
   readonly flow: string
   /** 启动变量表的列名。 */

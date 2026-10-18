@@ -12,7 +12,7 @@
 | --- | --- | --- | --- |
 | `readonly` | `readonly` | `boolean \| undefined` | 只读：可以选择与浏览，不能修改；缺省 false。同名 attribute 三态：不写为缺省，写 "false" 为 false，其余写法（空串、"true" 等）为 true。 |
 | `grid` | — | `number \| false` | 拖动与新建节点时吸附的网格边长，false 不吸附网格；缺省 16。 |
-| `panels` | `panels` | `string \| undefined` | 要显示的面板，空格分隔：toolbar palette properties issues minimap。不写即全部显示，写空串则全部收起；同名 attribute。点了面板头的关闭钮时设计器改写它并派发 panels-change。 |
+| `panels` | `panels` | `string \| undefined` | 要显示的面板，空格分隔：toolbar palette properties issues minimap status。不写即全部显示，写空串则全部收起；同名 attribute。点了面板头的关闭钮时设计器改写它并派发 panels-change。 |
 | `paletteGroupOrder` | — | `readonly string[] \| undefined` | 物料面板里先列出的类别及其顺序，其余类别按登记顺序排在后面。 |
 | `paletteGroupLabels` | — | `Readonly<Record<string, string>> \| undefined` | 物料面板的类别标题，缺省直接显示 category。 |
 | `propertyGroupOrder` | — | `readonly string[] \| undefined` | 属性面板里先列出的分组及其顺序，其余分组按首次出现的顺序排在后面。 |
@@ -189,7 +189,7 @@ schema-change 的种类：执行操作、撤销、重做，或宿主装载了新
 ### FlowDesignerPanel {#flowdesignerpanel}
 
 ```ts
-type FlowDesignerPanel = 'toolbar' | 'palette' | 'properties' | 'issues' | 'minimap'
+type FlowDesignerPanel = 'toolbar' | 'palette' | 'properties' | 'issues' | 'minimap' | 'status'
 ```
 
 可以开关的面板。
@@ -258,6 +258,7 @@ type FlowDesignerPanel = 'toolbar' | 'palette' | 'properties' | 'issues' | 'mini
 | `settingsMinimapHint` | `string` | 设置：小地图开关的说明。 |
 | `settingsSnap` | `string` | 设置：吸附对齐开关的标签。 |
 | `settingsSnapHint` | `string` | 设置：吸附对齐开关的说明。 |
+| `statusZoom` | `string` | 状态栏：缩放一项的标签。 |
 | `flow` | `string` | 不落在节点或连线上的问题（如节点个数）所属的对象名。 |
 | `startVariableColumns` | `Readonly<Record<FlowStartVariableColumn, string>>` | 启动变量表的列名。 |
 | `startVariableAdd` | `string` | 启动变量表的新增按钮。 |
@@ -268,6 +269,9 @@ type FlowDesignerPanel = 'toolbar' | 'palette' | 'properties' | 'issues' | 'mini
 | `propertyLabel(key: string): string` | 属性描述没有给 label 时的标签，key 是 formatJsonPath 写出的属性路径。 |
 | `issue(issue: FlowIssue, names: FlowIssueNames): string` | 问题的说明文字。 |
 | `propertyIssue(property: string, message: string): string` | 落在某个属性上的问题：属性名与问题说明拼在一起。 |
+| `statusSelected(count: number): string` | 状态栏：选中多个对象时左边写的话。 |
+| `statusDocument(nodes: number, edges: number): string` | 状态栏：什么都没选中时左边写流程里有多少节点与连线。 |
+| `statusGeometry(x: number, y: number, width: number, height: number): string` | 状态栏：选中一个节点时写它的位置与尺寸（世界坐标，取整）。 |
 | `startVariableCell(row: number, column: string): string` | 启动变量表里一格的可访问名：第几个变量（从 1 起）、哪一列。 |
 
 ### FlowDesignerLocale {#flowdesignerlocale}
