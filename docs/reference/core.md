@@ -70,6 +70,7 @@
 | `createNodeTypeRegistry` | 函数 | 创建节点类型登记表；定义不合法时抛错。 |
 | `findPort` | 函数 | 查找节点类型上的端口。 |
 | `FlowConnectionRule` | 接口 | 连接约束。 |
+| `FlowEdgeStyleRule` | 接口 | 按连线数据给的外观：when 对连线本身求值，满足时并上 style。 |
 | `FlowNodeDefaults` | 接口 | 新建节点时的默认值。 |
 | `FlowNodeInit` | 接口 | 新建节点的参数。 |
 | `FlowNodeType` | 接口 | 规范化后的节点类型：端口展开为具名端口列表。 |
@@ -84,6 +85,7 @@
 | `FlowPropertyDescriptor` | 类型 | 节点属性描述：path 相对节点本身，如 ['data', 'properties', 'Url']、['label']。 |
 | `getPortPosition` | 函数 | 计算端口在世界坐标系中的位置。 |
 | `portAllows` | 函数 | 判断端口能否作为连线的指定一端：起点需可出，终点需可入。 |
+| `resolveEdgeStyle` | 函数 | 连线此刻的外观：源节点类型的 outgoingEdgeStyles 按先后并上满足条件的，连线自己写的 style 再逐项压过；源节点类型未知时只有连线自己写的。 |
 
 ### schema
 

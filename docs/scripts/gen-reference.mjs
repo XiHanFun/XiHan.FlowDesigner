@@ -651,6 +651,7 @@ function extensionsPage() {
     typeSection(registry, 'FlowPortSide'),
     interfaceSection(registry, 'FlowConnectionRule'),
     interfaceSection(registry, 'FlowNodeDefaults'),
+    interfaceSection(registry, 'FlowEdgeStyleRule'),
     '## 属性描述',
     typeSection(registry, 'FlowPropertyDescriptor'),
     typeSection(registry, 'FlowPropertyControl'),

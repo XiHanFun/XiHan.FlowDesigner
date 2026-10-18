@@ -18,7 +18,7 @@ XiHan.Framework 的[工作流引擎](https://framework.docs.xihanfun.com/guide/w
 
 属性面板按基本、参与人、表单与执行分组。必填的属性没填、取值超出范围或不在选项里时，校验照常报问题。
 
-连线的属性随源节点类型：从条件分支连出的连线有条件、优先级与默认分支，并行分支沿全部出线流转，连出的连线没有条件。流程编码、名称、分类、描述、是否启用补偿与启动变量是流程定义级的属性，写在流程定义的 `data` 里，什么都没选中时属性面板编辑它们。
+连线的属性随源节点类型：从条件分支连出的连线有条件、优先级与默认分支，并行分支沿全部出线流转，连出的连线没有条件。默认分支画成虚线：外观由 `isDefault` 推出，勾选、取消时跟着变，不另存一份样式。流程编码、名称、分类、描述、是否启用补偿与启动变量是流程定义级的属性，写在流程定义的 `data` 里，什么都没选中时属性面板编辑它们。
 
 ## 受理人规则
 
@@ -62,7 +62,7 @@ XiHan.Framework 的[工作流引擎](https://framework.docs.xihanfun.com/guide/w
 | 连线 `data` 里的字段（`condition`、`priority`、`isDefault` 等） | 连线上的同名字段 |
 | 流程定义 `data` 里的字段（`code`、`name`、`category` 等） | 定义顶层的同名字段 |
 | 节点坐标 | `extraProperties.designerLayout` |
-| 连线的拐点与外观 | `extraProperties.designerEdges` |
+| 连线的拐点与连线自己写的外观（由 `isDefault` 推出的虚线不写） | `extraProperties.designerEdges` |
 | 节点、连线与流程定义上的扩展数据 | `extraProperties.designerExtensions` |
 
 - `extraProperties` 里这三项是 JSON 字符串，引擎不读，原样存着。节点的宽高不存，读回时按活动类型取。

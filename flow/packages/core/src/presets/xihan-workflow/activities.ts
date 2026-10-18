@@ -6,7 +6,7 @@
 // XiHan 工作流的 17 种节点类型、按源节点类型的出线属性与流程定义级属性。
 // 节点的引擎属性放在 data.properties 下，键名与引擎一致；超时、失败续行、重试策略放在 data 下，字段名与定义 JSON 一致。
 
-import type { FlowNodeTypeDefinition, FlowPropertyControl, FlowPropertyDescriptor } from '../../registry'
+import type { FlowEdgeStyleRule, FlowNodeTypeDefinition, FlowPropertyControl, FlowPropertyDescriptor } from '../../registry'
 import type { XihanWorkflowActivityType, XihanWorkflowCategory, XihanWorkflowGroup, XihanWorkflowPropertyKey, XihanWorkflowTexts } from './texts'
 
 /** 受理人规则的编辑方式：值是 { type, values } 的数组，编辑器由宿主提供（按 control.kind 登记）。 */
@@ -189,6 +189,9 @@ function outgoingEdges(type: string, texts: XihanWorkflowTexts): FlowPropertyDes
   ]
 }
 
+/** 条件分支的出线外观：默认分支画成虚线。 */
+const DECISION_EDGE_STYLES: readonly FlowEdgeStyleRule[] = [{ when: { path: ['data', 'isDefault'], equals: true }, style: { dashed: true } }]
+
 /** 按文案生成 17 种节点类型。 */
 export function xihanWorkflowNodeTypes(texts: XihanWorkflowTexts): FlowNodeTypeDefinition[] {
   return ACTIVITIES.map((spec): FlowNodeTypeDefinition => {
@@ -208,6 +211,7 @@ export function xihanWorkflowNodeTypes(texts: XihanWorkflowTexts): FlowNodeTypeD
         ...executionProperties(type, texts),
       ],
       ...(outgoing ? { outgoingEdges: outgoing } : {}),
+      ...(type === 'Decision' ? { outgoingEdgeStyles: DECISION_EDGE_STYLES } : {}),
     }
   })
 }

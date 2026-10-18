@@ -23,9 +23,10 @@ export type {
 } from './operations'
 export { readDocument } from './read'
 export type { FlowReadResult } from './read'
-export { createNode, createNodeTypeRegistry, findPort, getPortPosition, portAllows } from './registry'
+export { createNode, createNodeTypeRegistry, findPort, getPortPosition, portAllows, resolveEdgeStyle } from './registry'
 export type {
   FlowConnectionRule,
+  FlowEdgeStyleRule,
   FlowNodeDefaults,
   FlowNodeInit,
   FlowNodeType,

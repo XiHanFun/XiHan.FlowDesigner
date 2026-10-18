@@ -204,6 +204,43 @@ describe('扩展', () => {
     expect(designer.validate().map(issue => issue.code)).not.toContain('node.unknown-type')
   })
 
+  it('装上 XiHan 工作流预设：勾选、取消默认分支时连线跟着画成虚线、实线，撤销回到原样', async () => {
+    const designer = window.document.createElement(FLOW_DESIGNER_TAG)
+    designer.extensions = [createXihanWorkflow({ texts: xihanWorkflowZhCN })]
+    designer.schema = fromWorkflowDefinition({
+      code: 'leave',
+      name: '请假',
+      nodes: [
+        { id: 'start', activityType: 'Start' },
+        { id: 'check', activityType: 'Decision' },
+        { id: 'long', activityType: 'End' },
+        { id: 'short', activityType: 'End' },
+      ],
+      transitions: [
+        { id: 'a', sourceNodeId: 'start', targetNodeId: 'check' },
+        { id: 'b', sourceNodeId: 'check', targetNodeId: 'long', condition: 'days > 3' },
+        { id: 'c', sourceNodeId: 'check', targetNodeId: 'short', priority: 1 },
+      ],
+    })
+    window.document.body.append(designer)
+    await settle(designer)
+    const dashed = (): boolean => designer.querySelector('[data-part="edge"][data-edge-id="c"]')!.hasAttribute('data-dashed')
+    expect(dashed()).toBe(false)
+
+    designer.execute([{ type: 'updateEdge', id: 'c', patch: { data: { priority: 1, isDefault: true } } }])
+    await settle(designer)
+    expect(dashed()).toBe(true)
+    expect(designer.schema.edges.find(edge => edge.id === 'c')!.style).toBeUndefined()
+
+    designer.execute([{ type: 'updateEdge', id: 'c', patch: { data: { priority: 1, isDefault: false } } }])
+    await settle(designer)
+    expect(dashed()).toBe(false)
+    designer.undo()
+    await settle(designer)
+    expect(dashed()).toBe(true)
+    designer.remove()
+  })
+
   it('装上 XiHan 工作流预设：引擎定义换来的文档没有问题，物料按预设分类，没选中时编辑流程定义', async () => {
     const preset = createXihanWorkflow({ texts: xihanWorkflowZhCN })
     const designer = window.document.createElement(FLOW_DESIGNER_TAG)

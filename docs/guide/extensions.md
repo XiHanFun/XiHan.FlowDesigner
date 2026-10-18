@@ -37,7 +37,7 @@
 - `required` 的属性必须填写；`default` 是新建节点或连线时写入的缺省值；`visibleWhen` 按别的属性的值决定显不显示。
 - 校验按属性描述检查取值：必填没填、类型不对、超出范围、不在选项里等，问题码见[问题码](../reference/issues)。
 
-连线的属性有两处：节点类型的 `outgoingEdges` 只加在从这类节点连出的连线上，如审批的结果；扩展的 `edgeProperties` 加在所有连线上。连线的标签与虚线是内置的连线属性。扩展的 `documentProperties` 是流程定义级的属性，什么都没选中时属性面板编辑它们。
+连线的属性有两处：节点类型的 `outgoingEdges` 只加在从这类节点连出的连线上，如审批的结果；扩展的 `edgeProperties` 加在所有连线上。连线的标签与虚线是内置的连线属性。节点类型的 `outgoingEdgeStyles` 按连线数据给从这类节点连出的连线外观，如 `{ when: { path: ['data', 'isDefault'], equals: true }, style: { dashed: true } }` 把默认分支画成虚线；`when` 的写法同属性描述的 `visibleWhen`，路径相对连线本身。连线自己写的外观压过推出的，推出的外观只用于绘制，不写回流程定义。扩展的 `documentProperties` 是流程定义级的属性，什么都没选中时属性面板编辑它们。
 
 ## 编辑方式
 
