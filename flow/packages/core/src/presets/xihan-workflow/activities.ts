@@ -233,10 +233,24 @@ const ACTIVITY_ICONS: Readonly<Record<XihanWorkflowActivityType, IconRecord>> = 
 /** 条件分支的出线外观：默认分支画成虚线。 */
 const DECISION_EDGE_STYLES: readonly FlowEdgeStyleRule[] = [{ when: { path: ['data', 'isDefault'], equals: true }, style: { dashed: true } }]
 
-/** 按文案生成 17 种节点类型。 */
-export function xihanWorkflowNodeTypes(texts: XihanWorkflowTexts): FlowNodeTypeDefinition[] {
+/** 旧的受理人写法：直接列受理人、受理人表达式与抄送人 id；新写法是受理人规则与抄送规则。 */
+const LEGACY_ASSIGNEE_KEYS: ReadonlySet<string> = new Set(['Assignees', 'AssigneesExpression', 'CcUserIds'])
+
+/** xihanWorkflowNodeTypes 的选项。 */
+export interface XihanWorkflowNodeTypeOptions {
+  /** 审批节点的属性面板里显示旧的受理人写法（Assignees、AssigneesExpression、CcUserIds），缺省 true。 */
+  readonly legacyAssignees?: boolean
+}
+
+/**
+ * 按文案生成 17 种节点类型。legacyAssignees 为 false 时审批节点不登记旧的受理人写法那三项属性：
+ * 属性面板里不显示，已有的值照旧留在 data.properties 里，读写与往返都不受影响。
+ */
+export function xihanWorkflowNodeTypes(texts: XihanWorkflowTexts, options: XihanWorkflowNodeTypeOptions = {}): FlowNodeTypeDefinition[] {
+  const legacy = options.legacyAssignees ?? true
   return ACTIVITIES.map((spec): FlowNodeTypeDefinition => {
     const { type } = spec
+    const properties = legacy ? spec.properties : spec.properties.filter(property => !LEGACY_ASSIGNEE_KEYS.has(property.key))
     const outgoing = outgoingEdges(type, texts)
     return {
       type,
@@ -249,7 +263,7 @@ export function xihanWorkflowNodeTypes(texts: XihanWorkflowTexts): FlowNodeTypeD
       ...(TERMINAL_TYPES.has(type) ? { terminal: true } : {}),
       properties: [
         { path: ['label'], control: { kind: 'text' }, group: 'basic', label: texts.properties.name },
-        ...spec.properties.map(property => descriptor(property, texts)),
+        ...properties.map(property => descriptor(property, texts)),
         ...executionProperties(type, texts),
       ],
       ...(outgoing ? { outgoingEdges: outgoing } : {}),

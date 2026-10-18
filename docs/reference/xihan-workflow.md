@@ -347,6 +347,7 @@ createXihanWorkflow 的选项。
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
 | `texts?` | `XihanWorkflowTextsOverride` | 文案，各部分按键覆盖英文缺省；中文直接传 xihanWorkflowZhCN。 |
+| `legacyAssignees?` | `boolean` | 审批节点的属性面板里显示旧的受理人写法（Assignees、AssigneesExpression、CcUserIds），缺省 true。为 false 时不登记这三项属性，已有的值照旧读写、往返不丢，只是属性面板里不再显示。 |
 
 ### XihanWorkflowTexts {#xihanworkflowtexts}
 

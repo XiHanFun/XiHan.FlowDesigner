@@ -34,6 +34,11 @@ export const XIHAN_WORKFLOW_ID = '@xihan-flow/xihan-workflow'
 export interface CreateXihanWorkflowOptions {
   /** 文案，各部分按键覆盖英文缺省；中文直接传 xihanWorkflowZhCN。 */
   readonly texts?: XihanWorkflowTextsOverride
+  /**
+   * 审批节点的属性面板里显示旧的受理人写法（Assignees、AssigneesExpression、CcUserIds），缺省 true。
+   * 为 false 时不登记这三项属性，已有的值照旧读写、往返不丢，只是属性面板里不再显示。
+   */
+  readonly legacyAssignees?: boolean
 }
 
 function mergeTexts(override: XihanWorkflowTextsOverride | undefined): XihanWorkflowTexts {
@@ -60,7 +65,7 @@ export function createXihanWorkflow(options: CreateXihanWorkflowOptions = {}): F
   const messages: Readonly<Record<string, string>> = texts.issues
   return {
     id: XIHAN_WORKFLOW_ID,
-    nodeTypes: xihanWorkflowNodeTypes(texts),
+    nodeTypes: xihanWorkflowNodeTypes(texts, { legacyAssignees: options.legacyAssignees }),
     documentProperties: xihanWorkflowDocumentProperties(texts),
     controls: { [XIHAN_WORKFLOW_ASSIGNEE_RULES]: ASSIGNEE_RULES_CONTROL },
     rules: XIHAN_WORKFLOW_RULES,

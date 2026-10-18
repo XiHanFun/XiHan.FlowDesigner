@@ -28,6 +28,8 @@ XiHan.Framework 的[工作流引擎](https://framework.docs.xihanfun.com/guide/w
 
 <<< @/examples/snippets/assignee-rules.ts#editor
 
+人工任务还保留着旧的受理人写法：直接列受理人（`Assignees`）、受理人表达式（`AssigneesExpression`）与抄送人（`CcUserIds`）。只用受理人规则的应用写 `createXihanWorkflow({ legacyAssignees: false })`，属性面板里就不再显示这三项；定义里已有的值照旧读入、写回，往返不丢，校验也照旧认它们。缺省是 `true`，三项都显示。
+
 把 `assigneeRules` 与预设一起放进设计器的 `extensions` 即可。编辑器的写法见[扩展](./extensions#属性编辑器)。
 
 ## 规则
