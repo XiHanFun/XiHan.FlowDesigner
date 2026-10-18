@@ -25,7 +25,7 @@ async function settleFrame(designer: XhFlowDesigner): Promise<void> {
 }
 
 function toolbarItem(designer: Element, command: string): HTMLButtonElement {
-  return designer.querySelector<HTMLButtonElement>(`[data-part="toolbar"] button[value="${command}"]`)!
+  return designer.querySelector<HTMLButtonElement>(`[data-part="command-bar"] button[value="${command}"]`)!
 }
 
 describe('工具栏', () => {
@@ -56,7 +56,7 @@ describe('工具栏', () => {
 
   it('内置命令都带图标，删除带 danger 语气；名字写在按钮上', async () => {
     const designer = await mount()
-    const items = Array.from(designer.querySelectorAll<HTMLButtonElement>('[data-part="toolbar"] button[data-xh-part="item"]'))
+    const items = Array.from(designer.querySelectorAll<HTMLButtonElement>('[data-part="command-bar"] button[data-xh-part="item"]'))
     expect(items.length).toBeGreaterThan(10)
     expect(items.filter(item => !item.hasAttribute('data-icon')).map(item => item.value)).toEqual([])
     expect([toolbarItem(designer, 'delete').getAttribute('data-tone'), toolbarItem(designer, 'undo').getAttribute('data-tone')]).toEqual(['danger', null])
@@ -80,13 +80,13 @@ describe('工具栏', () => {
   it('panels 里没列工具栏时收起，通用命令的文案跟着全局配置里 xh-designer-commands 那一桶变', async () => {
     const designer = await mount(element => element.setAttribute('panels', 'palette properties'))
     await settleFrame(designer)
-    expect(part(designer, 'toolbar')).toHaveLength(0)
+    expect(part(designer, 'command-bar')).toHaveLength(0)
     expect(part(designer, 'palette')).toHaveLength(1)
     expect(part(designer, 'issues')).toHaveLength(0)
     designer.removeAttribute('panels')
     setXhConfig({ translations: { 'xh-designer-commands': { undo: '撤销' } } })
     await settleFrame(designer)
-    expect(part(designer, 'toolbar')).toHaveLength(1)
+    expect(part(designer, 'command-bar')).toHaveLength(1)
     expect(toolbarItem(designer, 'undo').textContent).toBe('撤销')
   })
 })
@@ -332,7 +332,7 @@ describe('问题列表', () => {
     expect(rows(designer)).toHaveLength(0)
     const empty = list(designer).querySelector<HTMLElement>('[data-part="empty"]')!
     expect([empty.hidden, empty.textContent]).toEqual([false, 'No problems'])
-    const panels = ['toolbar', 'palette', 'properties', 'issues'].map(name => part(designer, name)[0]!)
+    const panels = ['command-bar', 'palette', 'properties', 'issues'].map(name => part(designer, name)[0]!)
     designer.panels = ''
     await settleFrame(designer)
     expect(panels.map(element => element.isConnected)).toEqual([false, false, false, false])

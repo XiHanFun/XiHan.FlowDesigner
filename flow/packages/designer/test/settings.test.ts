@@ -89,7 +89,7 @@ describe('设置', () => {
     designer.autoLayout({ direction: 'TB' })
     expect(at('t').y - at('s').y - at('s').height).toBe(100)
     await designer.updateComplete
-    designer.querySelector<HTMLButtonElement>('[data-part="toolbar"] button[value="probe.read"]')!.click()
+    designer.querySelector<HTMLButtonElement>('[data-part="command-bar"] button[value="probe.read"]')!.click()
     expect(seen[0]).toMatchObject({ 'flow.layoutDirection': 'LR', 'flow.nodeGap': 24, 'flow.layerGap': 100, 'flow.minimap': true, 'flow.snap': true })
   })
 

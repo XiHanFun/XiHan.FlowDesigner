@@ -19,7 +19,7 @@ xh-flow-designer > [data-part='frame'] {
   min-block-size: 0;
 }
 
-xh-flow-designer [data-part='toolbar'] {
+xh-flow-designer [data-part='command-bar'] {
   contain: inline-size;
   padding: var(--xh-space-1) var(--xh-space-2);
 }

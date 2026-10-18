@@ -30,7 +30,7 @@ function conflict(run: () => void): { space: string, key: string, extensions: re
 }
 
 function toolbarItems(designer: Element): string[] {
-  return Array.from(designer.querySelectorAll<HTMLButtonElement>('[data-part="toolbar"] button[data-xh-part="item"]'), item => item.value)
+  return Array.from(designer.querySelectorAll<HTMLButtonElement>('[data-part="command-bar"] button[data-xh-part="item"]'), item => item.value)
 }
 
 // 菜单打开后内容会搬进浮层落点，挂载后先记下内容节点
@@ -123,7 +123,7 @@ describe('扩展', () => {
     const content = menuContent(designer)
     await settle(designer)
     expect(toolbarItems(designer).slice(-5)).toEqual(['zoom-to-fit', 'zoom-to-actual', 'export-png', 'export-svg', 'acme.hello'])
-    expect(designer.querySelector('[data-part="toolbar"] button[value="acme.hello"]')!.textContent).toBe('Hello 3')
+    expect(designer.querySelector('[data-part="command-bar"] button[value="acme.hello"]')!.textContent).toBe('Hello 3')
 
     designer.querySelector('[data-part="node"][data-node-id="t"]')!.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
     expect(menuItems(content)).toEqual(['cut', 'copy', 'duplicate', 'delete', 'acme.hello'])

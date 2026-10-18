@@ -888,7 +888,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     canvas.append(menu.element)
     const commandBar = createCommandToolbar<FlowDesignerContext>(doc)
     const toolbar = createGeneratedElement(doc, 'div')
-    toolbar.dataset.part = 'toolbar'
+    toolbar.dataset.part = 'command-bar'
     toolbar.append(commandBar.element)
     const palette = new PalettePanel({
       ownerDocument: doc,
