@@ -6,7 +6,7 @@
 // 设计器层的扩展：在运行时层之上加属性编辑器、命令、面板、导入器、导出器与装上时的回调；内置命令也写成一个扩展。
 
 import type { FlowDocument, FlowEdge, FlowNode, FlowRuleContext } from '@xihan-flow/core'
-import type { FlowDesignerTranslations, FlowRuntimeExtension, FlowRuntimeModel } from '@xihan-flow/runtime'
+import type { FlowDesignerTranslations, FlowImageExportOptions, FlowImageFormat, FlowRuntimeExtension, FlowRuntimeModel } from '@xihan-flow/runtime'
 import type { DesignerCommand, DesignerExporter, DesignerImporter } from '@xihan-ui/designer-kit'
 import type { PropertyEditorTable } from '@xihan-ui/designer-kit/properties'
 import type { DesignerCommandTable, DesignerShellExtension } from '@xihan-ui/designer-shell'
@@ -73,7 +73,38 @@ function selectedVertices(designer: XhFlowDesigner): boolean {
   return designer.schema.edges.some(edge => selected.has(edge.id) && edge.vertices !== undefined)
 }
 
-/** 内置命令：打开文件、撤销重做、剪贴板、选择、对齐分布、布局与缩放。 */
+/** 设计器 → 把它画面上的流程图导出成图片；设计器建出时登记，内置的图片导出器经它取图。 */
+export const IMAGE_RENDERERS = new WeakMap<XhFlowDesigner, (format: FlowImageFormat, options: FlowImageExportOptions) => Promise<Blob>>()
+
+/** 内置的图片导出器：svg 与 png，选项见 FlowImageExportOptions。 */
+const IMAGE_EXPORTER: FlowDesignerExporter = {
+  id: '@xihan-flow/designer.image',
+  label: context => context.translations.exportImage,
+  formats: ['svg', 'png'],
+  export: (format, context) => {
+    const render = IMAGE_RENDERERS.get(context.designer)
+    if (!render)
+      return Promise.reject(new RangeError('[flow-designer] this designer cannot render images'))
+    return render(format as FlowImageFormat, context.options as FlowImageExportOptions)
+  },
+}
+
+/** 导出命令：导出图片后派发可取消的 export 事件，没被取消就存成 flow.<格式> 下载。 */
+async function saveImage(designer: XhFlowDesigner, format: FlowImageFormat): Promise<void> {
+  const blob = await designer.export(format) as Blob
+  const event = new CustomEvent('export', { detail: { format, blob }, bubbles: true, composed: true, cancelable: true })
+  if (!designer.dispatchEvent(event))
+    return
+  const doc = designer.ownerDocument
+  const url = URL.createObjectURL(blob)
+  const link = doc.createElement('a')
+  link.href = url
+  link.download = `flow.${format}`
+  link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 0)
+}
+
+/** 内置命令：打开文件、撤销重做、剪贴板、选择、对齐分布、布局、缩放与导出图片。 */
 const BUILTIN_COMMANDS: readonly FlowDesignerCommand[] = [
   { id: 'open-file', label: text('openFile'), enabled: editable(d => d.canImport), run: ({ designer }) => designer.openFile() },
   { id: 'undo', label: text('undo'), shortcut: ['Mod', 'Z'], enabled: editable(d => d.canUndo), run: ({ designer }) => designer.undo() },
@@ -120,12 +151,15 @@ const BUILTIN_COMMANDS: readonly FlowDesignerCommand[] = [
   { id: 'zoom-in', label: text('zoomIn'), shortcut: ['+'], run: ({ designer }) => designer.zoomIn() },
   { id: 'zoom-to-fit', label: text('zoomToFit'), shortcut: ['0'], run: ({ designer }) => designer.zoomToFit() },
   { id: 'zoom-to-actual', label: text('zoomToActual'), run: ({ designer }) => designer.zoomToActual() },
+  { id: 'export-png', label: text('exportPng'), enabled: ({ designer }) => designer.schema.nodes.length > 0, run: ({ designer }) => void saveImage(designer, 'png') },
+  { id: 'export-svg', label: text('exportSvg'), enabled: ({ designer }) => designer.schema.nodes.length > 0, run: ({ designer }) => void saveImage(designer, 'svg') },
 ]
 
-/** 设计器的内置扩展：内置命令。节点类型、连线属性等 core 层的内置部分在 FLOW_CORE_EXTENSION 里。 */
+/** 设计器的内置扩展：内置命令与图片导出器。节点类型、连线属性等 core 层的内置部分在 FLOW_CORE_EXTENSION 里。 */
 export const FLOW_DESIGNER_EXTENSION: FlowDesignerExtension = {
   id: '@xihan-flow/designer',
   commands: BUILTIN_COMMANDS,
+  exporters: [IMAGE_EXPORTER],
 }
 
 /**
@@ -137,6 +171,7 @@ export const FLOW_TOOLBAR_LAYOUT: readonly (readonly string[])[] = [
   ['delete', 'duplicate'],
   ['align-left', 'align-center', 'align-right', 'align-top', 'align-middle', 'align-bottom', 'distribute-horizontal', 'distribute-vertical', 'auto-layout'],
   ['zoom-out', 'zoom-in', 'zoom-to-fit', 'zoom-to-actual'],
+  ['export-png', 'export-svg'],
 ]
 
 /** 工具栏此刻的缺省排列：有导入器时在 FLOW_TOOLBAR_LAYOUT 前面多一组打开文件。 */

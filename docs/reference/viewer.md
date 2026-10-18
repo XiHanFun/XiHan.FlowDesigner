@@ -21,6 +21,7 @@
 
 | 方法 | 说明 |
 | --- | --- |
+| `export(format: FlowImageFormat, options?: FlowImageExportOptions): Promise<Blob>` | 把画面上的流程图导出成图片：svg 是能单独打开的 SVG 文件，png 按倍率栅格化；颜色与字体取画面此刻的样式，节点、图标、连线与标签都画进去。选项见 FlowImageExportOptions。流程图是空的、format 不是这两种时以 RangeError 拒绝。 |
 | `getViewport(): Viewport` | 当前视口。 |
 | `setViewport(viewport: Viewport): void` | 设置视口；此后尺寸变化不再自动适配。 |
 | `zoomToFit(): void` | 缩放并平移到让整张图落在视口中央，小图不放大到 100% 以上；此后尺寸变化时重新适配，直到设置视口或在画布上按下指针。 |
@@ -106,6 +107,58 @@ declare function createFlowRuntimeModel(extensions?: readonly FlowRuntimeExtensi
 
 合出运行时用的流程模型；同一节点类型在两个扩展里都给了渲染时抛 DesignerExtensionError。同一个数组只合一次。
 
+## 导出图片
+
+### FlowImageFormat {#flowimageformat}
+
+```ts
+type FlowImageFormat = 'svg' | 'png'
+```
+
+导出图片的格式。
+
+### FlowImageExportOptions {#flowimageexportoptions}
+
+导出图片的选项。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `scale?` | `number` | 倍率，只对 PNG 有效：PNG 的像素宽高是图的宽高乘它，缺省 1；超过浏览器画布的上限时自动降倍率，图按比例缩小。 |
+| `background?` | `string` | 底色，任何 CSS 颜色；缺省取画布此刻的底色（画布透明时往外找到第一层不透明的），写 'transparent' 不铺。 |
+| `padding?` | `number` | 流程图四周的留白，缺省 24。 |
+
+### exportFlowImage() {#exportflowimage}
+
+```ts
+declare function exportFlowImage(source: FlowImageSource, format: FlowImageFormat, options?: FlowImageExportOptions): Promise<Blob>
+```
+
+导出成图片：SVG 是 flowImageSvg 的文本，PNG 在它上面按倍率栅格化（底色已画进 SVG），超过画布上限时按比例缩小。PNG 里的文字用本机的系统字体画，不加载网页字体。
+
+### flowImageSvg() {#flowimagesvg}
+
+```ts
+declare function flowImageSvg(source: FlowImageSource, options?: FlowImageExportOptions): SVGSVGElement
+```
+
+把画面上的流程图画成一份能单独打开的 SVG：连线层经 standaloneSvg 克隆（只供命中的透明粗线不要），节点按计算样式画成框、图标与文字，连线标签画成底框与文字；四周留白，按选项铺底色。坐标是世界坐标，1 个单位即 1 像素。流程图是空的时抛 RangeError。
+
+### FlowImageSource {#flowimagesource}
+
+画出图片要读的活元素：场景、画布上的连线层、节点与连线标签的元素，以及视口的缩放。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `scene` | `FlowScene` |  |
+| `canvas` | `Element` | 画布元素：缺省底色从它开始找。 |
+| `edges` | `SVGSVGElement` | 连线所在的 SVG 层，里面的坐标是世界坐标。 |
+| `zoom` | `number` | 视口的缩放：元素在屏幕上的尺寸除以它即世界尺寸。 |
+
+| 方法 | 说明 |
+| --- | --- |
+| `node(id: string): HTMLElement \| null` | 节点 id → 画面上的节点元素。 |
+| `label(id: string): HTMLElement \| null` | 连线 id → 画面上的连线标签元素。 |
+
 ## 连线路由
 
 ### createOrthogonalRouter() {#createorthogonalrouter}
@@ -153,6 +206,16 @@ declare function createOrthogonalRouter(options?: OrthogonalRouterOptions): Flow
 | `FlowNodeRenderer` | 类型 | 自定义节点内容：每次绘制都会调用，把内容写进 container；不给时用 defaultNodeRenderer。 |
 | `FlowViewerEventMap` | 接口 | 查看器派发的事件；x / y 为浏览器视口坐标。 |
 | `XhFlowViewer` | 类 | 流程查看器 &lt;xh-flow-viewer&gt;：只读显示流程、运行状态与高亮。 |
+
+### image-export
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `exportFlowImage` | 函数 | 导出成图片：SVG 是 flowImageSvg 的文本，PNG 在它上面按倍率栅格化（底色已画进 SVG），超过画布上限时按比例缩小。 |
+| `FlowImageExportOptions` | 接口 | 导出图片的选项。 |
+| `FlowImageFormat` | 类型 | 导出图片的格式。 |
+| `FlowImageSource` | 接口 | 画出图片要读的活元素：场景、画布上的连线层、节点与连线标签的元素，以及视口的缩放。 |
+| `flowImageSvg` | 函数 | 把画面上的流程图画成一份能单独打开的 SVG：连线层经 standaloneSvg 克隆（只供命中的透明粗线不要），节点按计算样式画成框、图标与文字，连线标签画成底框与文字；四周留白，按选项铺底色。 |
 
 ### node-renderer
 

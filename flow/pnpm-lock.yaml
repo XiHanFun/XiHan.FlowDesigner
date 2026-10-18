@@ -113,6 +113,9 @@ importers:
       '@xihan-flow/core':
         specifier: workspace:^
         version: link:../core
+      '@xihan-ui/core':
+        specifier: link:../../../../XiHan.UI/ui/packages/engine/core
+        version: link:../../../../XiHan.UI/ui/packages/engine/core
       '@xihan-ui/designer-kit':
         specifier: link:../../../../XiHan.UI/ui/packages/features/designer-kit
         version: link:../../../../XiHan.UI/ui/packages/features/designer-kit

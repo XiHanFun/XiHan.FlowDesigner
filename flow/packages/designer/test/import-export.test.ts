@@ -274,9 +274,9 @@ describe('导出', () => {
         return `${id}:${format}`
       },
     })
-    const designer = await mount(d => d.extensions = [nodes, { id: 'host', exporters: [exporter('json', ['json']), exporter('image', ['svg', 'png'])] }, { id: 'more', exporters: [exporter('png2', ['png'])] }])
-    await expect(designer.export('png', { scale: 2 })).resolves.toBe('image:png')
-    expect(calls).toEqual([['image', 'png', designer, 'Flow designer', { scale: 2 }]])
+    const designer = await mount(d => d.extensions = [nodes, { id: 'host', exporters: [exporter('json', ['json']), exporter('bpmn', ['bpmn', 'xml'])] }, { id: 'more', exporters: [exporter('xml2', ['xml'])] }])
+    await expect(designer.export('xml', { pretty: true })).resolves.toBe('bpmn:xml')
+    expect(calls).toEqual([['bpmn', 'xml', designer, 'Flow designer', { pretty: true }]])
     await expect(designer.export('json')).resolves.toBe('json:json')
     expect(calls.at(-1)).toEqual(['json', 'json', designer, 'Flow designer', {}])
   })
@@ -284,5 +284,54 @@ describe('导出', () => {
   it('没有导出器认这种格式时以 RangeError 拒绝', async () => {
     const designer = await mount()
     await expect(designer.export('bpmn')).rejects.toBeInstanceOf(RangeError)
+  })
+
+  it('内置的图片导出器出 svg：选中的节点按没选中的样子画，导出后选中标记还在', async () => {
+    const designer = await mount()
+    designer.select({ nodes: ['t'] })
+    await designer.updateComplete
+    const blob = await designer.export('svg', { padding: 0 }) as Blob
+    expect(blob.type).toBe('image/svg+xml')
+    const text = await new Promise<string>((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.readAsText(blob)
+    })
+    expect(text).toContain('<text')
+    expect(text).not.toContain('data-selected')
+    expect(designer.querySelector('[data-part="node"][data-node-id="t"]')!.hasAttribute('data-selected')).toBe(true)
+  })
+
+  it('工具栏最后一组是导出 PNG 与导出 SVG；流程图是空的时不可用', async () => {
+    const designer = await mount()
+    expect(toolbarItems(designer).slice(-2)).toEqual(['export-png', 'export-svg'])
+    designer.schema = { version: 1, nodes: [], edges: [] }
+    await designer.updateComplete
+    expect(designer.querySelector<HTMLButtonElement>('[data-part="toolbar"] button[value="export-svg"]')!.disabled).toBe(true)
+  })
+
+  it('导出命令派发可取消的 export 事件：取消后不下载，没取消时存成 flow.svg', async () => {
+    const designer = await mount()
+    const downloads: string[] = []
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      downloads.push(this.download)
+    })
+    const events: { format: string, blob: Blob }[] = []
+    let cancel = true
+    designer.addEventListener('export', (event) => {
+      events.push((event as FlowDesignerEventMap['export']).detail)
+      if (cancel)
+        event.preventDefault()
+    })
+    const button = designer.querySelector<HTMLButtonElement>('[data-part="toolbar"] button[value="export-svg"]')!
+    button.click()
+    await vi.waitFor(() => expect(events).toHaveLength(1))
+    expect(events[0]!.format).toBe('svg')
+    expect(events[0]!.blob.type).toBe('image/svg+xml')
+    expect(downloads).toEqual([])
+
+    cancel = false
+    button.click()
+    await vi.waitFor(() => expect(downloads).toEqual(['flow.svg']))
   })
 })

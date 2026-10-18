@@ -84,6 +84,7 @@
 | `blank-contextmenu` | `{ x: number, y: number }` | 在画布空白处打开右键菜单；可以取消。 |
 | `viewport-change` | `{ viewport: Viewport }` | 视口变了：缩放、平移、适配与 setViewport 都会派发。 |
 | `import-error` | `{ importer?: string, source: DesignerImportSource, error: unknown }` | 导入没有成功：导入器抛了错，或给出的节点、连线或流程定义不合法、用了没登记的节点类型，importer 是导入器的 id；openFile() 选的文件没有导入器接下时也派发，此时没有 importer。 |
+| `export` | `{ format: FlowImageFormat, blob: Blob }` | 工具栏的导出命令导出了图片，带格式与文件；可以取消，取消后设计器不自己下载，宿主拿 blob 自己存。没被取消时存成 flow.png 或 flow.svg 下载。 |
 | `save` | `Record<string, never>` | 画布有焦点时按了 Ctrl / ⌘ + S；设计器不自己保存。 |
 
 ## 注册
@@ -125,6 +126,8 @@ declare function defineFlowDesigner(): void
 | `zoom-in` | 放大 | `+` | 可用 |
 | `zoom-to-fit` | 适配 | `0` | 可用 |
 | `zoom-to-actual` | 100% | — | 可用 |
+| `export-png` | 导出 PNG | — | 可用 |
+| `export-svg` | 导出 SVG | — | 可用 |
 
 ### FLOW_TOOLBAR_LAYOUT {#flow_toolbar_layout}
 
@@ -136,6 +139,7 @@ declare function defineFlowDesigner(): void
 | 2 | `delete` `duplicate` |
 | 3 | `align-left` `align-center` `align-right` `align-top` `align-middle` `align-bottom` `distribute-horizontal` `distribute-vertical` `auto-layout` |
 | 4 | `zoom-out` `zoom-in` `zoom-to-fit` `zoom-to-actual` |
+| 5 | `export-png` `export-svg` |
 
 ### flowToolbarLayout() {#flowtoolbarlayout}
 
@@ -241,6 +245,9 @@ type FlowDesignerPanel = 'toolbar' | 'palette' | 'properties' | 'issues' | 'mini
 | `zoomOut` | `string` |  |
 | `zoomToFit` | `string` |  |
 | `zoomToActual` | `string` |  |
+| `exportPng` | `string` | 导出成 PNG 图片。 |
+| `exportSvg` | `string` | 导出成 SVG 图片。 |
+| `exportImage` | `string` | 内置图片导出器的名称。 |
 | `palette` | `string` | 物料面板的标题。 |
 | `paletteUncategorized` | `string` | 没有类别的节点类型所在分组的标题。 |
 | `propertiesEmpty` | `string` | 没有选中时属性面板里的提示。 |
@@ -277,7 +284,7 @@ type FlowDesignerPanel = 'toolbar' | 'palette' | 'properties' | 'issues' | 'mini
 | 名称 | 种类 | 说明 |
 | --- | --- | --- |
 | `createFlowDesignerModel` | 函数 | 合出设计器用的模型；任何一处重名都抛 DesignerExtensionError。 |
-| `FLOW_DESIGNER_EXTENSION` | 常量 | 设计器的内置扩展：内置命令。 |
+| `FLOW_DESIGNER_EXTENSION` | 常量 | 设计器的内置扩展：内置命令与图片导出器。 |
 | `FLOW_TOOLBAR_LAYOUT` | 常量 | 工具栏的缺省排列；commandLayout 没写 toolbar 时用它，再把 placement 含 toolbar 的扩展命令追加成一组。 |
 | `FlowDesignerCommand` | 类型 | 设计器的命令。 |
 | `FlowDesignerContext` | 接口 | 命令、面板与扩展装上时拿到的上下文。 |

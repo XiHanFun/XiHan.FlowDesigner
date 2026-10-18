@@ -60,6 +60,7 @@
   },
   "dependencies": {
     "@xihan-flow/core": "workspace:^",
+    "@xihan-ui/core": "catalog:",
     "@xihan-ui/designer-kit": "catalog:",
     "@xihan-ui/designer-shell": "catalog:",
     "@xihan-ui/pointer": "catalog:",
