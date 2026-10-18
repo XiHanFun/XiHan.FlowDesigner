@@ -302,9 +302,9 @@ describe('导出', () => {
     expect(designer.querySelector('[data-part="node"][data-node-id="t"]')!.hasAttribute('data-selected')).toBe(true)
   })
 
-  it('导出 PNG 与导出 SVG 一组，排在设置与帮助之前；流程图是空的时不可用', async () => {
+  it('导出 PNG 与导出 SVG 一组，排在面板、设置与帮助之前；流程图是空的时不可用', async () => {
     const designer = await mount()
-    expect(toolbarItems(designer).slice(-4)).toEqual(['export-png', 'export-svg', 'settings', 'help'])
+    expect(toolbarItems(designer).slice(-5)).toEqual(['export-png', 'export-svg', 'panels', 'settings', 'help'])
     designer.schema = { version: 1, nodes: [], edges: [] }
     await designer.updateComplete
     expect(designer.querySelector<HTMLButtonElement>('[data-part="command-bar"] button[value="export-svg"]')!.disabled).toBe(true)

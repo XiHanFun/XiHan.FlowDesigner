@@ -122,7 +122,7 @@ describe('扩展', () => {
     const designer = await mount(element => (element.extensions = [nodes, hello]))
     const content = menuContent(designer)
     await settle(designer)
-    expect(toolbarItems(designer).slice(-5)).toEqual(['export-png', 'export-svg', 'settings', 'help', 'acme.hello'])
+    expect(toolbarItems(designer).slice(-6)).toEqual(['export-png', 'export-svg', 'panels', 'settings', 'help', 'acme.hello'])
     expect(designer.querySelector('[data-part="command-bar"] button[value="acme.hello"]')!.textContent).toBe('Hello 3')
 
     designer.querySelector('[data-part="node"][data-node-id="t"]')!.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))

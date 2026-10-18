@@ -63,10 +63,10 @@ describe('工具栏', () => {
     expect(toolbarItem(designer, 'zoom-to-fit').getAttribute('aria-label')).toBe('Zoom to fit')
   })
 
-  it('末组是 designer-shell 内置的设置与帮助：设置打开设置对话框，帮助在新窗口打开文档站的设计器一页', async () => {
+  it('末组是 designer-shell 内置的面板、设置与帮助：设置打开设置对话框，帮助在新窗口打开文档站的设计器一页', async () => {
     const designer = await mount()
     const groups = Array.from(designer.querySelectorAll('[data-part="command-bar"] [data-xh-part="group"]'), group => Array.from(group.querySelectorAll('button'), button => button.value))
-    expect(groups.at(-1)).toEqual(['settings', 'help'])
+    expect(groups.at(-1)).toEqual(['panels', 'settings', 'help'])
     toolbarItem(designer, 'settings').click()
     await designer.updateComplete
     expect(designer.querySelector<HTMLElement & { open?: boolean }>('xh-designer-settings')!.open).toBe(true)
@@ -78,6 +78,29 @@ describe('工具栏', () => {
     finally {
       open.mockRestore()
     }
+  })
+
+  it('「面板」点开一张锚在按钮上的菜单，列出物料、属性与问题，勾选的显示；选中一项开关它并派发 panels-change', async () => {
+    const designer = await mount()
+    await settleFrame(designer)
+    const button = toolbarItem(designer, 'panels')
+    button.click()
+    await designer.updateComplete
+    type MenuHost = HTMLElement & { open?: boolean, anchor?: HTMLElement | null, collection?: readonly { value: string, label?: string }[], checkboxValue?: readonly string[] }
+    const menu = designer.querySelector<MenuHost>('[data-part="command-bar"] xh-menu')!
+    expect([menu.open, menu.anchor]).toEqual([true, button])
+    expect(menu.collection!.map(item => item.value)).toEqual(['item:palette', 'item:properties', 'item:issues'])
+    expect(menu.checkboxValue).toEqual(['item:palette', 'item:properties', 'item:issues'])
+    const seen: string[] = []
+    designer.addEventListener('panels-change', event => seen.push((event as CustomEvent<{ panels: string }>).detail.panels))
+    menu.dispatchEvent(new CustomEvent('select', { detail: { value: 'item:palette' } }))
+    await settleFrame(designer)
+    expect(seen).toEqual([designer.panels])
+    expect(designer.panels!.split(' ')).not.toContain('palette')
+    expect(menu.checkboxValue).toEqual(['item:properties', 'item:issues'])
+    menu.dispatchEvent(new CustomEvent('select', { detail: { value: 'item:palette' } }))
+    await settleFrame(designer)
+    expect(designer.panels!.split(' ')).toContain('palette')
   })
 
   it('点条目执行对应命令，禁用的条目不执行', async () => {
