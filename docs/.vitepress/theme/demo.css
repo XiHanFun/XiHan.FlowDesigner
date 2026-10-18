@@ -3,7 +3,8 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-/* 示例舞台：边框与留白只用 @xihan-ui 设计令牌；舞台里 VitePress .vp-doc 写在这些标签上的正文排版退回浏览器默认。 */
+/* 示例舞台：边框与留白只用 @xihan-ui 设计令牌；舞台里 VitePress .vp-doc 写在这些标签上的正文排版撤掉（revert-layer），
+   退回层里的样式，零件里的标题、段落和列表照零件的样式画，没有层里样式的标签回到浏览器默认。 */
 
 .flow-demo {
   margin-block: var(--xh-space-4);
@@ -15,19 +16,19 @@
 }
 
 .vp-doc .flow-demo__stage :where(h1, h2, h3, h4, h5, h6, p, blockquote, ul, ol, li, table, tr, th, td, hr, a, code) {
-  margin: revert;
-  padding: revert;
-  border: revert;
-  background: revert;
-  color: revert;
-  font: revert;
-  letter-spacing: revert;
-  line-height: revert;
-  text-align: revert;
-  list-style: revert;
-  text-decoration: revert;
-  display: revert;
-  overflow: revert;
+  margin: revert-layer;
+  padding: revert-layer;
+  border: revert-layer;
+  background: revert-layer;
+  color: revert-layer;
+  font: revert-layer;
+  letter-spacing: revert-layer;
+  line-height: revert-layer;
+  text-align: revert-layer;
+  list-style: revert-layer;
+  text-decoration: revert-layer;
+  display: revert-layer;
+  overflow: revert-layer;
 }
 
 .flow-demo__missing {
