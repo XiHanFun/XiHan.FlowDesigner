@@ -341,6 +341,14 @@ describe('小地图', () => {
     return minimap
   }
 
+  it('浮在画布区右下角的落点上，不在画布内容里', async () => {
+    const designer = await mount()
+    await settleFrame(designer)
+    const minimap = designer.querySelector('xh-designer-minimap')!
+    expect(minimap.parentElement!.matches('[data-region="canvas"] > [data-part="overlay"][data-overlay="bottom-end"]')).toBe(true)
+    expect(designer.querySelector('[data-part="canvas"] xh-designer-minimap')).toBeNull()
+  })
+
   it('按比例画出节点、连线与视口框，视口变化时视口框跟着走', async () => {
     const designer = await mount()
     placeCanvas(designer, 600, 300)
