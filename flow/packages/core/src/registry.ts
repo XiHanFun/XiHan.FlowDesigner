@@ -87,6 +87,8 @@ export interface FlowNodeTypeDefinition {
   readonly category?: string
   /** 图标：内置的节点渲染画在文字前面，物料面板的条目也显示它；自定义的节点渲染可以从节点类型上读它。 */
   readonly icon?: IconRecord
+  /** 常用：给了就在设计器的顶栏放一颗插入这种节点的快捷钮（图标在上、显示名在下），按这个数从小到大排。 */
+  readonly quickInsert?: number
   /** 新建节点的尺寸。 */
   readonly size: FlowSize
   /** 端口：预设，或具名端口的列表。 */
@@ -239,6 +241,8 @@ function normalizeNodeType(definition: FlowNodeTypeDefinition): FlowNodeType {
   checkCount(type, 'connection.maxOutgoing', definition.connection?.maxOutgoing)
   checkJson(type, 'defaults.data', definition.defaults?.data)
   checkJson(type, 'meta', definition.meta)
+  if (definition.quickInsert !== undefined && !Number.isFinite(definition.quickInsert))
+    fail(type, 'quickInsert must be a finite number')
   for (const rule of definition.outgoingEdgeStyles ?? [])
     checkJson(type, 'outgoingEdgeStyles', rule as unknown as JsonObject)
 

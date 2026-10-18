@@ -97,6 +97,7 @@ declare function createFlowModel(extensions?: readonly FlowCoreExtension[]): Flo
 | `label?` | `string` | 显示名：物料面板、属性面板的标题与问题说明里用它，不给时显示 type；节点自己没写标签时画布上也显示它。 |
 | `category?` | `string` | 物料面板里的类别，按它分组。 |
 | `icon?` | `IconRecord` | 图标：内置的节点渲染画在文字前面，物料面板的条目也显示它；自定义的节点渲染可以从节点类型上读它。 |
+| `quickInsert?` | `number` | 常用：给了就在设计器的顶栏放一颗插入这种节点的快捷钮（图标在上、显示名在下），按这个数从小到大排。 |
 | `size` | `FlowSize` | 新建节点的尺寸。 |
 | `ports` | `FlowPortPreset \| readonly FlowPortDefinition[]` | 端口：预设，或具名端口的列表。 |
 | `defaults?` | `FlowNodeDefaults` | 新建节点时写入的标签与 data。 |
