@@ -47,6 +47,12 @@
   block-size: clamp(640px, calc(100vh - 160px), 860px);
 }
 
+/* 全屏时舞台占满组件下方的高度，设计器的高度由舞台按剩下的空间写在元素上 */
+.xh-fullscreen[data-fullscreen] .flow-demo__stage {
+  flex: 1 1 0;
+  min-block-size: 0;
+}
+
 /* 示例里扩展登记的统计面板 */
 .flow-demo [slot='leave-summary'] {
   margin: 0;

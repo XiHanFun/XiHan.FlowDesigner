@@ -6,9 +6,11 @@
 
 // 示例舞台：在浏览器里载入 examples/demos/<name>.ts 或 <name>.vue。.ts 示例导出 mount，挂到舞台上，卸载时调用它返回的清理函数；
 // .vue 示例是一个组件，直接渲染在舞台里。舞台里的查看器按流程图定高度：在舞台宽度下以适合窗口的缩放显示整张图。
+// 写了 fullscreen 的示例可以全屏，全屏时舞台里的设计器长到屏幕底。
 
 import type { XhFlowViewer } from '@xihan-flow/runtime'
 import type { Component } from 'vue'
+import { XhFullscreen } from '@xihanfun/vitepress-theme'
 import { markRaw, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 
 interface DemoModule {
@@ -16,7 +18,7 @@ interface DemoModule {
   default?: Component
 }
 
-const props = defineProps<{ name: string }>()
+const props = defineProps<{ name: string, fullscreen?: boolean }>()
 
 /** 查看器适合窗口时四周留的边距（屏幕像素）。 */
 const VIEWER_PADDING = 24
@@ -27,6 +29,7 @@ const component = shallowRef<Component>()
 const missing = ref(false)
 let dispose: (() => void) | undefined
 let stopSizing: (() => void) | undefined
+let stopFullscreen: (() => void) | undefined
 let unmounted = false
 
 /** 舞台里每个查看器的高度取流程图在当前宽度下适合窗口（不放大）时的高度，流程定义或宽度变了重算。 */
@@ -62,6 +65,23 @@ async function sizeViewers(host: HTMLElement): Promise<() => void> {
   }
 }
 
+/** 全屏时舞台里的设计器从自己的顶边长到舞台底，退出全屏后回到样式表给的高度。 */
+function fillDesigners(host: HTMLElement): () => void {
+  const fill = (): void => {
+    const full = document.fullscreenElement?.contains(host) === true
+    const bottom = host.getBoundingClientRect().bottom
+    for (const designer of host.querySelectorAll<HTMLElement>('xh-flow-designer'))
+      designer.style.blockSize = full ? `${Math.floor(bottom - designer.getBoundingClientRect().top)}px` : ''
+  }
+  const observer = new ResizeObserver(fill)
+  observer.observe(host)
+  document.addEventListener('fullscreenchange', fill)
+  return () => {
+    observer.disconnect()
+    document.removeEventListener('fullscreenchange', fill)
+  }
+}
+
 onMounted(async () => {
   const load = demos[`../../examples/demos/${props.name}.ts`] ?? demos[`../../examples/demos/${props.name}.vue`]
   if (load === undefined) {
@@ -72,6 +92,8 @@ onMounted(async () => {
   if (unmounted || stage.value === undefined)
     return
   const host = stage.value
+  if (props.fullscreen)
+    stopFullscreen = fillDesigners(host)
   if (demo.mount !== undefined)
     dispose = demo.mount(host)
   else if (demo.default !== undefined)
@@ -86,6 +108,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   unmounted = true
   stopSizing?.()
+  stopFullscreen?.()
   dispose?.()
 })
 </script>
@@ -95,6 +118,11 @@ onBeforeUnmount(() => {
     <p v-if="missing" class="flow-demo__missing">
       找不到示例 {{ props.name }}
     </p>
+    <XhFullscreen v-else-if="props.fullscreen">
+      <div ref="stage" class="flow-demo__stage">
+        <component :is="component" v-if="component" />
+      </div>
+    </XhFullscreen>
     <div v-else ref="stage" class="flow-demo__stage">
       <component :is="component" v-if="component" />
     </div>
