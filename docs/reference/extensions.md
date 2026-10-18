@@ -2,7 +2,7 @@
 
 <!-- 本页由 docs/scripts/gen-reference.mjs 从源码生成，不要手改；源码变了之后在 docs/ 运行 pnpm gen。 -->
 
-扩展分三层：core 层登记节点类型、属性、编辑方式与规则，校验与编辑操作只读这一层；运行时层再加节点内容的渲染，见[查看器参考](./viewer#flowruntimeextension)；设计器层再加属性编辑器、命令、面板与 `setup`。下层的扩展对象可以直接交给上层的元素。用法见[扩展](../guide/extensions)。
+扩展分三层：core 层登记节点类型、属性、编辑方式与规则，校验与编辑操作只读这一层；运行时层再加节点内容的渲染，见[查看器参考](./viewer#flowruntimeextension)；设计器层再加属性编辑器、命令、面板、导入器、导出器与 `setup`。下层的扩展对象可以直接交给上层的元素。用法见[扩展](../guide/extensions)。
 
 ## core 层
 
@@ -214,15 +214,20 @@ type PropertyCondition = { readonly path: JsonPath, readonly equals: JsonValue }
 
 ### FlowDesignerExtension {#flowdesignerextension}
 
-流程设计器层的扩展：运行时层的全部字段，加上属性编辑器、命令、面板与 setup。
+流程设计器层的扩展：运行时层的全部字段，加上属性编辑器、命令、面板、导入器、导出器与 setup。
 
-继承 `FlowRuntimeExtension`、`DesignerShellExtension<FlowDesignerContext, FlowPropertyEditor, FlowDocument, FlowRuleContext>`。
+继承 `FlowRuntimeExtension`、`Omit<DesignerShellExtension<FlowDesignerContext, FlowPropertyEditor, FlowDocument, FlowRuleContext>, 'importers' | 'exporters'>`。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `importers?` | `readonly FlowDesignerImporter[]` | 导入器：粘贴、拖放与打开文件共用，按扩展顺序问 accepts，第一个接下的导入；id 不能与别的导入器重名。 |
+| `exporters?` | `readonly FlowDesignerExporter[]` | 导出器：export(format) 交给登记了这种格式的第一个；id 不能与别的导出器重名。 |
 
 ### DesignerExtensionBase {#designerextensionbase}
 
 设计器层的扩展：在 core 部分之上加属性编辑器、命令、导入导出与装上时的回调。各款在此之上加自己的种类、渲染与面板。
 
-`FlowDesignerExtension` 从 XiHan.UI 继承的字段。`importers`、`exporters` 两个字段流程设计器不读取。
+`FlowDesignerExtension` 从 XiHan.UI 继承的字段。`importers`、`exporters` 由流程收窄了结果与上下文的类型，见上表。
 
 类型参数 `Ctx = unknown`、`Editor = PropertyEditor`、`Doc = unknown`、`RuleCtx = unknown`。
 
@@ -270,7 +275,7 @@ declare function createFlowDesignerModel(extensions: readonly FlowDesignerExtens
 
 ### FlowDesignerModel {#flowdesignermodel}
 
-一组设计器扩展合出的东西：交给 core 函数的列表、运行时模型、命令表与属性编辑器表。
+一组设计器扩展合出的东西：交给 core 函数的列表、运行时模型、命令表、属性编辑器表、导入器与导出器。
 
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
@@ -279,6 +284,8 @@ declare function createFlowDesignerModel(extensions: readonly FlowDesignerExtens
 | `runtime` | `FlowRuntimeModel` | 运行时模型：节点类型、属性与节点渲染。 |
 | `commands` | `DesignerCommandTable<FlowDesignerContext>` | 命令 id → 命令，内置在前。 |
 | `editors` | `PropertyEditorTable<FlowPropertyEditor>` | 各扩展登记的属性编辑器叠成的一张表。 |
+| `importers` | `readonly FlowDesignerImporter[]` | 各扩展的导入器，按扩展顺序。 |
+| `exporters` | `readonly FlowDesignerExporter[]` | 各扩展的导出器，按扩展顺序。 |
 
 ## 命令
 
@@ -317,6 +324,102 @@ type DesignerCommandPlacement = 'toolbar' | `menu:${string}`
 ```
 
 命令出现的位置：工具栏，或某种主体的右键菜单（主体由各款定，如 node、edge、element、card、blank）。
+
+## 导入与导出
+
+### FlowDesignerImporter {#flowdesignerimporter}
+
+```ts
+type FlowDesignerImporter = DesignerImporter<FlowDesignerContext, FlowImportResult | undefined>
+```
+
+导入器：把粘贴、拖放或打开的文件换成片段或整份流程定义；返回 undefined 即什么都不放。
+
+### FlowImportResult {#flowimportresult}
+
+```ts
+type FlowImportResult = FlowImportFragment | FlowImportDocument
+```
+
+导入的结果：一个片段，或一整份流程定义。
+
+### FlowImportFragment {#flowimportfragment}
+
+导入的片段：一组节点与连线，整体挪到落点后按粘贴的规则换新 id 放进流程定义，选中它们并记一步撤销。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `nodes` | `readonly FlowNode[]` |  |
+| `edges?` | `readonly FlowEdge[]` | 两端都在 nodes 里的连线；别的连线丢弃。 |
+
+### FlowImportDocument {#flowimportdocument}
+
+导入的整份流程定义：换掉当前定义并记一步撤销，视口随后适配。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `document` | `FlowDocument` |  |
+
+### DesignerImporter {#designerimporter}
+
+导入：把外部内容换成片段或文档，结果的形状由各款定。
+
+类型参数 `Ctx = unknown`、`Result = unknown`。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | `string` | 全局唯一，写法同命令 id；不能与内置或别的扩展的导入器重名。 |
+
+| 方法 | 说明 |
+| --- | --- |
+| `accepts(source: DesignerImportSource): boolean` | 接不接这个来源：只看类型、文件名或文本，不读文件内容，当场返回。 |
+| `import(source: DesignerImportSource, context: Ctx): Result \| Promise<Result>` | 把接下的来源换成结果，可以是异步的；结果的形状与抛错后怎么报由各款定。 |
+
+### DesignerImportSource {#designerimportsource}
+
+导入的来源：粘贴、拖放与打开文件三处共用。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `kind` | `'clipboard' \| 'drop' \| 'file'` | 从哪里来：clipboard 粘贴，drop 拖放，file 打开文件。 |
+| `mime?` | `string` | 内容的类型：文件取文件自己的类型，文本是 text/uri-list、text/html 或 text/plain。 |
+| `name?` | `string` | 文件名；只有文件有。 |
+| `text?` | `string` | 文本内容；只有文本有，文件的内容要从 file 里读。 |
+| `file?` | `Blob` | 文件；只有文件有。 |
+
+### FlowDesignerExporter {#flowdesignerexporter}
+
+```ts
+type FlowDesignerExporter = DesignerExporter<FlowExportContext>
+```
+
+导出器：把当前流程定义换成文件。
+
+### FlowExportContext {#flowexportcontext}
+
+导出时交给导出器的上下文：设计器的上下文，加上调用 export() 时给的选项。
+
+继承 `FlowDesignerContext`。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `options` | `Readonly<Record<string, unknown>>` |  |
+
+### DesignerExporter {#designerexporter}
+
+导出：把当前文档或渲染结果换成文件。
+
+类型参数 `Ctx = unknown`。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | `string` | 全局唯一，写法同命令 id；不能与内置或别的扩展的导出器重名。 |
+| `label` | `string \| ((context: Ctx) => string)` | 导出项的名称，列导出入口时显示；给函数时现取，随语言变。 |
+| `formats` | `readonly string[]` | 能导出的格式，如 svg、png、xlsx。 |
+
+| 方法 | 说明 |
+| --- | --- |
+| `export(format: string, context: Ctx): Promise<Blob \| string>` | 按格式导出，format 是 formats 里的一个；得到文件内容（Blob）或文本。 |
 
 ## 面板
 

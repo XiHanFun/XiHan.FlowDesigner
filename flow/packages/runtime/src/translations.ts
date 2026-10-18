@@ -19,6 +19,8 @@ export interface FlowDesignerTranslations {
   readonly label: string
   /** 工具栏的可访问名。 */
   readonly toolbar: string
+  /** 选一个文件交给导入器。 */
+  readonly openFile: string
   readonly undo: string
   readonly redo: string
   readonly delete: string

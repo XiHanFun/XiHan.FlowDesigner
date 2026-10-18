@@ -9,7 +9,8 @@
 // 选中一条连线后拖端点改连、拖拐点挪动、拖线段中点加拐点、双击拐点删掉它，
 // 物料拖进画布新建节点；Ctrl / ⌘ + 滚轮缩放，键盘删除、撤销重做、复制粘贴与微移。
 // 右键节点、连线或空白处弹出内置菜单，宿主取消对应的 *-contextmenu 事件即不弹。
-// 节点类型、节点渲染、属性编辑器、命令与面板都从 extensions 来，内置命令也是一个扩展；工具栏与菜单的排列可由 commandLayout 改写。
+// 节点类型、节点渲染、属性编辑器、命令、面板、导入器与导出器都从 extensions 来，内置命令也是一个扩展；工具栏与菜单的排列可由 commandLayout 改写。
+// 粘贴、拖进画布的外部内容与 openFile() 选的文件交给扩展的导入器，export() 交给扩展的导出器。
 // 面板用 @xihan-ui/web-components 的元素，defineFlowDesigner() 会一并注册它们。
 
 import type {
@@ -26,7 +27,7 @@ import type {
   FlowValidateOptions,
 } from '@xihan-flow/core'
 import type { FlowDesignerTranslations, FlowScene, FlowSceneEdge, FlowSceneNode } from '@xihan-flow/runtime'
-import type { AlignMode, DistributeAxis, ExecuteOptions, ExtensionHost, Viewport } from '@xihan-ui/designer-kit'
+import type { AlignMode, DesignerImportSource, DistributeAxis, ExecuteOptions, ExtensionHost, Viewport } from '@xihan-ui/designer-kit'
 import type {
   CommandToolbar,
   DesignerCommandLayout,
@@ -40,8 +41,8 @@ import type {
 import type { PointerSession } from '@xihan-ui/pointer'
 import type { KeyedChildren, PropertyValues } from '@xihan-ui/web-components/authoring'
 import type { FlowAutoLayoutOptions, FlowClipboard, FlowEditor, FlowSelection } from './editor'
-import type { FlowDesignerContext, FlowDesignerExtension, FlowDesignerModel, FlowMenuSubject } from './extensions'
-import { getPortPosition, portAllows } from '@xihan-flow/core'
+import type { FlowDesignerContext, FlowDesignerExtension, FlowDesignerImporter, FlowDesignerModel, FlowImportFragment, FlowMenuSubject } from './extensions'
+import { getPortPosition, portAllows, readDocument } from '@xihan-flow/core'
 import { buildScene, createOrthogonalRouter } from '@xihan-flow/runtime'
 import { detectKbdPlatform } from '@xihan-ui/core/hotkey'
 import {
@@ -50,6 +51,7 @@ import {
   createExtensionHost,
   DEFAULT_VIEWPORT,
   expandRect,
+  findImporter,
   fitRect,
   hitTest,
   nudgeDelta,
@@ -68,6 +70,7 @@ import {
   createPanelHost,
   defineDesignerShellElement,
   DESIGNER_FRAME_REGIONS,
+  importSources,
   parseDesignerPanels,
   registerDropTarget,
   renderCommandMenu,
@@ -91,9 +94,9 @@ import {
   XhReactiveElement,
 } from '@xihan-ui/web-components/authoring'
 import { defineXhElement, XhContextMenuElement, XhToolbarElement } from '@xihan-ui/web-components/define'
-import { encodeFlowClipboard, readFlowClipboard, writeFlowClipboard } from './clipboard'
+import { encodeFlowClipboard, readFlowClipboard, readFlowFragment, writeFlowClipboard } from './clipboard'
 import { createFlowEditor } from './editor'
-import { createFlowDesignerModel, FLOW_DESIGNER_EXTENSION, FLOW_TOOLBAR_LAYOUT, flowMenuLayout } from './extensions'
+import { createFlowDesignerModel, FLOW_DESIGNER_EXTENSION, flowMenuLayout, flowToolbarLayout } from './extensions'
 import { ContextMenuPanel } from './panels/context-menu'
 import { IssuesPanel } from './panels/issues'
 import { MinimapPanel } from './panels/minimap'
@@ -129,6 +132,11 @@ export interface FlowDesignerEventMap {
   'blank-contextmenu': CustomEvent<{ x: number, y: number }>
   /** 视口变了：缩放、平移、适配与 setViewport 都会派发。 */
   'viewport-change': CustomEvent<{ viewport: Viewport }>
+  /**
+   * 导入没有成功：导入器抛了错，或给出的节点、连线或流程定义不合法、用了没登记的节点类型，importer 是导入器的 id；
+   * openFile() 选的文件没有导入器接下时也派发，此时没有 importer。
+   */
+  'import-error': CustomEvent<{ importer?: string, source: DesignerImportSource, error: unknown }>
   /** 画布有焦点时按了 Ctrl / ⌘ + S；设计器不自己保存。 */
   'save': CustomEvent<Record<string, never>>
 }
@@ -324,7 +332,7 @@ export class XhFlowDesigner extends XhReactiveElement {
   }
 
   /**
-   * 扩展：节点类型、节点渲染、属性编辑器、命令与面板都从这里来，内置扩展自动排在最前。
+   * 扩展：节点类型、节点渲染、属性编辑器、命令、面板、导入器与导出器都从这里来，内置扩展自动排在最前。
    * 赋值时当场合并查重，冲突抛 DesignerExtensionError、什么都不变；各扩展的 setup 在元素连上文档时调用、断开时清理。
    * 同一个扩展对象换了引用当作卸下再装上，宿主要保持引用稳定。
    */
@@ -361,6 +369,11 @@ export class XhFlowDesigner extends XhReactiveElement {
   /** 剪贴板里有内容，paste() 能贴出东西。 */
   get canPaste(): boolean {
     return this.#editor.hasClipboard
+  }
+
+  /** 装了导入器：粘贴与拖进画布的外部内容、openFile() 选的文件都交给它们。 */
+  get canImport(): boolean {
+    return this.#model.importers.length > 0
   }
 
   /** 有未保存的修改。 */
@@ -488,6 +501,34 @@ export class XhFlowDesigner extends XhReactiveElement {
    */
   paste(clipboard?: FlowClipboard): FlowSelection {
     return this.readonly ? { nodes: [], edges: [] } : this.#editor.paste(clipboard, { offset: this.#gridStep() })
+  }
+
+  /**
+   * 弹出选择文件的对话框，选中的文件交给导入器：按扩展顺序问 accepts，第一个接下的导入；
+   * 导入的片段放在视口中央，整份流程定义换掉当前定义。没有导入器接下时派发 import-error。只读或没有导入器时什么都不做。
+   */
+  openFile(): void {
+    if (this.readonly || !this.canImport)
+      return
+    const input = this.ownerDocument.createElement('input')
+    input.type = 'file'
+    input.addEventListener('change', () => {
+      const file = input.files?.[0]
+      if (!file)
+        return
+      const source: DesignerImportSource = { kind: 'file', mime: file.type, name: file.name, file }
+      if (!this.#import([source], this.#viewportCenter()))
+        emitEvent(this, 'import-error', { source, error: new RangeError(`[flow-designer] no importer accepts "${file.name}"`) })
+    }, { once: true })
+    input.click()
+  }
+
+  /** 导出成文件：交给登记了这种格式的第一个导出器，options 原样交给它；没有导出器认这种格式时返回以 RangeError 拒绝的 Promise。 */
+  export(format: string, options: Readonly<Record<string, unknown>> = {}): Promise<Blob | string> {
+    const exporter = this.#model.exporters.find(item => item.formats.includes(format))
+    if (!exporter)
+      return Promise.reject(new RangeError(`[flow-designer] no exporter for "${format}"`))
+    return exporter.export(format, { ...this.#context(), options })
   }
 
   /** 复制选中内容并立即粘贴，偏移一格网格，不改动剪贴板；只读时什么都不做，返回空选择。 */
@@ -738,6 +779,8 @@ export class XhFlowDesigner extends XhReactiveElement {
       leave: () => this.#clearDrop(),
     })
     root.addEventListener('pan-request', this.#onPanRequest)
+    root.addEventListener('dragover', this.#onNativeDragOver)
+    root.addEventListener('drop', this.#onNativeDrop)
     const properties = new PropertiesPanel({
       ownerDocument: doc,
       editor: this.#editor,
@@ -935,7 +978,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     const context: FlowDesignerContext = { designer: this, translations: t }
     const { commands } = this.#model
     if (this.#shows('toolbar'))
-      layers.commandBar.update(arrangeCommands('toolbar', commands, FLOW_TOOLBAR_LAYOUT, this.commandLayout), commands, context, t.toolbar)
+      layers.commandBar.update(arrangeCommands('toolbar', commands, flowToolbarLayout(this.canImport), this.commandLayout), commands, context, t.toolbar)
     if (this.#shows('palette'))
       layers.palette.update(this.#editor.model.nodeTypes, { order: this.paletteGroupOrder, labels: this.paletteGroupLabels }, t)
     if (this.#shows('properties'))
@@ -1450,18 +1493,21 @@ export class XhFlowDesigner extends XhReactiveElement {
     this.ownerDocument.defaultView?.navigator.clipboard?.writeText(encodeFlowClipboard(clipboard)).catch(() => {})
   }
 
-  /** 画布有焦点时，复制、剪切写入剪贴板事件的数据，粘贴读出流程的剪贴板内容；别的内容不处理。 */
+  /** 画布有焦点时，复制、剪切写入剪贴板事件的数据；粘贴读出流程的剪贴板内容，不是时交给导入器。 */
   readonly #onClipboard = (event: ClipboardEvent): void => {
     const data = event.clipboardData
     const root = this.getRootNode() as Document | ShadowRoot
     if (!data || this.#gesture || !this.#layers || root.activeElement !== this.#layers.menu.trigger)
       return
     if (event.type === 'paste') {
-      const content = this.readonly ? undefined : readFlowClipboard(data)
-      if (content) {
+      if (this.readonly)
+        return
+      const content = readFlowClipboard(data)
+      if (content)
         this.paste(content)
-        event.preventDefault()
-      }
+      else if (!this.canImport || !this.#import(importSources(data, 'clipboard'), this.#viewportCenter()))
+        return
+      event.preventDefault()
       return
     }
     const copied = event.type === 'copy' ? this.#editor.copy() : this.readonly ? undefined : this.#editor.cut()
@@ -1469,6 +1515,91 @@ export class XhFlowDesigner extends XhReactiveElement {
       return
     writeFlowClipboard(data, copied)
     event.preventDefault()
+  }
+
+  /** 有导入器时画布接受从外部拖进来的文件与文本。 */
+  readonly #onNativeDragOver = (event: DragEvent): void => {
+    if (this.readonly || event.dataTransfer === null || !this.canImport)
+      return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'copy'
+  }
+
+  readonly #onNativeDrop = (event: DragEvent): void => {
+    if (this.readonly || event.dataTransfer === null || !this.canImport)
+      return
+    event.preventDefault()
+    if (this.#import(importSources(event.dataTransfer, 'drop'), this.clientToWorld(event.clientX, event.clientY)))
+      this.#stopAutoFit()
+  }
+
+  /** 把来源交给第一个接下的导入器，导入是异步的；没有导入器接下时返回 false。 */
+  #import(sources: readonly DesignerImportSource[], at: FlowPoint): boolean {
+    const found = findImporter(this.#model.importers, sources)
+    if (!found)
+      return false
+    void this.#runImport(found.importer, found.source, at)
+    return true
+  }
+
+  /** 导入并放下：片段放在 at 处，整份流程定义换掉当前定义；导入器抛错或结果没有通过检查时派发 import-error。 */
+  async #runImport(importer: FlowDesignerImporter, source: DesignerImportSource, at: FlowPoint): Promise<void> {
+    try {
+      const result = await importer.import(source, this.#context())
+      if (result === undefined || this.readonly)
+        return
+      if ('document' in result)
+        this.#replaceDocument(result.document, importer.id)
+      else
+        this.#placeFragment(result, at, importer.id)
+    }
+    catch (error) {
+      emitEvent(this, 'import-error', { importer: importer.id, source, error })
+    }
+  }
+
+  /** 片段整体挪到以 at 为中心、左上角吸附网格，按粘贴的规则换新 id 放进流程定义并选中。 */
+  #placeFragment(fragment: FlowImportFragment, at: FlowPoint, importer: string): void {
+    const read = readFlowFragment(fragment.nodes, fragment.edges ?? [])
+    if (!read)
+      throw new TypeError(`[flow-designer] importer "${importer}" returned malformed nodes or edges`)
+    this.#checkNodeTypes(read.nodes, importer)
+    const bounds = unionRects(read.nodes)
+    if (!bounds)
+      return
+    const topLeft = this.#snapToGrid({ x: at.x - bounds.width / 2, y: at.y - bounds.height / 2 })
+    const dx = topLeft.x - bounds.x
+    const dy = topLeft.y - bounds.y
+    this.#editor.paste({
+      nodes: read.nodes.map(node => ({ ...node, x: node.x + dx, y: node.y + dy })),
+      edges: read.edges.map(edge => edge.vertices === undefined ? edge : { ...edge, vertices: edge.vertices.map(point => ({ x: point.x + dx, y: point.y + dy })) }),
+    }, { offset: 0 })
+  }
+
+  /** 整份流程定义换掉当前定义，记一步撤销，清空选择，视口随后适配。 */
+  #replaceDocument(document: FlowDocument, importer: string): void {
+    const read = readDocument(document)
+    if (!read.ok || !readFlowFragment(read.document.nodes, read.document.edges))
+      throw new TypeError(`[flow-designer] importer "${importer}" returned a malformed flow definition`)
+    const next = read.document
+    this.#checkNodeTypes(next.nodes, importer)
+    const current = this.#editor.document
+    this.#editor.clearSelection()
+    this.#startAutoFit()
+    this.#editor.execute([
+      ...current.edges.map((edge): FlowOperation => ({ type: 'removeEdge', id: edge.id })),
+      ...current.nodes.map((node): FlowOperation => ({ type: 'removeNode', id: node.id })),
+      ...next.nodes.map((node): FlowOperation => ({ type: 'addNode', node })),
+      ...next.edges.map((edge): FlowOperation => ({ type: 'addEdge', edge })),
+      { type: 'updateDocument', patch: { data: next.data ?? null, extensions: next.extensions ?? null } },
+    ])
+  }
+
+  /** 节点类型都已登记；有没登记的抛 TypeError。 */
+  #checkNodeTypes(nodes: readonly FlowNode[], importer: string): void {
+    const unknown = nodes.find(node => this.#editor.model.nodeTypes.get(node.type) === undefined)
+    if (unknown)
+      throw new TypeError(`[flow-designer] importer "${importer}" returned node type "${unknown.type}" that is not registered`)
   }
 
   readonly #onKeyDown = (event: KeyboardEvent): void => {

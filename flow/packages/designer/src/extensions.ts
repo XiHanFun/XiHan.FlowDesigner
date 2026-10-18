@@ -3,11 +3,11 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-// 设计器层的扩展：在运行时层之上加属性编辑器、命令、面板与装上时的回调；内置命令也写成一个扩展。
+// 设计器层的扩展：在运行时层之上加属性编辑器、命令、面板、导入器、导出器与装上时的回调；内置命令也写成一个扩展。
 
-import type { FlowDocument, FlowRuleContext } from '@xihan-flow/core'
+import type { FlowDocument, FlowEdge, FlowNode, FlowRuleContext } from '@xihan-flow/core'
 import type { FlowDesignerTranslations, FlowRuntimeExtension, FlowRuntimeModel } from '@xihan-flow/runtime'
-import type { DesignerCommand } from '@xihan-ui/designer-kit'
+import type { DesignerCommand, DesignerExporter, DesignerImporter } from '@xihan-ui/designer-kit'
 import type { PropertyEditorTable } from '@xihan-ui/designer-kit/properties'
 import type { DesignerCommandTable, DesignerShellExtension } from '@xihan-ui/designer-shell'
 import type { XhFlowDesigner } from './flow-designer'
@@ -26,8 +26,39 @@ export interface FlowDesignerContext {
 /** 设计器的命令。 */
 export type FlowDesignerCommand = DesignerCommand<FlowDesignerContext>
 
-/** 流程设计器层的扩展：运行时层的全部字段，加上属性编辑器、命令、面板与 setup。 */
-export interface FlowDesignerExtension extends FlowRuntimeExtension, DesignerShellExtension<FlowDesignerContext, FlowPropertyEditor, FlowDocument, FlowRuleContext> {}
+/** 导入的片段：一组节点与连线，整体挪到落点后按粘贴的规则换新 id 放进流程定义，选中它们并记一步撤销。 */
+export interface FlowImportFragment {
+  readonly nodes: readonly FlowNode[]
+  /** 两端都在 nodes 里的连线；别的连线丢弃。 */
+  readonly edges?: readonly FlowEdge[]
+}
+
+/** 导入的整份流程定义：换掉当前定义并记一步撤销，视口随后适配。 */
+export interface FlowImportDocument {
+  readonly document: FlowDocument
+}
+
+/** 导入的结果：一个片段，或一整份流程定义。 */
+export type FlowImportResult = FlowImportFragment | FlowImportDocument
+
+/** 导入器：把粘贴、拖放或打开的文件换成片段或整份流程定义；返回 undefined 即什么都不放。 */
+export type FlowDesignerImporter = DesignerImporter<FlowDesignerContext, FlowImportResult | undefined>
+
+/** 导出时交给导出器的上下文：设计器的上下文，加上调用 export() 时给的选项。 */
+export interface FlowExportContext extends FlowDesignerContext {
+  readonly options: Readonly<Record<string, unknown>>
+}
+
+/** 导出器：把当前流程定义换成文件。 */
+export type FlowDesignerExporter = DesignerExporter<FlowExportContext>
+
+/** 流程设计器层的扩展：运行时层的全部字段，加上属性编辑器、命令、面板、导入器、导出器与 setup。 */
+export interface FlowDesignerExtension extends FlowRuntimeExtension, Omit<DesignerShellExtension<FlowDesignerContext, FlowPropertyEditor, FlowDocument, FlowRuleContext>, 'importers' | 'exporters'> {
+  /** 导入器：粘贴、拖放与打开文件共用，按扩展顺序问 accepts，第一个接下的导入；id 不能与别的导入器重名。 */
+  readonly importers?: readonly FlowDesignerImporter[]
+  /** 导出器：export(format) 交给登记了这种格式的第一个；id 不能与别的导出器重名。 */
+  readonly exporters?: readonly FlowDesignerExporter[]
+}
 
 /** 取值是字符串的文案键。 */
 type TextKey = { [K in keyof FlowDesignerTranslations]: FlowDesignerTranslations[K] extends string ? K : never }[keyof FlowDesignerTranslations]
@@ -42,8 +73,9 @@ function selectedVertices(designer: XhFlowDesigner): boolean {
   return designer.schema.edges.some(edge => selected.has(edge.id) && edge.vertices !== undefined)
 }
 
-/** 内置命令：撤销重做、剪贴板、选择、对齐分布、布局与缩放。 */
+/** 内置命令：打开文件、撤销重做、剪贴板、选择、对齐分布、布局与缩放。 */
 const BUILTIN_COMMANDS: readonly FlowDesignerCommand[] = [
+  { id: 'open-file', label: text('openFile'), enabled: editable(d => d.canImport), run: ({ designer }) => designer.openFile() },
   { id: 'undo', label: text('undo'), shortcut: ['Mod', 'Z'], enabled: editable(d => d.canUndo), run: ({ designer }) => designer.undo() },
   { id: 'redo', label: text('redo'), shortcut: ['Mod', 'Shift', 'Z'], enabled: editable(d => d.canRedo), run: ({ designer }) => designer.redo() },
   { id: 'copy', label: text('copy'), enabled: ({ designer }) => selectedNodes(designer) > 0, run: ({ designer }) => designer.copy() },
@@ -96,13 +128,21 @@ export const FLOW_DESIGNER_EXTENSION: FlowDesignerExtension = {
   commands: BUILTIN_COMMANDS,
 }
 
-/** 工具栏的缺省排列；commandLayout 没写 toolbar 时用它，再把 placement 含 toolbar 的扩展命令追加成一组。 */
+/**
+ * 工具栏的缺省排列；commandLayout 没写 toolbar 时用它，再把 placement 含 toolbar 的扩展命令追加成一组。
+ * 有导入器时前面再加一组打开文件，见 flowToolbarLayout。
+ */
 export const FLOW_TOOLBAR_LAYOUT: readonly (readonly string[])[] = [
   ['undo', 'redo'],
   ['delete', 'duplicate'],
   ['align-left', 'align-center', 'align-right', 'align-top', 'align-middle', 'align-bottom', 'distribute-horizontal', 'distribute-vertical', 'auto-layout'],
   ['zoom-out', 'zoom-in', 'zoom-to-fit', 'zoom-to-actual'],
 ]
+
+/** 工具栏此刻的缺省排列：有导入器时在 FLOW_TOOLBAR_LAYOUT 前面多一组打开文件。 */
+export function flowToolbarLayout(hasImporters: boolean): (readonly string[])[] {
+  return hasImporters ? [['open-file'], ...FLOW_TOOLBAR_LAYOUT] : [...FLOW_TOOLBAR_LAYOUT]
+}
 
 /** 右键菜单落在哪类对象上。 */
 export type FlowMenuSubject = 'node' | 'edge' | 'blank'
@@ -121,7 +161,7 @@ export function flowMenuLayout(subject: FlowMenuSubject, selectedNodes: number):
   return groups
 }
 
-/** 一组设计器扩展合出的东西：交给 core 函数的列表、运行时模型、命令表与属性编辑器表。 */
+/** 一组设计器扩展合出的东西：交给 core 函数的列表、运行时模型、命令表、属性编辑器表、导入器与导出器。 */
 export interface FlowDesignerModel {
   /** 设计器内置扩展在前、传入的在后；校验与编辑器都拿这一份。 */
   readonly list: readonly FlowDesignerExtension[]
@@ -133,6 +173,10 @@ export interface FlowDesignerModel {
   readonly commands: DesignerCommandTable<FlowDesignerContext>
   /** 各扩展登记的属性编辑器叠成的一张表。 */
   readonly editors: PropertyEditorTable<FlowPropertyEditor>
+  /** 各扩展的导入器，按扩展顺序。 */
+  readonly importers: readonly FlowDesignerImporter[]
+  /** 各扩展的导出器，按扩展顺序。 */
+  readonly exporters: readonly FlowDesignerExporter[]
 }
 
 /** 合出设计器用的模型；任何一处重名都抛 DesignerExtensionError。 */
@@ -140,5 +184,13 @@ export function createFlowDesignerModel(extensions: readonly FlowDesignerExtensi
   const list = [FLOW_DESIGNER_EXTENSION, ...extensions]
   const runtime = createFlowRuntimeModel(list)
   const all = runtime.extensions as readonly FlowDesignerExtension[]
-  return { list, extensions: all, runtime, commands: extensionCommands(all), editors: extensionEditors<FlowPropertyEditor>(undefined, all) }
+  return {
+    list,
+    extensions: all,
+    runtime,
+    commands: extensionCommands(all),
+    editors: extensionEditors<FlowPropertyEditor>(undefined, all),
+    importers: all.flatMap(extension => extension.importers ?? []),
+    exporters: all.flatMap(extension => extension.exporters ?? []),
+  }
 }

@@ -87,6 +87,7 @@ export const flowZhCN: XhConfig = {
     'xh-flow-designer': {
       label: '流程设计器',
       toolbar: '设计器工具',
+      openFile: '打开文件',
       undo: '撤销',
       redo: '重做',
       delete: '删除',
