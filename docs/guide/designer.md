@@ -84,6 +84,8 @@
 
 `readonly` 打开后仍可以选择、浏览、复制与缩放，不能修改：拖动、连线、删除、粘贴与属性面板的编辑都不起作用，会修改的方法什么都不做。元素上带 `data-readonly`。
 
+同名 attribute 是三态的，与 XiHan.UI 的元素一致：不写为缺省（不只读）；写 `readonly="false"` 为 `false`；写 `readonly`、`readonly="true"` 或别的值为 `true`；摘掉 attribute 回到缺省。这是行为变化：以前只要写了这个 attribute 就算只读，`readonly="false"` 也不例外。经 property 赋值不受影响。
+
 <<< @/examples/demos/designer.ts#readonly
 
 ## 文案

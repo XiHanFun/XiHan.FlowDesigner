@@ -10,7 +10,7 @@
 
 | 属性 | attribute | 类型 | 说明 |
 | --- | --- | --- | --- |
-| `readonly` | `readonly` | `boolean` | 只读：可以选择与浏览，不能修改。 |
+| `readonly` | `readonly` | `boolean \| undefined` | 只读：可以选择与浏览，不能修改；缺省 false。同名 attribute 三态：不写为缺省，写 "false" 为 false，其余写法（空串、"true" 等）为 true。 |
 | `grid` | — | `number \| false` | 拖动与新建节点时吸附的网格边长，false 不吸附网格；缺省 16。 |
 | `snap` | — | `boolean` | 拖动时吸附其它节点并显示对齐线；缺省 true。 |
 | `panels` | `panels` | `string \| undefined` | 要显示的面板，空格分隔：toolbar palette properties issues minimap。不写即全部显示，写空串则全部收起；同名 attribute。 |

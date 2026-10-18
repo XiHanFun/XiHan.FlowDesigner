@@ -84,6 +84,7 @@ import {
 } from '@xihan-ui/designer-shell'
 import { createPointerSession, resolveSessionDoc, shouldActivate, wheelPixels } from '@xihan-ui/pointer'
 import {
+  BOOLEAN_CONVERTER,
   createGeneratedElement,
   emitEvent,
   GEN_ATTR,
@@ -202,7 +203,7 @@ interface ConnectPreview {
 /** 流程设计器 <xh-flow-designer>：在画布上编辑流程定义。 */
 export class XhFlowDesigner extends XhReactiveElement {
   static override properties = {
-    readonly: { type: Boolean },
+    readonly: { converter: BOOLEAN_CONVERTER },
     grid: { attribute: false },
     snap: { attribute: false },
     panels: { converter: { fromAttribute: (value: string | null) => value ?? undefined } },
@@ -216,8 +217,11 @@ export class XhFlowDesigner extends XhReactiveElement {
     translations: { attribute: false },
   }
 
-  /** 只读：可以选择与浏览，不能修改。 */
-  declare readonly: boolean
+  /**
+   * 只读：可以选择与浏览，不能修改；缺省 false。同名 attribute 三态：不写为缺省，写 "false" 为 false，
+   * 其余写法（空串、"true" 等）为 true。
+   */
+  declare readonly: boolean | undefined
   /** 拖动与新建节点时吸附的网格边长，false 不吸附网格；缺省 16。 */
   declare grid: number | false
   /** 拖动时吸附其它节点并显示对齐线；缺省 true。 */
@@ -285,7 +289,6 @@ export class XhFlowDesigner extends XhReactiveElement {
   constructor() {
     super()
     IMAGE_RENDERERS.set(this, (format, options) => this.#renderImage(format, options))
-    this.readonly = false
     this.grid = 16
     this.snap = true
     this.#editor.subscribe((change) => {
@@ -805,7 +808,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     toolbar.append(commandBar.element)
     const palette = new PalettePanel({
       ownerDocument: doc,
-      isReadonly: () => this.readonly,
+      isReadonly: () => this.readonly === true,
       addNode: type => this.addNode(type),
     })
     registerDropTarget(root, {
@@ -819,7 +822,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     const properties = new PropertiesPanel({
       ownerDocument: doc,
       editor: this.#editor,
-      isReadonly: () => this.readonly,
+      isReadonly: () => this.readonly === true,
       issues: () => this.#issues,
       editors: () => this.#model.editors,
       groupOrder: () => this.propertyGroupOrder,

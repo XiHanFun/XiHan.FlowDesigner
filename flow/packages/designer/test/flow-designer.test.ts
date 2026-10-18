@@ -414,6 +414,25 @@ describe('<xh-flow-designer>', () => {
     }
   })
 
+  it('readonly attribute 三态：不写为缺省，写 "false" 为 false，空串与 "true" 为 true，摘掉回到缺省', async () => {
+    const designer = await mount()
+    const state = (): [boolean | undefined, boolean] => [designer.readonly, designer.hasAttribute('data-readonly')]
+    expect(state()).toEqual([undefined, false])
+    for (const [value, expected] of [['', true], ['false', false], ['true', true], ['readonly', true]] as const) {
+      designer.setAttribute('readonly', value)
+      await designer.updateComplete
+      expect([value, ...state()]).toEqual([value, expected, expected])
+    }
+    designer.setAttribute('readonly', 'false')
+    await designer.updateComplete
+    expect(designer.deleteSelection()).toBe(false)
+    designer.select({ nodes: ['t'] })
+    expect(designer.deleteSelection()).toBe(true)
+    designer.removeAttribute('readonly')
+    await designer.updateComplete
+    expect(state()).toEqual([undefined, false])
+  })
+
   it('只读时可以选择，不能移动、连线或删除', async () => {
     const designer = await mount(element => element.readonly = true)
     expect(designer.hasAttribute('data-readonly')).toBe(true)
