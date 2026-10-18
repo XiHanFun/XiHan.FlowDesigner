@@ -429,6 +429,19 @@ describe('问题列表', () => {
     expect(designer.querySelector<HTMLElement>('[data-part="node"][data-node-id="s"]')!.dataset.issue).toBeUndefined()
   })
 
+  it('再给 extensions 赋值（两次）以后，错误、警告数仍在面板头里，并且在文档里', async () => {
+    const designer = await mount(element => element.extensions = [typed])
+    await settle(designer)
+    for (let round = 0; round < 2; round++) {
+      designer.extensions = [...designer.extensions!]
+      await settle(designer)
+    }
+    const filter = designer.querySelector<HTMLElement>('[data-region="issues"] [data-part="panel-actions"] > [data-part="filter"]')!
+    expect(filter.isConnected).toBe(true)
+    expect(filter.parentElement!.hidden).toBe(false)
+    expect(filter.querySelector('button[value="error"]')!.textContent).toBe('2 errors')
+  })
+
   it('点问题选中并显露所在节点，落在属性上时把焦点交给那个字段', async () => {
     const designer = await mount(element => element.extensions = [typed])
     placeCanvas(designer, 200, 100)
