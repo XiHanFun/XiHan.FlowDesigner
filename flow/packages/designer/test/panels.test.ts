@@ -155,6 +155,39 @@ describe('外框卡片', () => {
   })
 })
 
+describe('状态栏', () => {
+  function status(designer: Element, zone: 'start' | 'end'): string {
+    const item = designer.querySelector(`[slot="status-${zone}"][data-part="status-item"], [data-zone="${zone}"] > [data-part="status-item"]`)!
+    return Array.from(item.querySelectorAll<HTMLElement>('[data-part="status-label"], [data-part="status-value"]'), part => part.hidden ? '' : part.textContent).filter(Boolean).join(' ')
+  }
+
+  it('左段写选中对象：没选中时是节点与连线数，单选节点是类型与位置尺寸，单选连线是连线名，多选是已选几个', async () => {
+    const designer = await mount()
+    await settleFrame(designer)
+    expect(status(designer, 'start')).toBe('Flow 3 nodes, 1 connection')
+    designer.select({ nodes: ['t'] })
+    await settleFrame(designer)
+    expect(status(designer, 'start')).toBe('任务 X 200, Y 0 · 100 × 40')
+    designer.select({ edges: ['st'] })
+    await settleFrame(designer)
+    expect(status(designer, 'start')).toBe('Connection st')
+    designer.select({ nodes: ['s', 't'], edges: ['st'] })
+    await settleFrame(designer)
+    expect(status(designer, 'start')).toBe('3 selected')
+  })
+
+  it('右段写缩放，视口变了跟着变；点它回到 100%', async () => {
+    const designer = await mount()
+    placeCanvas(designer, 400, 300)
+    designer.setViewport({ x: 0, y: 0, zoom: 0.5 })
+    await settleFrame(designer)
+    expect(status(designer, 'end')).toBe('Zoom 50%')
+    designer.querySelector<HTMLButtonElement>('xh-button[data-part="status-item"] button')!.click()
+    await settleFrame(designer)
+    expect([designer.getViewport().zoom, status(designer, 'end')]).toEqual([1, 'Zoom 100%'])
+  })
+})
+
 describe('物料面板', () => {
   function palette(designer: Element): HTMLElement & { updateComplete: Promise<unknown> } {
     return designer.querySelector('xh-designer-palette')!

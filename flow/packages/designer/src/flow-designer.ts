@@ -45,6 +45,7 @@ import type {
   DesignerSettingsPolicy,
   DesignerSettingsSection,
   DesignerSnapOptions,
+  DesignerStatusItem,
   DesignerTransformEventMap,
   DropOver,
   PanRequestDetail,
@@ -82,9 +83,11 @@ import {
   createCommandToolbar,
   createDesignerSettingsHost,
   createPanelHost,
+  createStatusItem,
   defineDesignerShellElement,
   DESIGNER_COMMANDS_EN_US,
   DESIGNER_FRAME_REGIONS,
+  DESIGNER_SETTING_KEYS,
   importSources,
   parseDesignerPanels,
   registerDropTarget,
@@ -175,7 +178,7 @@ export interface FlowDesignerEventMap {
 }
 
 /** 可以开关的面板。 */
-export type FlowDesignerPanel = 'toolbar' | 'palette' | 'properties' | 'issues' | 'minimap'
+export type FlowDesignerPanel = 'toolbar' | 'palette' | 'properties' | 'issues' | 'minimap' | 'status'
 
 const LAYOUT_DIRECTIONS: readonly unknown[] = ['TB', 'BT', 'LR', 'RL']
 
@@ -220,6 +223,10 @@ interface Layers {
   readonly panels: DesignerPanelHost<FlowDesignerContext>
   /** 设置对话框。 */
   readonly settings: XhDesignerSettingsElement
+  /** 状态栏左段：选中对象的信息。 */
+  readonly selectionStatus: DesignerStatusItem
+  /** 状态栏右段：缩放，点了回到 100%。 */
+  readonly zoomStatus: DesignerStatusItem
 }
 
 interface Gesture {
@@ -263,7 +270,7 @@ export class XhFlowDesigner extends XhReactiveElement {
   /** 拖动与新建节点时吸附的网格边长，false 不吸附网格；缺省 16。 */
   declare grid: number | false
   /**
-   * 要显示的面板，空格分隔：toolbar palette properties issues minimap。不写即全部显示，写空串则全部收起；
+   * 要显示的面板，空格分隔：toolbar palette properties issues minimap status。不写即全部显示，写空串则全部收起；
    * 同名 attribute。点了面板头的关闭钮时设计器改写它并派发 panels-change。
    */
   declare panels: string | undefined
@@ -936,6 +943,11 @@ export class XhFlowDesigner extends XhReactiveElement {
     minimap.element.slot = 'canvas-bottom-end'
     frame.append(toolbar, palette.element, canvas, properties.element, issues.element, issueSummary, minimap.element)
     const panels = createPanelHost<FlowDesignerContext>(frame)
+    const selectionStatus = createStatusItem(doc, { value: '' })
+    selectionStatus.element.slot = 'status-start'
+    const zoomStatus = createStatusItem(doc, { value: '', action: () => this.zoomToActual() })
+    zoomStatus.element.slot = 'status-end'
+    frame.append(selectionStatus.element, zoomStatus.element)
     const settings = createGeneratedElement(doc, 'xh-designer-settings', { 'data-part': 'settings' })
     settings.addEventListener('settings-change', this.#onSettingsChange)
     this.append(frame, settings)
@@ -943,7 +955,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     root.addEventListener('dblclick', this.#onDoubleClick)
     root.addEventListener('contextmenu', this.#onContextMenu)
     root.addEventListener('wheel', this.#onWheel, { passive: false })
-    this.#layers = { frame, canvas, root, world, edges, labels, nodes, ports, handles, overlay, dropPreview, transform, toolbar, commandBar, palette, properties, issues, minimap, menu, panels, settings }
+    this.#layers = { frame, canvas, root, world, edges, labels, nodes, ports, handles, overlay, dropPreview, transform, toolbar, commandBar, palette, properties, issues, minimap, menu, panels, settings, selectionStatus, zoomStatus }
     panels.assign(this.#model.extensions, this.#context())
     this.#prepareMenu(menu, 'blank')
     return this.#layers
@@ -1082,6 +1094,43 @@ export class XhFlowDesigner extends XhReactiveElement {
     return shown === undefined || shown.has(panel)
   }
 
+  /** 设置里的状态栏开关，缺省开。 */
+  #statusBarOn(): boolean {
+    return this.#resolvedSettings[DESIGNER_SETTING_KEYS.statusBar] !== false
+  }
+
+  /** 交给外框的 panels：设置里关了状态栏时去掉 status。 */
+  #framePanels(): string | undefined {
+    if (this.#statusBarOn())
+      return this.panels
+    const names = this.panels === undefined ? this.#frameRegionList.map(region => region.name) : this.panels.split(/\s+/)
+    return names.filter(name => name !== '' && name !== 'status').join(' ')
+  }
+
+  /** 状态栏：左段写选中对象（没选中时写节点与连线数），右段写缩放。 */
+  #renderStatus(layers: Layers, t: FlowDesignerTranslations): void {
+    const { nodes, edges } = this.#editor.selection
+    const document = this.#editor.document
+    if (nodes.length + edges.length > 1) {
+      layers.selectionStatus.update({ value: t.statusSelected(nodes.length + edges.length) })
+    }
+    else if (nodes.length === 1) {
+      const node = document.nodes.find(item => item.id === nodes[0])
+      const type = node && this.#editor.model.nodeTypes.get(node.type)
+      layers.selectionStatus.update(node
+        ? { label: type?.label ?? node.type, value: t.statusGeometry(Math.round(node.x), Math.round(node.y), Math.round(node.width), Math.round(node.height)) }
+        : { value: '' })
+    }
+    else if (edges.length === 1) {
+      const edge = document.edges.find(item => item.id === edges[0])
+      layers.selectionStatus.update({ label: t.edge, value: edge?.label ?? edges[0]! })
+    }
+    else {
+      layers.selectionStatus.update({ label: t.flow, value: t.statusDocument(document.nodes.length, document.edges.length) })
+    }
+    layers.zoomStatus.update({ label: t.statusZoom, value: `${Math.round(this.#viewport.zoom * 100)}%` })
+  }
+
   /** 小地图：panels 里列着它，设置里也没关掉。 */
   #showsMinimap(): boolean {
     return this.#shows('minimap') && this.#resolvedSettings[FLOW_SETTING_KEYS.minimap] !== false
@@ -1122,8 +1171,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     this.#resolvedSettings = resolveSettings(this.#settingsSectionList, this.settings)
     const dialog = layers.settings
     const general = { brands: this.brands, customBrand: this.registerBrand !== undefined }
-    // 设计器的外框不放状态栏，基础分区里状态栏这一项不显示
-    const policy: DesignerSettingsPolicy = { 'general.statusBar': 'hidden', ...this.settingsPolicy }
+    const policy: DesignerSettingsPolicy = { ...this.settingsPolicy }
     const dialogKey = JSON.stringify([general.brands, general.customBrand, policy])
     if (dialogKey !== this.#settingsDialogKey) {
       this.#settingsDialogKey = dialogKey
@@ -1181,13 +1229,17 @@ export class XhFlowDesigner extends XhReactiveElement {
     event.stopPropagation()
     const frame = (event as DesignerFrameEventMap['panels-change']).detail.panels.split(' ').filter(Boolean)
     const own = OWN_PANELS.filter(panel => this.#shows(panel))
+    // 状态栏被设置关掉时外框不知道它，照 panels 原样留着
+    if (!this.#statusBarOn() && this.#shows('status'))
+      own.push('status')
     const panels = [...frame, ...own].join(' ')
     this.panels = panels
     emitEvent(this, 'panels-change', { panels })
   }
 
   #renderPanels(layers: Layers, t: FlowDesignerTranslations): void {
-    layers.frame.panels = this.panels
+    layers.frame.panels = this.#framePanels()
+    this.#renderStatus(layers, t)
     layers.minimap.element.hidden = !this.#showsMinimap()
     const shared = this.#commandTranslations()
     const context: FlowDesignerContext = { designer: this, translations: t, commandTranslations: shared, settings: this.#resolvedSettings }
@@ -1247,6 +1299,7 @@ export class XhFlowDesigner extends XhReactiveElement {
       layers.world.style.transform = `translate(${x}px, ${y}px) scale(${zoom})`
       layers.world.style.setProperty('--xh-flow-designer-zoom', String(zoom))
       layers.transform.viewport = this.#viewport
+      layers.zoomStatus.update({ label: this.#translations().statusZoom, value: `${Math.round(zoom * 100)}%` })
       if (this.#showsMinimap())
         layers.minimap.update()
     }

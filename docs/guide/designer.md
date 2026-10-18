@@ -56,9 +56,11 @@
 
 <<< @/examples/snippets/designer-layout.ts#command-layout
 
-`panels` 决定显示哪些面板，空格分隔 `toolbar`、`palette`、`properties`、`issues`、`minimap`。不写即全部显示，写空串全部收起；同名 attribute 也认。
+`panels` 决定显示哪些面板，空格分隔 `toolbar`、`palette`、`properties`、`issues`、`minimap`、`status`。不写即全部显示，写空串全部收起；同名 attribute 也认。
 
 <<< @/examples/snippets/designer-layout.ts#panels
+
+底部的状态栏左边写选中的对象：什么都没选中时是流程里有几个节点、几条连线，选中一个节点时是它的类型、位置与尺寸，选中一条连线时是连线名，选中多个时是选了几个；右边是缩放比例，点一下回到 100%。设置里关掉「状态栏」时整条不显示。
 
 物料、属性与问题列表各是一张卡片：面板头写标题，属性面板的副标题是当前编辑的对象，「?」弹出这块面板的说明，「×」收起它。收起后设计器改写 `panels` 并派发 `panels-change`，`detail.panels` 是之后要显示的面板，宿主存下来、下次赋回即可。
 
