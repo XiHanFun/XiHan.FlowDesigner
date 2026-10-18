@@ -555,6 +555,7 @@ type FlowPropertyTarget = DesignerPropertyTarget
 | `descriptor` | `D` | 正在编辑的这个属性的描述。 |
 | `target` | `T` | 被编辑的对象。 |
 | `readonly` | `boolean` | 只读：编辑器只显示，不写值。 |
+| `issues` | `readonly PropertyIssue[]` | 落在这个属性及其里层的问题，按路径排、同一路径只留一条，没有时是空数组。复合编辑器（选项表、四边、列配置）据此把里层的问题标到对应的子项上。 |
 
 | 方法 | 说明 |
 | --- | --- |
@@ -570,6 +571,7 @@ type FlowPropertyTarget = DesignerPropertyTarget
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
 | `element` | `HTMLElement` | 编辑器的根元素，设计器把它放进属性面板。 |
+| `nestedIssues?` | `boolean` | 编辑器自己把里层的问题标到子项上：只有里层问题时，设计器不在这一行下面重复显示它们。 |
 
 | 方法 | 说明 |
 | --- | --- |
