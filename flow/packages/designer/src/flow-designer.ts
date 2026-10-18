@@ -11,6 +11,7 @@
 // 右键节点、连线或空白处弹出内置菜单，宿主取消对应的 *-contextmenu 事件即不弹。
 // 节点类型、节点渲染、属性编辑器、命令、面板、导入器与导出器都从 extensions 来，内置命令也是一个扩展；工具栏与菜单的排列可由 commandLayout 改写。
 // 粘贴、拖进画布的外部内容与 openFile() 选的文件交给扩展的导入器，export() 交给扩展的导出器。
+// 设置对话框（openSettings()）里是基础分区、设计器自己的「画布」与各扩展的分区，值经 settings 与 settings-change 交给宿主。
 // 面板用 @xihan-ui/web-components 的元素，defineFlowDesigner() 会一并注册它们。
 
 import type {
@@ -27,14 +28,21 @@ import type {
   FlowValidateOptions,
 } from '@xihan-flow/core'
 import type { FlowDesignerTranslations, FlowImageExportOptions, FlowImageFormat, FlowScene, FlowSceneEdge, FlowSceneNode } from '@xihan-flow/runtime'
+import type { JsonValue } from '@xihan-ui/core/json'
+import type { VisualEnvironmentStorageError } from '@xihan-ui/core/visual-environment'
 import type { AlignMode, DesignerImportSource, DistributeAxis, ExecuteOptions, ExtensionHost, Viewport } from '@xihan-ui/designer-kit'
-import type { PropertyEditorLayer } from '@xihan-ui/designer-kit/properties'
+import type { PropertyEditorLayer, PropertySwatchOption } from '@xihan-ui/designer-kit/properties'
 import type {
   CommandToolbar,
   DesignerCommandLayout,
   DesignerFrameEventMap,
   DesignerFrameRegion,
   DesignerPanelHost,
+  DesignerSettings,
+  DesignerSettingsEventMap,
+  DesignerSettingsHost,
+  DesignerSettingsPolicy,
+  DesignerSettingsSection,
   DesignerSnapOptions,
   DesignerTransformEventMap,
   DropOver,
@@ -71,6 +79,7 @@ import {
 import {
   arrangeCommands,
   createCommandToolbar,
+  createDesignerSettingsHost,
   createPanelHost,
   defineDesignerShellElement,
   DESIGNER_FRAME_REGIONS,
@@ -84,6 +93,7 @@ import {
   XhDesignerMinimapElement,
   XhDesignerPaletteElement,
   XhDesignerPropertiesElement,
+  XhDesignerSettingsElement,
   XhDesignerTransformElement,
 } from '@xihan-ui/designer-shell'
 import { createPointerSession, resolveSessionDoc, shouldActivate, wheelPixels } from '@xihan-ui/pointer'
@@ -107,6 +117,7 @@ import { IssuesPanel } from './panels/issues'
 import { MinimapPanel } from './panels/minimap'
 import { paletteNodeType, PalettePanel } from './panels/palette'
 import { PropertiesPanel } from './panels/properties'
+import { FLOW_SETTING_KEYS, flowSettingsSection, resolveSettings } from './settings'
 import { startVariablesEditor } from './start-variables'
 
 /** 设计器的标签名。 */
@@ -151,10 +162,19 @@ export interface FlowDesignerEventMap {
   'save': CustomEvent<Record<string, never>>
   /** 点了面板头的关闭钮，设计器已收起这块面板：panels 是收起之后要显示的面板（空格分隔），设计器的 panels 已换成它。 */
   'panels-change': CustomEvent<{ panels: string }>
+  /**
+   * 在设置对话框里改了一条设置：设计器已换成新的 settings 并生效（主题、主题色、小地图、吸附与自动布局的选项）；
+   * value 为 undefined 表示删掉这个键、回到缺省值。宿主存起来，下次赋回 settings。
+   */
+  'settings-change': CustomEvent<{ key: string, value: JsonValue | undefined, settings: DesignerSettings }>
+  /** 读写 settingsStorageKey 指的本机存储失败（内容不是对象、无痕窗口、配额满）；设置留在内存里。 */
+  'settings-storage-error': CustomEvent<VisualEnvironmentStorageError>
 }
 
 /** 可以开关的面板。 */
 export type FlowDesignerPanel = 'toolbar' | 'palette' | 'properties' | 'issues' | 'minimap'
+
+const LAYOUT_DIRECTIONS: readonly unknown[] = ['TB', 'BT', 'LR', 'RL']
 
 /** 不是外框的区、由设计器自己开关的面板。 */
 const OWN_PANELS: readonly FlowDesignerPanel[] = ['minimap']
@@ -195,6 +215,8 @@ interface Layers {
   readonly menu: ContextMenuPanel
   /** 扩展登记的面板。 */
   readonly panels: DesignerPanelHost<FlowDesignerContext>
+  /** 设置对话框。 */
+  readonly settings: XhDesignerSettingsElement
 }
 
 interface Gesture {
@@ -214,7 +236,6 @@ export class XhFlowDesigner extends XhReactiveElement {
   static override properties = {
     readonly: { converter: BOOLEAN_CONVERTER },
     grid: { attribute: false },
-    snap: { attribute: false },
     panels: { converter: { fromAttribute: (value: string | null) => value ?? undefined } },
     paletteGroupOrder: { attribute: false },
     paletteGroupLabels: { attribute: false },
@@ -223,6 +244,11 @@ export class XhFlowDesigner extends XhReactiveElement {
     commandLayout: { attribute: false },
     validateOptions: { attribute: false },
     router: { attribute: false },
+    settings: { attribute: false },
+    settingsPolicy: { attribute: false },
+    settingsStorageKey: { attribute: 'settings-storage-key', converter: { fromAttribute: (value: string | null) => value ?? undefined } },
+    brands: { attribute: false },
+    registerBrand: { attribute: false },
     translations: { attribute: false },
   }
 
@@ -233,8 +259,6 @@ export class XhFlowDesigner extends XhReactiveElement {
   declare readonly: boolean | undefined
   /** 拖动与新建节点时吸附的网格边长，false 不吸附网格；缺省 16。 */
   declare grid: number | false
-  /** 拖动时吸附其它节点并显示对齐线；缺省 true。 */
-  declare snap: boolean
   /**
    * 要显示的面板，空格分隔：toolbar palette properties issues minimap。不写即全部显示，写空串则全部收起；
    * 同名 attribute。点了面板头的关闭钮时设计器改写它并派发 panels-change。
@@ -257,6 +281,22 @@ export class XhFlowDesigner extends XhReactiveElement {
   declare validateOptions: Omit<FlowValidateOptions, 'extensions'> | undefined
   /** 连线路由器，缺省为直角路由。 */
   declare router: FlowEdgeRouter | undefined
+  /**
+   * 设置的值：扁平的键值，键是「分区 id.条目 id」，如 general.theme、flow.minimap；没写的键取条目的缺省值。
+   * 赋值即生效；用户在设置对话框里改了以后设计器换成新的一份并派发 settings-change。
+   */
+  declare settings: DesignerSettings | undefined
+  /** 宿主对设置条目的管控：键是条目键或分区 id，hidden 不显示，locked 只读、说明换成「由所在系统管理」。 */
+  declare settingsPolicy: DesignerSettingsPolicy | undefined
+  /**
+   * 设置存在根所在窗口 localStorage 的哪个键下：给了，连上文档时若没赋 settings 就从这里读，用户改了设置就写回去，
+   * 标了 secret 的条目不存；读写失败派发 settings-storage-error。不给就不读写。同名 attribute settings-storage-key。
+   */
+  declare settingsStorageKey: string | undefined
+  /** 设置里主题色的预设：value 是品牌 id（写成设计器根上的 data-brand），color 是色板格子的颜色。不给且没给 registerBrand 时没有主题色这一项。 */
+  declare brands: readonly PropertySwatchOption[] | undefined
+  /** 注册自定义主题色，形状与 @xihan-ui/tokens 的 registerBrand 相同；给了才许在设置里自定义主题色。 */
+  declare registerBrand: ((id: string, color: string) => () => void) | undefined
   /** 元素自己的文案，压在全局配置之上。 */
   declare translations: Partial<FlowDesignerTranslations> | undefined
 
@@ -299,12 +339,18 @@ export class XhFlowDesigner extends XhReactiveElement {
   /** 节点 id → 落在它上面的问题里最严重的那一级。 */
   #issueLevels = new Map<string, 'error' | 'warning'>()
   #resizeObserver: ResizeObserver | undefined
+  #settingsHost: DesignerSettingsHost | undefined
+  #settingsHostOptions: readonly unknown[] = []
+  #settingsSectionsKey = ''
+  #settingsSectionList: readonly DesignerSettingsSection[] = []
+  #settingsDialogKey = ''
+  /** 此刻生效的设置：各分区没写的条目取了缺省值。 */
+  #resolvedSettings: DesignerSettings = {}
 
   constructor() {
     super()
     IMAGE_RENDERERS.set(this, (format, options) => this.#renderImage(format, options))
     this.grid = 16
-    this.snap = true
     this.#editor.subscribe((change) => {
       if (change.kind === 'selection') {
         this.requestUpdate()
@@ -414,10 +460,13 @@ export class XhFlowDesigner extends XhReactiveElement {
       this.#resizeObserver.observe(layers.root)
     }
     this.#host.assign(this.#extensions ?? NO_EXTENSIONS)
+    this.requestUpdate()
   }
 
   override disconnectedCallback(): void {
     super.disconnectedCallback()
+    this.#settingsHost?.dispose()
+    this.#settingsHost = undefined
     for (const type of CLIPBOARD_EVENTS)
       this.ownerDocument.removeEventListener(type, this.#onClipboard)
     this.#resizeObserver?.disconnect()
@@ -429,6 +478,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     super.update(changed)
     const layers = this.#ensureLayers()
     const t = this.#translations()
+    this.#syncSettings(layers, t, changed)
     layers.menu.trigger.setAttribute('aria-label', t.label)
     if (changed.has('router'))
       this.#sceneStale = true
@@ -571,10 +621,28 @@ export class XhFlowDesigner extends XhReactiveElement {
       this.#editor.distribute(axis)
   }
 
-  /** 按连线方向分层排布全部节点，左上角保持在原处，并清除连线的手动拐点；记为一步，只读时什么都不做。 */
+  /**
+   * 按连线方向分层排布全部节点，左上角保持在原处，并清除连线的手动拐点；记为一步，只读时什么都不做。
+   * 没给的方向与间距取设置里「画布」分区的值。
+   */
   autoLayout(options?: FlowAutoLayoutOptions): void {
-    if (!this.readonly)
-      this.#editor.autoLayout(options)
+    if (this.readonly)
+      return
+    const settings = this.#resolvedSettings
+    const direction = settings[FLOW_SETTING_KEYS.layoutDirection]
+    const nodeGap = settings[FLOW_SETTING_KEYS.nodeGap]
+    const layerGap = settings[FLOW_SETTING_KEYS.layerGap]
+    this.#editor.autoLayout({
+      ...(LAYOUT_DIRECTIONS.includes(direction) ? { direction: direction as FlowAutoLayoutOptions['direction'] } : {}),
+      ...(typeof nodeGap === 'number' ? { nodeGap } : {}),
+      ...(typeof layerGap === 'number' ? { layerGap } : {}),
+      ...options,
+    })
+  }
+
+  /** 打开设置对话框，给了分区 id 就显示那一页：基础是 general，设计器自己的「画布」是 flow。 */
+  openSettings(section?: string): void {
+    this.#ensureLayers().settings.show(section)
   }
 
   /** 按当前扩展与校验选项校验定义。 */
@@ -708,7 +776,7 @@ export class XhFlowDesigner extends XhReactiveElement {
 
   /** 交给命令、面板与扩展 setup 的上下文。 */
   #context(): FlowDesignerContext {
-    return { designer: this, translations: this.#translations() }
+    return { designer: this, translations: this.#translations(), settings: this.#resolvedSettings }
   }
 
   #kbdPlatform(): 'mac' | 'other' {
@@ -865,12 +933,14 @@ export class XhFlowDesigner extends XhReactiveElement {
     minimap.element.slot = 'canvas-bottom-end'
     frame.append(toolbar, palette.element, canvas, properties.element, issues.element, issueSummary, minimap.element)
     const panels = createPanelHost<FlowDesignerContext>(frame)
-    this.append(frame)
+    const settings = createGeneratedElement(doc, 'xh-designer-settings', { 'data-part': 'settings' })
+    settings.addEventListener('settings-change', this.#onSettingsChange)
+    this.append(frame, settings)
     root.addEventListener('pointerdown', this.#onPointerDown)
     root.addEventListener('dblclick', this.#onDoubleClick)
     root.addEventListener('contextmenu', this.#onContextMenu)
     root.addEventListener('wheel', this.#onWheel, { passive: false })
-    this.#layers = { frame, canvas, root, world, edges, labels, nodes, ports, handles, overlay, dropPreview, transform, toolbar, commandBar, palette, properties, issues, minimap, menu, panels }
+    this.#layers = { frame, canvas, root, world, edges, labels, nodes, ports, handles, overlay, dropPreview, transform, toolbar, commandBar, palette, properties, issues, minimap, menu, panels, settings }
     panels.assign(this.#model.extensions, this.#context())
     this.#prepareMenu(menu, 'blank')
     return this.#layers
@@ -1009,6 +1079,69 @@ export class XhFlowDesigner extends XhReactiveElement {
     return shown === undefined || shown.has(panel)
   }
 
+  /** 小地图：panels 里列着它，设置里也没关掉。 */
+  #showsMinimap(): boolean {
+    return this.#shows('minimap') && this.#resolvedSettings[FLOW_SETTING_KEYS.minimap] !== false
+  }
+
+  /**
+   * 设置：建好设置宿主（主题色预设、注册函数或存储键变了就重建），给了存储键又没赋 settings 时从存储读；settings 变了
+   * 把主题与主题色落到设计器上；算出此刻生效的设置，交给设置对话框。
+   */
+  #syncSettings(layers: Layers, t: FlowDesignerTranslations, changed: PropertyValues): void {
+    const options = [this.brands, this.registerBrand, this.settingsStorageKey]
+    let fresh = false
+    if (!this.#settingsHost || options.some((value, index) => value !== this.#settingsHostOptions[index])) {
+      this.#settingsHost?.dispose()
+      this.#settingsHostOptions = options
+      const storageKey = this.settingsStorageKey
+      this.#settingsHost = storageKey === undefined
+        ? createDesignerSettingsHost({ root: this, brands: this.brands, registerBrand: this.registerBrand })
+        : createDesignerSettingsHost({
+            root: this,
+            brands: this.brands,
+            registerBrand: this.registerBrand,
+            storageKey,
+            onStorageError: detail => emitEvent(this, 'settings-storage-error', detail),
+          })
+      if (storageKey !== undefined && this.settings === undefined)
+        this.settings = this.#settingsHost.load()
+      fresh = true
+    }
+    if (fresh || changed.has('settings'))
+      this.#settingsHost.apply(this.settings ?? {})
+    const sections = [flowSettingsSection(t), ...this.#model.settings]
+    const sectionsKey = JSON.stringify(sections)
+    if (sectionsKey !== this.#settingsSectionsKey) {
+      this.#settingsSectionsKey = sectionsKey
+      this.#settingsSectionList = sections
+    }
+    this.#resolvedSettings = resolveSettings(this.#settingsSectionList, this.settings)
+    const dialog = layers.settings
+    const general = { brands: this.brands, customBrand: this.registerBrand !== undefined }
+    // 设计器的外框不放状态栏，基础分区里状态栏这一项不显示
+    const policy: DesignerSettingsPolicy = { 'general.statusBar': 'hidden', ...this.settingsPolicy }
+    const dialogKey = JSON.stringify([general.brands, general.customBrand, policy])
+    if (dialogKey !== this.#settingsDialogKey) {
+      this.#settingsDialogKey = dialogKey
+      dialog.general = general
+      dialog.policy = policy
+    }
+    if (dialog.sections !== this.#settingsSectionList)
+      dialog.sections = this.#settingsSectionList
+    if (dialog.settings !== this.settings)
+      dialog.settings = this.settings
+  }
+
+  /** 设置对话框里改了一条：换成新的 settings，给了存储键就存起来，再派发 settings-change。 */
+  readonly #onSettingsChange = (event: Event): void => {
+    event.stopPropagation()
+    const detail = (event as DesignerSettingsEventMap['settings-change']).detail
+    this.settings = detail.settings
+    this.#settingsHost?.save(detail.settings, this.#settingsSectionList)
+    emitEvent(this, 'settings-change', detail)
+  }
+
   /**
    * 外框的命名区：工具栏与画布带上本地化的区名（分隔条的无障碍名称要用）；物料、属性与问题画成卡片，面板头写标题与帮助，
    * 属性面板的副标题是当前编辑的对象。后面接扩展面板的区。
@@ -1052,8 +1185,8 @@ export class XhFlowDesigner extends XhReactiveElement {
 
   #renderPanels(layers: Layers, t: FlowDesignerTranslations): void {
     layers.frame.panels = this.panels
-    layers.minimap.element.hidden = !this.#shows('minimap')
-    const context: FlowDesignerContext = { designer: this, translations: t }
+    layers.minimap.element.hidden = !this.#showsMinimap()
+    const context: FlowDesignerContext = { designer: this, translations: t, settings: this.#resolvedSettings }
     const { commands } = this.#model
     if (this.#shows('toolbar'))
       layers.commandBar.update(arrangeCommands('toolbar', commands, flowToolbarLayout(this.canImport), this.commandLayout), commands, context, t.toolbar)
@@ -1063,7 +1196,7 @@ export class XhFlowDesigner extends XhReactiveElement {
       layers.properties.update(t)
     if (this.#shows('issues'))
       layers.issues.update(t)
-    if (this.#shows('minimap'))
+    if (this.#showsMinimap())
       layers.minimap.update()
     layers.frame.regions = this.#frameRegions(t, layers)
     layers.panels.update(context)
@@ -1108,7 +1241,7 @@ export class XhFlowDesigner extends XhReactiveElement {
       layers.world.style.transform = `translate(${x}px, ${y}px) scale(${zoom})`
       layers.world.style.setProperty('--xh-flow-designer-zoom', String(zoom))
       layers.transform.viewport = this.#viewport
-      if (this.#shows('minimap'))
+      if (this.#showsMinimap())
         layers.minimap.update()
     }
     if (notify)
@@ -1258,10 +1391,11 @@ export class XhFlowDesigner extends XhReactiveElement {
   /** 移动时的吸附：开了 snap 时对齐其余节点，设了网格时退到网格；都没有时不吸。 */
   readonly #getSnap = (): DesignerSnapOptions | undefined => {
     const grid = this.grid === false || !(this.grid > 0) ? undefined : this.grid
-    if (!this.snap && grid === undefined)
+    const snap = this.#resolvedSettings[FLOW_SETTING_KEYS.snap] !== false
+    if (!snap && grid === undefined)
       return undefined
     const ids = new Set(this.#editor.selection.nodes)
-    const targets = this.snap
+    const targets = snap
       ? this.#editor.document.nodes.filter(node => !ids.has(node.id)).map(node => ({ x: node.x, y: node.y, width: node.width, height: node.height }))
       : []
     return grid === undefined ? { targets } : { targets, grid }
@@ -1762,6 +1896,7 @@ export function defineFlowDesigner(): void {
   defineDesignerShellElement('xh-designer-issues', XhDesignerIssuesElement)
   defineDesignerShellElement('xh-designer-minimap', XhDesignerMinimapElement)
   defineDesignerShellElement('xh-designer-transform', XhDesignerTransformElement)
+  defineDesignerShellElement('xh-designer-settings', XhDesignerSettingsElement)
   registerElement(FLOW_DESIGNER_TAG, XhFlowDesigner)
 }
 

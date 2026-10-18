@@ -275,6 +275,7 @@ type PropertyCondition = { readonly path: JsonPath, readonly equals: JsonValue }
 | --- | --- | --- |
 | `designer` | `XhFlowDesigner` | 这台设计器。 |
 | `translations` | `FlowDesignerTranslations` | 此刻生效的设计器文案。 |
+| `settings` | `DesignerSettings` | 此刻生效的设置，键是「分区 id.条目 id」：设计器自己的「画布」与各扩展分区里的条目写了用写的、没写取缺省值，基础分区（general.*）只有宿主或用户写了的键。 |
 
 ### createFlowDesignerModel() {#createflowdesignermodel}
 
@@ -297,6 +298,7 @@ declare function createFlowDesignerModel(extensions: readonly FlowDesignerExtens
 | `editors` | `PropertyEditorTable<FlowPropertyEditor>` | 各扩展登记的属性编辑器叠成的一张表。 |
 | `importers` | `readonly FlowDesignerImporter[]` | 各扩展的导入器，按扩展顺序。 |
 | `exporters` | `readonly FlowDesignerExporter[]` | 各扩展的导出器，按扩展顺序。 |
+| `settings` | `readonly DesignerSettingsSection[]` | 各扩展登记的设置分区，按扩展顺序。 |
 
 ## 命令
 

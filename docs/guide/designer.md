@@ -24,7 +24,7 @@
 
 **选择**：点节点或连线选中它，按住 Shift、Ctrl 或 ⌘ 点击则加选或取消；在空白处按住 Shift 拖出框选，同时按住 Ctrl 或 ⌘ 时追加到已有的选择上；点空白处清空选择。选择变化派发 `selection-change`，`getSelection()` 与 `select()` 读写选择。
 
-**移动**：拖动选中的节点。`grid` 是吸附的网格边长，缺省 16，写 `false` 不吸附；`snap` 开着时靠近其它节点会吸附并显示对齐线。按住 Alt 松手时原节点不动，在新位置复制一份。画布有焦点时方向键微移选中的节点，按住 Shift 一次移一格网格。
+**移动**：拖动选中的节点。`grid` 是吸附的网格边长，缺省 16，写 `false` 不吸附；设置里的「吸附对齐」开着时（缺省开，见[设置](#设置)）靠近其它节点会吸附并显示对齐线。按住 Alt 松手时原节点不动，在新位置复制一份。画布有焦点时方向键微移选中的节点，按住 Shift 一次移一格网格。
 
 **连线**：从节点的端口拖到另一个节点的端口。拖动途中预览线标出能不能连；违反节点类型的连接约束时连不上，派发 `connect-reject`，`detail` 里是两端与全部问题。选中连线后，两端的控制柄拖到别的端口即改连；中段的控制柄拖出拐点，拐点可以拖动，双击去掉；「清除拐点」把连线交回自动路由。拖动途中按 Escape 取消。
 
@@ -63,6 +63,28 @@
 物料、属性与问题列表各是一张卡片：面板头写标题，属性面板的副标题是当前编辑的对象，「?」弹出这块面板的说明，「×」收起它。收起后设计器改写 `panels` 并派发 `panels-change`，`detail.panels` 是之后要显示的面板，宿主存下来、下次赋回即可。
 
 除了命令的快捷键，画布有焦点时还认这些键：Ctrl / ⌘ + Y 重做，Backspace 删除，`=` 放大。Ctrl / ⌘ + C、X、V 走系统剪贴板：复制出的是一段 JSON 文本，能在同一页面、别的页面或别的标签页的设计器里粘贴；读不出流程内容的文本交给扩展的导入器（见[导入与导出](./extensions#导入与导出)），没有导入器接下时不会贴进来。
+
+## 设置
+
+设置是用户偏好，每人每机一份，不随流程定义保存。`openSettings(section?)` 打开设置对话框，左边一个分区一页：
+
+- 「基础」（`general`）：主题（跟随页面、跟随系统、亮色、暗色）与主题色。
+- 「画布」（`flow`）：自动布局的方向与两种间距、小地图、吸附对齐。
+- 扩展登记的分区，排在后面。分区 id 与 `general`、`flow` 或别的扩展重名时，给 `extensions` 赋值就抛 `DesignerExtensionError`。
+
+<<< @/examples/snippets/settings.ts#open
+
+值是扁平的键值，键是「分区 id.条目 id」，如 `general.theme`、`flow.minimap`，没写的键取缺省值。`settings` 赋值即生效；用户在对话框里改了一条，设计器换成新的一份并派发 `settings-change`，宿主存起来、下次赋回。`settingsPolicy` 隐藏或锁定条目，键是条目键或分区 id：`hidden` 不显示，一个分区的条目全藏了就没有这一页；`locked` 只读，说明换成「由所在系统管理」。
+
+<<< @/examples/snippets/settings.ts#host
+
+- **主题只作用于设计器**：主题与主题色写在 `<xh-flow-designer>` 自己的 `data-theme`、`data-brand` 上，页面其余部分不变；设置对话框、菜单这些浮层跟着设计器变。主题色的预设由宿主给 `brands`（品牌 id 与色板格子的颜色，品牌 id 可以用 `@xihan-ui/tokens` 的 `BRAND_PRESETS`）；给了 `registerBrand`（形状同 `@xihan-ui/tokens` 的 `registerBrand`）才许自定义颜色。两样都不给时没有主题色这一项。
+- **画布的设置**：`autoLayout()` 没给的方向与间距、工具栏的「自动布局」都取「画布」分区的值；小地图关掉时不显示；吸附对齐关掉时拖动只吸附网格。
+- **扩展读设置**：命令、面板与扩展从上下文的 `settings` 读值，各分区没写的条目已经取了缺省值，如 `context.settings['flow.minimap']`。
+
+独立使用、没有宿主替你存时，给 `settingsStorageKey`：连上文档时若没赋 `settings` 就从根所在窗口的 localStorage 读，用户改了设置就写回去；标了 `secret` 的文本条目（如密钥）不存。读写失败派发 `settings-storage-error`，设置留在内存里。不给就不读写存储。
+
+<<< @/examples/snippets/settings.ts#storage
 
 ## 撤销与保存
 

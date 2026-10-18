@@ -12,7 +12,6 @@
 | --- | --- | --- | --- |
 | `readonly` | `readonly` | `boolean \| undefined` | 只读：可以选择与浏览，不能修改；缺省 false。同名 attribute 三态：不写为缺省，写 "false" 为 false，其余写法（空串、"true" 等）为 true。 |
 | `grid` | — | `number \| false` | 拖动与新建节点时吸附的网格边长，false 不吸附网格；缺省 16。 |
-| `snap` | — | `boolean` | 拖动时吸附其它节点并显示对齐线；缺省 true。 |
 | `panels` | `panels` | `string \| undefined` | 要显示的面板，空格分隔：toolbar palette properties issues minimap。不写即全部显示，写空串则全部收起；同名 attribute。点了面板头的关闭钮时设计器改写它并派发 panels-change。 |
 | `paletteGroupOrder` | — | `readonly string[] \| undefined` | 物料面板里先列出的类别及其顺序，其余类别按登记顺序排在后面。 |
 | `paletteGroupLabels` | — | `Readonly<Record<string, string>> \| undefined` | 物料面板的类别标题，缺省直接显示 category。 |
@@ -21,6 +20,11 @@
 | `commandLayout` | — | `DesignerCommandLayout \| undefined` | 工具栏与各右键菜单的命令排列：toolbar、menu:node、menu:edge、menu:blank → 若干组命令 id。写了某个位置就只显示列出的命令；没写的位置用内置排列，再把 placement 含它的扩展命令追加成一组。 |
 | `validateOptions` | — | `Omit<FlowValidateOptions, 'extensions'> \| undefined` | 校验选项：按问题码覆盖严重程度，扩展规则的问题码也认。 |
 | `router` | — | `FlowEdgeRouter \| undefined` | 连线路由器，缺省为直角路由。 |
+| `settings` | — | `DesignerSettings \| undefined` | 设置的值：扁平的键值，键是「分区 id.条目 id」，如 general.theme、flow.minimap；没写的键取条目的缺省值。赋值即生效；用户在设置对话框里改了以后设计器换成新的一份并派发 settings-change。 |
+| `settingsPolicy` | — | `DesignerSettingsPolicy \| undefined` | 宿主对设置条目的管控：键是条目键或分区 id，hidden 不显示，locked 只读、说明换成「由所在系统管理」。 |
+| `settingsStorageKey` | `settings-storage-key` | `string \| undefined` | 设置存在根所在窗口 localStorage 的哪个键下：给了，连上文档时若没赋 settings 就从这里读，用户改了设置就写回去，标了 secret 的条目不存；读写失败派发 settings-storage-error。不给就不读写。同名 attribute settings-storage-key。 |
+| `brands` | — | `readonly PropertySwatchOption[] \| undefined` | 设置里主题色的预设：value 是品牌 id（写成设计器根上的 data-brand），color 是色板格子的颜色。不给且没给 registerBrand 时没有主题色这一项。 |
+| `registerBrand` | — | `((id: string, color: string) => () => void) \| undefined` | 注册自定义主题色，形状与 @xihan-ui/tokens 的 registerBrand 相同；给了才许在设置里自定义主题色。 |
 | `translations` | — | `Partial<FlowDesignerTranslations> \| undefined` | 元素自己的文案，压在全局配置之上。 |
 
 ### 存取器
@@ -55,7 +59,8 @@
 | `duplicate(): FlowSelection` | 复制选中内容并立即粘贴，偏移一格网格，不改动剪贴板；只读时什么都不做，返回空选择。 |
 | `align(mode: AlignMode): void` | 对齐选中的节点；少于两个或只读时什么都不做。 |
 | `distribute(axis: DistributeAxis): void` | 等距分布选中的节点；少于三个或只读时什么都不做。 |
-| `autoLayout(options?: FlowAutoLayoutOptions): void` | 按连线方向分层排布全部节点，左上角保持在原处，并清除连线的手动拐点；记为一步，只读时什么都不做。 |
+| `autoLayout(options?: FlowAutoLayoutOptions): void` | 按连线方向分层排布全部节点，左上角保持在原处，并清除连线的手动拐点；记为一步，只读时什么都不做。没给的方向与间距取设置里「画布」分区的值。 |
+| `openSettings(section?: string): void` | 打开设置对话框，给了分区 id 就显示那一页：基础是 general，设计器自己的「画布」是 flow。 |
 | `validate(): FlowIssue[]` | 按当前扩展与校验选项校验定义。 |
 | `getViewport(): Viewport` | 当前视口。 |
 | `setViewport(viewport: Viewport): void` | 设置视口；此后尺寸变化不再自动适配。 |
@@ -87,6 +92,8 @@
 | `export` | `{ format: FlowImageFormat, blob: Blob }` | 工具栏的导出命令导出了图片，带格式与文件；可以取消，取消后设计器不自己下载，宿主拿 blob 自己存。没被取消时存成 flow.png 或 flow.svg 下载。 |
 | `save` | `Record<string, never>` | 画布有焦点时按了 Ctrl / ⌘ + S；设计器不自己保存。 |
 | `panels-change` | `{ panels: string }` | 点了面板头的关闭钮，设计器已收起这块面板：panels 是收起之后要显示的面板（空格分隔），设计器的 panels 已换成它。 |
+| `settings-change` | `{ key: string, value: JsonValue \| undefined, settings: DesignerSettings }` | 在设置对话框里改了一条设置：设计器已换成新的 settings 并生效（主题、主题色、小地图、吸附与自动布局的选项）；value 为 undefined 表示删掉这个键、回到缺省值。宿主存起来，下次赋回 settings。 |
+| `settings-storage-error` | `VisualEnvironmentStorageError` | 读写 settingsStorageKey 指的本机存储失败（内容不是对象、无痕窗口、配额满）；设置留在内存里。 |
 
 ## 注册
 
@@ -257,6 +264,18 @@ type FlowDesignerPanel = 'toolbar' | 'palette' | 'properties' | 'issues' | 'mini
 | `paletteHelp` | `string` | 物料面板头的帮助。 |
 | `propertiesHelp` | `string` | 属性面板头的帮助。 |
 | `issuesHelp` | `string` | 问题列表面板头的帮助。 |
+| `settingsCanvas` | `string` | 设置里设计器自己那一页（画布）的名字。 |
+| `settingsLayoutDirection` | `string` | 设置：自动布局方向的标签。 |
+| `settingsLayoutDirectionHint` | `string` | 设置：自动布局方向的说明。 |
+| `settingsLayoutDirections` | `Readonly<Record<LayeredDirection, string>>` | 设置：自动布局各个方向的名字。 |
+| `settingsNodeGap` | `string` | 设置：同层节点间距的标签。 |
+| `settingsNodeGapHint` | `string` | 设置：同层节点间距的说明。 |
+| `settingsLayerGap` | `string` | 设置：层间距的标签。 |
+| `settingsLayerGapHint` | `string` | 设置：层间距的说明。 |
+| `settingsMinimap` | `string` | 设置：小地图开关的标签。 |
+| `settingsMinimapHint` | `string` | 设置：小地图开关的说明。 |
+| `settingsSnap` | `string` | 设置：吸附对齐开关的标签。 |
+| `settingsSnapHint` | `string` | 设置：吸附对齐开关的说明。 |
 | `flow` | `string` | 不落在节点或连线上的问题（如节点个数）所属的对象名。 |
 | `startVariableColumns` | `Readonly<Record<FlowStartVariableColumn, string>>` | 启动变量表的列名。 |
 | `startVariableAdd` | `string` | 启动变量表的新增按钮。 |

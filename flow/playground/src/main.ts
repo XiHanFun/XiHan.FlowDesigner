@@ -103,6 +103,13 @@ onDesigner('selection-change', (event) => {
 onDesigner('connect-reject', (event) => {
   write(`connect-reject ${event.detail.problems.map(problem => problem.code).join(', ')}`)
 })
+onDesigner('settings-change', (event) => {
+  write(`settings-change ${event.detail.key} = ${JSON.stringify(event.detail.value)}`)
+})
+toolbar('设计器操作', (action) => {
+  if (action === 'settings')
+    designer.openSettings()
+})
 onDesigner('issues-change', (event) => {
   write(`issues-change ${event.detail.issues.map(issue => issue.code).join(', ') || '无问题'}`)
 })
