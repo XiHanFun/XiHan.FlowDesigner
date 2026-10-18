@@ -109,33 +109,33 @@ declare function defineFlowDesigner(): void
 
 内置命令登记在 `FLOW_DESIGNER_EXTENSION` 里，工具栏、右键菜单与 `commandLayout` 都按 id 引用。名称取自中文语言包；快捷键在画布有焦点时生效，Ctrl / ⌘ 在 macOS 上是 ⌘，其它系统是 Ctrl。
 
-| 命令 | 名称 | 快捷键 | 只读时 |
-| --- | --- | --- | --- |
-| `open-file` | 打开文件 | — | 不可用 |
-| `undo` | 撤销 | `Ctrl / ⌘ + Z` | 不可用 |
-| `redo` | 重做 | `Ctrl / ⌘ + Shift + Z` | 不可用 |
-| `copy` | 复制 | — | 可用 |
-| `cut` | 剪切 | — | 不可用 |
-| `paste` | 粘贴 | — | 不可用 |
-| `delete` | 删除 | `Delete` | 不可用 |
-| `duplicate` | 创建副本 | `Ctrl / ⌘ + D` | 不可用 |
-| `select-all` | 全选 | `Ctrl / ⌘ + A` | 可用 |
-| `align-left` | 左对齐 | — | 不可用 |
-| `align-center` | 水平居中 | — | 不可用 |
-| `align-right` | 右对齐 | — | 不可用 |
-| `align-top` | 顶端对齐 | — | 不可用 |
-| `align-middle` | 垂直居中 | — | 不可用 |
-| `align-bottom` | 底端对齐 | — | 不可用 |
-| `distribute-horizontal` | 水平等距 | — | 不可用 |
-| `distribute-vertical` | 垂直等距 | — | 不可用 |
-| `auto-layout` | 自动布局 | — | 不可用 |
-| `clear-vertices` | 清除拐点 | — | 不可用 |
-| `zoom-out` | 缩小 | `-` | 可用 |
-| `zoom-in` | 放大 | `+` | 可用 |
-| `zoom-to-fit` | 适配 | `0` | 可用 |
-| `zoom-to-actual` | 100% | — | 可用 |
-| `export-png` | 导出 PNG | — | 可用 |
-| `export-svg` | 导出 SVG | — | 可用 |
+| 命令 | 名称 | 图标 | 快捷键 | 只读时 |
+| --- | --- | --- | --- | --- |
+| `open-file` | 打开文件 | `FolderOpenIcon` | — | 不可用 |
+| `undo` | 撤销 | `UndoIcon` | `Ctrl / ⌘ + Z` | 不可用 |
+| `redo` | 重做 | `RedoIcon` | `Ctrl / ⌘ + Shift + Z` | 不可用 |
+| `cut` | 剪切 | `ScissorsIcon` | — | 不可用 |
+| `copy` | 复制 | `CopyIcon` | — | 可用 |
+| `paste` | 粘贴 | `ClipboardIcon` | — | 不可用 |
+| `duplicate` | 创建副本 | `CopyPlusIcon` | `Ctrl / ⌘ + D` | 不可用 |
+| `delete` | 删除 | `TrashIcon` | `Delete` | 不可用 |
+| `select-all` | 全选 | `SquareDashedIcon` | `Ctrl / ⌘ + A` | 可用 |
+| `align-left` | 左对齐 | `AlignObjectsLeftIcon` | — | 不可用 |
+| `align-center` | 水平居中 | `AlignObjectsCenterIcon` | — | 不可用 |
+| `align-right` | 右对齐 | `AlignObjectsRightIcon` | — | 不可用 |
+| `align-top` | 顶端对齐 | `AlignObjectsTopIcon` | — | 不可用 |
+| `align-middle` | 垂直居中 | `AlignObjectsMiddleIcon` | — | 不可用 |
+| `align-bottom` | 底端对齐 | `AlignObjectsBottomIcon` | — | 不可用 |
+| `distribute-horizontal` | 水平等距分布 | `DistributeHorizontalIcon` | — | 不可用 |
+| `distribute-vertical` | 垂直等距分布 | `DistributeVerticalIcon` | — | 不可用 |
+| `auto-layout` | 自动布局 | `WorkflowIcon` | — | 不可用 |
+| `clear-vertices` | 清除拐点 | `EraserIcon` | — | 不可用 |
+| `zoom-out` | 缩小 | `ZoomOutIcon` | `-` | 可用 |
+| `zoom-in` | 放大 | `ZoomInIcon` | `+` | 可用 |
+| `zoom-to-fit` | 适合窗口 | `MaximizeIcon` | `0` | 可用 |
+| `zoom-to-actual` | 实际大小 | `ZoomResetIcon` | — | 可用 |
+| `export-png` | 导出 PNG | `FileImageIcon` | — | 可用 |
+| `export-svg` | 导出 SVG | `FileCodeIcon` | — | 可用 |
 
 ### FLOW_TOOLBAR_LAYOUT {#flow_toolbar_layout}
 
@@ -229,30 +229,9 @@ type FlowDesignerPanel = 'toolbar' | 'palette' | 'properties' | 'issues' | 'mini
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
 | `label` | `string` | 画布区域的可访问名。 |
-| `toolbar` | `string` | 工具栏的可访问名。 |
 | `openFile` | `string` | 选一个文件交给导入器。 |
-| `undo` | `string` |  |
-| `redo` | `string` |  |
-| `delete` | `string` |  |
-| `duplicate` | `string` |  |
-| `copy` | `string` |  |
-| `cut` | `string` |  |
-| `paste` | `string` |  |
-| `selectAll` | `string` |  |
-| `alignLeft` | `string` |  |
-| `alignCenter` | `string` | 各自的中心落到同一条竖直中线上。 |
-| `alignRight` | `string` |  |
-| `alignTop` | `string` |  |
-| `alignMiddle` | `string` | 各自的中心落到同一条水平中线上。 |
-| `alignBottom` | `string` |  |
-| `distributeHorizontal` | `string` |  |
-| `distributeVertical` | `string` |  |
 | `autoLayout` | `string` |  |
 | `clearVertices` | `string` | 去掉连线的手动拐点，交回自动路由。 |
-| `zoomIn` | `string` |  |
-| `zoomOut` | `string` |  |
-| `zoomToFit` | `string` |  |
-| `zoomToActual` | `string` |  |
 | `exportPng` | `string` | 导出成 PNG 图片。 |
 | `exportSvg` | `string` | 导出成 SVG 图片。 |
 | `exportImage` | `string` | 内置图片导出器的名称。 |

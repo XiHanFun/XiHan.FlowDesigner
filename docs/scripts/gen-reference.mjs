@@ -546,20 +546,26 @@ function shortcutText(keys) {
   return keys.map(key => (key === 'Mod' ? 'Ctrl / ⌘' : key)).join(' + ')
 }
 
-/** 内置命令：从 BUILTIN_COMMANDS 的字面量里取 id、文案键与快捷键；enabled 由 editable 包着的只读时不可用。 */
+/**
+ * 内置命令：从 BUILTIN_COMMANDS 的字面量里取 id、文案键、图标与快捷键；文案写 text(键) 的取设计器文案，写 shared(键) 的
+ * 取 designer-shell 的共用命令文案；enabled 由 editable 包着的只读时不可用。
+ */
 function builtinCommands(file) {
   const { node } = declaration(file, 'BUILTIN_COMMANDS')
   return node.initializer.elements.map((element) => {
     const fields = new Map(element.properties.map(property => [nameOf(property), property.initializer]))
     const id = fields.get('id').text
-    const label = /^text\('(\w+)'\)$/.exec(flat(fields.get('label')))?.[1]
-    if (label === undefined)
-      throw new Error(`[gen-reference] command ${id} has no text() label`)
+    const match = /^(text|shared)\('(\w+)'\)$/.exec(flat(fields.get('label')))
+    if (!match)
+      throw new Error(`[gen-reference] command ${id} has no text() or shared() label`)
+    const icon = fields.get('icon')
     const shortcut = fields.get('shortcut')
     const enabled = fields.get('enabled')
     return {
       id,
-      label,
+      label: match[2],
+      bucket: match[1] === 'text' ? 'xh-flow-designer' : 'xh-designer-commands',
+      icon: icon === undefined ? undefined : flat(icon),
       shortcut: shortcut === undefined ? [] : shortcut.elements.map(item => item.text),
       readonly: enabled === undefined || !flat(enabled).startsWith('editable('),
     }
@@ -567,10 +573,10 @@ function builtinCommands(file) {
 }
 
 function commandTable(file) {
-  const texts = flowZhCN.translations['xh-flow-designer']
-  return table(['命令', '名称', '快捷键', '只读时'], builtinCommands(file).map(command => [
+  return table(['命令', '名称', '图标', '快捷键', '只读时'], builtinCommands(file).map(command => [
     code(command.id, true),
-    texts[command.label],
+    flowZhCN.translations[command.bucket][command.label],
+    command.icon === undefined ? '—' : code(command.icon, true),
     command.shortcut.length === 0 ? '—' : code(shortcutText(command.shortcut), true),
     command.readonly ? '可用' : '不可用',
   ]))

@@ -41,7 +41,7 @@ describe('流程语言包', () => {
   })
 
   it('英文语言包与不配语言包时的缺省文案相同', () => {
-    expect(bucket<FlowDesignerTranslations>(locales.flowEnUS, 'xh-flow-designer').undo).toBe(DEFAULT_FLOW_DESIGNER_TRANSLATIONS.undo)
+    expect(bucket<FlowDesignerTranslations>(locales.flowEnUS, 'xh-flow-designer').autoLayout).toBe(DEFAULT_FLOW_DESIGNER_TRANSLATIONS.autoLayout)
     expect(bucket<FlowViewerTranslations>(locales.flowEnUS, 'xh-flow-viewer').label).toBe('Flow diagram')
   })
 })

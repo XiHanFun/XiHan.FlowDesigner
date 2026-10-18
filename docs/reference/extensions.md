@@ -275,6 +275,7 @@ type PropertyCondition = { readonly path: JsonPath, readonly equals: JsonValue }
 | --- | --- | --- |
 | `designer` | `XhFlowDesigner` | 这台设计器。 |
 | `translations` | `FlowDesignerTranslations` | 此刻生效的设计器文案。 |
+| `commandTranslations` | `DesignerCommandsTranslations` | 此刻生效的四款共用的命令文案（designer-shell 语言包的 xh-designer-commands 一桶）。 |
 | `settings` | `DesignerSettings` | 此刻生效的设置，键是「分区 id.条目 id」：设计器自己的「画布」与各扩展分区里的条目写了用写的、没写取缺省值，基础分区（general.*）只有宿主或用户写了的键。 |
 
 ### createFlowDesignerModel() {#createflowdesignermodel}
