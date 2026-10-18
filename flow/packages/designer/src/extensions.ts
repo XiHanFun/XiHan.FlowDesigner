@@ -14,7 +14,7 @@ import type { XhFlowDesigner } from './flow-designer'
 import type { FlowPropertyEditor } from './panels/properties'
 import { createFlowRuntimeModel } from '@xihan-flow/runtime'
 import { extensionCommands, extensionEditors } from '@xihan-ui/designer-kit'
-import { collectSettingsSections } from '@xihan-ui/designer-shell'
+import { collectSettingsSections, designerShellCommands } from '@xihan-ui/designer-shell'
 import {
   AlignObjectsBottomIcon,
   AlignObjectsCenterIcon,
@@ -22,6 +22,7 @@ import {
   AlignObjectsMiddleIcon,
   AlignObjectsRightIcon,
   AlignObjectsTopIcon,
+  CircleHelpIcon,
   ClipboardIcon,
   CopyIcon,
   CopyPlusIcon,
@@ -34,6 +35,7 @@ import {
   MaximizeIcon,
   RedoIcon,
   ScissorsIcon,
+  SettingsIcon,
   SquareDashedIcon,
   TrashIcon,
   UndoIcon,
@@ -141,8 +143,11 @@ async function saveImage(designer: XhFlowDesigner, format: FlowImageFormat): Pro
   setTimeout(() => URL.revokeObjectURL(url), 0)
 }
 
+/** 内置命令 help 打开的帮助页：流程文档站的设计器一页。 */
+export const FLOW_DESIGNER_HELP_URL = 'https://flow.docs.xihanfun.com/guide/designer'
+
 /**
- * 内置命令：打开文件、撤销重做、剪贴板、选择、对齐分布、布局、缩放与导出图片，各带图标。四款都有的通用命令取 designer-shell 的
+ * 内置命令：打开文件、撤销重做、剪贴板、选择、对齐分布、布局、缩放、导出图片，以及 designer-shell 内置的设置与帮助，各带图标。四款都有的通用命令取 designer-shell 的
  * 共用文案，流程专属的取设计器文案；会删掉内容的删除写 danger 语气。
  */
 const BUILTIN_COMMANDS: readonly FlowDesignerCommand[] = [
@@ -197,6 +202,12 @@ const BUILTIN_COMMANDS: readonly FlowDesignerCommand[] = [
   { id: 'zoom-to-actual', label: shared('zoomToActual'), icon: ZoomResetIcon, run: ({ designer }) => designer.zoomToActual() },
   { id: 'export-png', label: text('exportPng'), icon: FileImageIcon, enabled: ({ designer }) => designer.schema.nodes.length > 0, run: ({ designer }) => void saveImage(designer, 'png') },
   { id: 'export-svg', label: text('exportSvg'), icon: FileCodeIcon, enabled: ({ designer }) => designer.schema.nodes.length > 0, run: ({ designer }) => void saveImage(designer, 'svg') },
+  ...designerShellCommands<FlowDesignerContext>({
+    translations: context => context.commandTranslations,
+    openSettings: ({ designer }) => designer.openSettings(),
+    helpUrl: () => FLOW_DESIGNER_HELP_URL,
+    icons: { settings: SettingsIcon, help: CircleHelpIcon },
+  }),
 ]
 
 /** 设计器的内置扩展：内置命令与图片导出器。节点类型、连线属性等 core 层的内置部分在 FLOW_CORE_EXTENSION 里。 */
@@ -216,6 +227,7 @@ export const FLOW_TOOLBAR_LAYOUT: readonly (readonly string[])[] = [
   ['align-left', 'align-center', 'align-right', 'align-top', 'align-middle', 'align-bottom', 'distribute-horizontal', 'distribute-vertical', 'auto-layout'],
   ['zoom-out', 'zoom-in', 'zoom-to-fit', 'zoom-to-actual'],
   ['export-png', 'export-svg'],
+  ['settings', 'help'],
 ]
 
 /** 工具栏此刻的缺省排列：有导入器时在 FLOW_TOOLBAR_LAYOUT 前面多一组打开文件。 */

@@ -136,6 +136,8 @@ declare function defineFlowDesigner(): void
 | `zoom-to-actual` | 实际大小 | `ZoomResetIcon` | — | 可用 |
 | `export-png` | 导出 PNG | `FileImageIcon` | — | 可用 |
 | `export-svg` | 导出 SVG | `FileCodeIcon` | — | 可用 |
+| `settings` | 设置 | `SettingsIcon` | — | 可用 |
+| `help` | 帮助 | `CircleHelpIcon` | — | 可用 |
 
 ### FLOW_TOOLBAR_LAYOUT {#flow_toolbar_layout}
 
@@ -148,6 +150,7 @@ declare function defineFlowDesigner(): void
 | 3 | `align-left` `align-center` `align-right` `align-top` `align-middle` `align-bottom` `distribute-horizontal` `distribute-vertical` `auto-layout` |
 | 4 | `zoom-out` `zoom-in` `zoom-to-fit` `zoom-to-actual` |
 | 5 | `export-png` `export-svg` |
+| 6 | `settings` `help` |
 
 ### flowToolbarLayout() {#flowtoolbarlayout}
 
@@ -317,6 +320,7 @@ type FlowBuiltinPropertyKey = 'label' | 'style.dashed'
 | --- | --- | --- |
 | `createFlowDesignerModel` | 函数 | 合出设计器用的模型；editors 是垫在各扩展之下的内建编辑器。 |
 | `FLOW_DESIGNER_EXTENSION` | 常量 | 设计器的内置扩展：内置命令与图片导出器。 |
+| `FLOW_DESIGNER_HELP_URL` | 常量 | 内置命令 help 打开的帮助页：流程文档站的设计器一页。 |
 | `FLOW_TOOLBAR_LAYOUT` | 常量 | 工具栏的缺省排列；commandLayout 没写 toolbar 时用它，再把 placement 含 toolbar 的扩展命令追加成一组。 |
 | `FlowDesignerCommand` | 类型 | 设计器的命令。 |
 | `FlowDesignerContext` | 接口 | 命令、面板与扩展装上时拿到的上下文。 |

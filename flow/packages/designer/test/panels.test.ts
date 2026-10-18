@@ -7,8 +7,8 @@
 
 import type { FlowDesignerExtension, XhFlowDesigner } from '../src'
 import { setXhConfig } from '@xihan-ui/web-components'
-import { afterEach, describe, expect, it } from 'vitest'
-import { defineFlowDesigner } from '../src'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { defineFlowDesigner, FLOW_DESIGNER_HELP_URL } from '../src'
 import { definitions, mount, move, part, placeCanvas, press, release, unmountAll } from './helpers'
 
 defineFlowDesigner()
@@ -61,6 +61,23 @@ describe('工具栏', () => {
     expect(items.filter(item => !item.hasAttribute('data-icon')).map(item => item.value)).toEqual([])
     expect([toolbarItem(designer, 'delete').getAttribute('data-tone'), toolbarItem(designer, 'undo').getAttribute('data-tone')]).toEqual(['danger', null])
     expect(toolbarItem(designer, 'zoom-to-fit').getAttribute('aria-label')).toBe('Zoom to fit')
+  })
+
+  it('末组是 designer-shell 内置的设置与帮助：设置打开设置对话框，帮助在新窗口打开文档站的设计器一页', async () => {
+    const designer = await mount()
+    const groups = Array.from(designer.querySelectorAll('[data-part="command-bar"] [data-xh-part="group"]'), group => Array.from(group.querySelectorAll('button'), button => button.value))
+    expect(groups.at(-1)).toEqual(['settings', 'help'])
+    toolbarItem(designer, 'settings').click()
+    await designer.updateComplete
+    expect(designer.querySelector<HTMLElement & { open?: boolean }>('xh-designer-settings')!.open).toBe(true)
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    try {
+      toolbarItem(designer, 'help').click()
+      expect(open).toHaveBeenCalledWith(FLOW_DESIGNER_HELP_URL, '_blank', 'noopener,noreferrer')
+    }
+    finally {
+      open.mockRestore()
+    }
   })
 
   it('点条目执行对应命令，禁用的条目不执行', async () => {
