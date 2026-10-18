@@ -112,6 +112,7 @@ export const FLOW_DESIGNER_EN_US: FlowDesignerLocale = {
     'unknown-key': () => 'Contains an unknown field',
     'duplicate-key': () => 'Contains a duplicate key',
     'duplicate-id': () => 'Contains a duplicate id',
+    'duplicate-value': () => 'Duplicate option value',
     'unknown-control': () => 'Unknown editor kind',
   },
 }

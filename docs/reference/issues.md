@@ -6,7 +6,7 @@
 
 ## 校验
 
-`validateDocument` 按节点类型、属性描述与扩展的规则检查流程定义。下表列出内置的问题码、缺省严重程度与中文语言包的说明；严重程度可以经 `FlowValidateOptions.severity` 按问题码改写，写 `off` 即不报告。不带点号的问题码（`required`、`invalid-type`、`out-of-range`、`not-integer`、`invalid-option`、`invalid-color`、`invalid-value`、`unknown-key`、`unknown-control`）来自属性的检查，路径落在那个属性上。
+`validateDocument` 按节点类型、属性描述与扩展的规则检查流程定义。下表列出内置的问题码、缺省严重程度与中文语言包的说明；严重程度可以经 `FlowValidateOptions.severity` 按问题码改写，写 `off` 即不报告。不带点号的问题码（`required`、`invalid-type`、`out-of-range`、`not-integer`、`invalid-option`、`invalid-color`、`invalid-value`、`duplicate-value`、`unknown-key`、`unknown-control`）来自属性的检查，路径落在那个属性上。
 
 | 问题码 | 缺省严重程度 | 说明 |
 | --- | --- | --- |
@@ -35,6 +35,7 @@
 | `invalid-option` | 错误 | 不在可选项里 |
 | `invalid-color` | 错误 | 不是有效的颜色 |
 | `invalid-value` | 错误 | 取值不合法 |
+| `duplicate-value` | 错误 | 选项的值重复 |
 | `unknown-key` | 错误 | 含有不认识的字段 |
 | `unknown-control` | 错误 | 没有这种编辑方式 |
 
