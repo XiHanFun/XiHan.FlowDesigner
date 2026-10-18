@@ -32,6 +32,7 @@ import { exportFlowImage } from './image-export'
 import { defaultNodeRenderer } from './node-renderer'
 import { createOrthogonalRouter } from './router'
 import { buildScene } from './scene'
+import { DEFAULT_FLOW_VIEWER_TRANSLATIONS } from './translations'
 
 /** 查看器的标签名。 */
 export const FLOW_VIEWER_TAG = 'xh-flow-viewer'
@@ -71,7 +72,6 @@ export interface FlowViewerEventMap {
   'viewport-change': CustomEvent<{ viewport: Viewport }>
 }
 
-const DEFAULT_TRANSLATIONS: FlowViewerTranslations = { label: 'Flow diagram' }
 const ZOOM_STEP = 1.2
 const PAN_STEP = 48
 const FIT_PADDING = 24
@@ -160,7 +160,7 @@ export class XhFlowViewer extends XhReactiveElement {
   protected override update(changed: PropertyValues): void {
     super.update(changed)
     const layers = this.#ensureLayers()
-    const t = this.#config.translations<FlowViewerTranslations>('xh-flow-viewer', DEFAULT_TRANSLATIONS, this.translations)
+    const t = this.#config.translations<FlowViewerTranslations>('xh-flow-viewer', DEFAULT_FLOW_VIEWER_TRANSLATIONS, this.translations)
     layers.root.setAttribute('aria-label', t.label)
     if (!this.#scene || changed.has('schema') || changed.has('extensions') || changed.has('router'))
       this.#scene = this.schema ? buildScene(this.schema, this.#model().nodeTypes, { route: this.#route() }) : undefined

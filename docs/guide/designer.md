@@ -90,4 +90,4 @@
 
 ## 文案
 
-设计器的缺省文案是英文。全站用中文时与查看器一样合并 `flowZhCN`，写法见[快速开始](../quickstart)。单个实例要改时写 `translations`，它压在全局配置之上；可以改的文案见 [FlowDesignerTranslations](../reference/designer#flowdesignertranslations)。
+设计器的缺省文案是英文。全站换语言时与查看器一样合并同一语言的流程语言包（如 `flowZhCN`、`flowJaJP`），写法见[快速开始](../quickstart#中文界面)。单个实例要改时写 `translations`，它压在全局配置之上；可以改的文案见 [FlowDesignerTranslations](../reference/designer#flowdesignertranslations)。

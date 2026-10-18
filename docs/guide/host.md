@@ -72,7 +72,7 @@ React 19 起会把对象直接赋给自定义元素的同名属性；事件可�
 
 ## 文案与样式
 
-- 内建文案缺省是英文。全站用中文时把 `flowZhCN` 与 XiHan.UI 的语言包合并后交给 `setXhConfig`，写法见[快速开始](../quickstart#中文界面)；单个实例的文案用它的 `translations` 覆写。预设的节点类型与属性另有文案，见 [XiHan 工作流引擎预设](./xihan-workflow#装上预设)。
+- 内建文案缺省是英文。全站换语言时把同一语言的流程语言包（如 `flowZhCN`、`flowJaJP`）与 XiHan.UI 的语言包合并后交给 `setXhConfig`，写法见[快速开始](../quickstart#中文界面)；单个实例的文案用它的 `translations` 覆写。预设的节点类型与属性另有文案，见 [XiHan 工作流引擎预设](./xihan-workflow#装上预设)。
 - 样式只用 XiHan.UI 的设计令牌，元素跟着宿主的 UI 主题变化，宿主不用另写颜色。设计器与查看器铺满自身，宿主给元素定宽高。
 
 ## 一个页面里放多个实例

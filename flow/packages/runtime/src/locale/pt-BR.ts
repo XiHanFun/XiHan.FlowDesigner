@@ -1,0 +1,87 @@
+/*
+ * Copyright (c) 2021-Present XiHanFun and contributors.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ */
+
+// 流程的巴西葡萄牙语语言包。
+
+import type { XhConfig } from '@xihan-ui/web-components'
+import { designerShellPtBR } from '@xihan-ui/designer-shell/locale'
+import { flowLocale } from './types'
+
+/** 流程的巴西葡萄牙语文案：查看器、设计器与 designer-shell 零件。 */
+export const flowPtBR: XhConfig = /* @__PURE__ */ flowLocale(designerShellPtBR, {
+  viewer: { label: 'Diagrama de fluxo' },
+  designer: {
+    label: 'Designer de fluxos',
+    toolbar: 'Ações do designer',
+    openFile: 'Abrir arquivo',
+    undo: 'Desfazer',
+    redo: 'Refazer',
+    delete: 'Excluir',
+    duplicate: 'Duplicar',
+    copy: 'Copiar',
+    cut: 'Recortar',
+    paste: 'Colar',
+    selectAll: 'Selecionar tudo',
+    alignLeft: 'Alinhar à esquerda',
+    alignCenter: 'Centralizar horizontalmente',
+    alignRight: 'Alinhar à direita',
+    alignTop: 'Alinhar na parte superior',
+    alignMiddle: 'Centralizar verticalmente',
+    alignBottom: 'Alinhar na parte inferior',
+    distributeHorizontal: 'Distribuir horizontalmente',
+    distributeVertical: 'Distribuir verticalmente',
+    autoLayout: 'Organizar automaticamente',
+    clearVertices: 'Remover pontos de dobra',
+    zoomIn: 'Ampliar',
+    zoomOut: 'Reduzir',
+    zoomToFit: 'Ajustar à janela',
+    zoomToActual: '100%',
+    exportPng: 'Exportar PNG',
+    exportSvg: 'Exportar SVG',
+    exportImage: 'Imagem do fluxo',
+    palette: 'Nós',
+    paletteUncategorized: 'Outros',
+    propertiesEmpty: 'Selecione nós ou conexões para editar suas propriedades',
+    propertiesMultiple: count => `${count} itens selecionados`,
+    edge: 'Conexão',
+    propertyIssue: (property, message) => `${property}: ${message}`,
+    issuesEmpty: 'Nenhum problema',
+    flow: 'Fluxo',
+    propertyLabels: { 'label': 'Nome', 'style.dashed': 'Tracejada' },
+    issues: {
+      'document.unsupported-version': text => `A versão ${text('version')} da definição de fluxo não é suportada`,
+      'node.duplicate-id': text => `O id de nó "${text('id')}" está repetido`,
+      'node.unknown-type': text => `O tipo de nó "${text('type')}" não está registrado`,
+      'edge.duplicate-id': text => `O id de conexão "${text('id')}" está repetido`,
+      'edge.dangling': text => `A conexão aponta para o nó inexistente "${text('node')}"`,
+      'edge.unknown-port': text => `A porta "${text('port')}" não existe`,
+      'edge.invalid-direction': () => 'A direção da porta não permite esta conexão',
+      'edge.self-loop': () => 'Um nó não pode se conectar a si mesmo',
+      'edge.target-not-allowed': (_, type) => `"${type('sourceType')}" não pode se conectar a "${type('targetType')}"`,
+      'edge.source-not-allowed': (_, type) => `"${type('targetType')}" não aceita conexões de "${type('sourceType')}"`,
+      'node.max-incoming': text => `No máximo ${text('max')} conexões de entrada; há ${text('count')}`,
+      'node.max-outgoing': text => `No máximo ${text('max')} conexões de saída; há ${text('count')}`,
+      'port.max-connections': text => `A porta "${text('port')}" aceita no máximo ${text('max')} conexões; há ${text('count')}`,
+      'type.min-count': (text, type) => `São necessários pelo menos ${text('min')} "${type('type')}"; há ${text('count')}`,
+      'type.max-count': (text, type) => `São permitidos no máximo ${text('max')} "${type('type')}"; há ${text('count')}`,
+      'node.isolated': () => 'Sem conexões',
+      'node.missing-incoming': () => 'Falta a conexão de entrada',
+      'node.missing-outgoing': () => 'Falta a conexão de saída',
+      'node.unreachable': () => 'Não é alcançável a partir de um nó de início',
+      'required': () => 'Obrigatório',
+      'invalid-type': () => 'Tipo de valor incorreto',
+      'invalid-value': () => 'Valor inválido',
+      'out-of-range': () => 'Fora do intervalo permitido',
+      'not-integer': () => 'Deve ser um número inteiro',
+      'invalid-option': () => 'Não é uma das opções',
+      'invalid-color': () => 'Não é uma cor válida',
+      'empty': () => 'Não pode ficar vazio',
+      'unknown-key': () => 'Contém um campo desconhecido',
+      'duplicate-key': () => 'Contém uma chave repetida',
+      'duplicate-id': () => 'Contém um id repetido',
+      'unknown-control': () => 'Tipo de editor desconhecido',
+    },
+  },
+})

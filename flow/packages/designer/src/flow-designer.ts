@@ -43,7 +43,7 @@ import type { KeyedChildren, PropertyValues } from '@xihan-ui/web-components/aut
 import type { FlowAutoLayoutOptions, FlowClipboard, FlowEditor, FlowSelection } from './editor'
 import type { FlowDesignerContext, FlowDesignerExtension, FlowDesignerImporter, FlowDesignerModel, FlowImportFragment, FlowMenuSubject } from './extensions'
 import { getPortPosition, portAllows, readDocument } from '@xihan-flow/core'
-import { buildScene, createOrthogonalRouter, defaultNodeRenderer, exportFlowImage } from '@xihan-flow/runtime'
+import { buildScene, createOrthogonalRouter, DEFAULT_FLOW_DESIGNER_TRANSLATIONS, defaultNodeRenderer, exportFlowImage } from '@xihan-flow/runtime'
 import { detectKbdPlatform } from '@xihan-ui/core/hotkey'
 import {
   centerOn,
@@ -103,7 +103,6 @@ import { IssuesPanel } from './panels/issues'
 import { MinimapPanel } from './panels/minimap'
 import { paletteNodeType, PalettePanel } from './panels/palette'
 import { PropertiesPanel } from './panels/properties'
-import { DEFAULT_TRANSLATIONS } from './translations'
 
 /** 设计器的标签名。 */
 export const FLOW_DESIGNER_TAG = 'xh-flow-designer'
@@ -1511,7 +1510,7 @@ export class XhFlowDesigner extends XhReactiveElement {
   }
 
   #translations(): FlowDesignerTranslations {
-    return this.#config.translations<FlowDesignerTranslations>(FLOW_DESIGNER_TAG, DEFAULT_TRANSLATIONS, this.translations)
+    return this.#config.translations<FlowDesignerTranslations>(FLOW_DESIGNER_TAG, DEFAULT_FLOW_DESIGNER_TRANSLATIONS, this.translations)
   }
 
   readonly #onWheel = (event: WheelEvent): void => {

@@ -262,6 +262,33 @@ type FlowDesignerPanel = 'toolbar' | 'palette' | 'properties' | 'issues' | 'mini
 | `issue(issue: FlowIssue, names: FlowIssueNames): string` | 问题的说明文字。 |
 | `propertyIssue(property: string, message: string): string` | 落在某个属性上的问题：属性名与问题说明拼在一起。 |
 
+### FlowDesignerLocale {#flowdesignerlocale}
+
+一种语言的设计器文案：问题说明与内建属性名写成表，其余与 FlowDesignerTranslations 相同。
+
+继承 `Omit<FlowDesignerTranslations, 'issue' | 'propertyLabel'>`。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `issues` | `Readonly<Record<FlowIssueCode, FlowIssueMessage>>` | 每个问题码的说明。 |
+| `propertyLabels` | `Readonly<Record<FlowBuiltinPropertyKey, string>>` | 内建属性没有给 label 时的属性名。 |
+
+### FlowIssueMessage {#flowissuemessage}
+
+```ts
+type FlowIssueMessage = (text: (key: string) => string, type: (key: string) => string) => string
+```
+
+一条问题说明：text 取参数的文字，type 取参数里那个节点类型的显示名。
+
+### FlowBuiltinPropertyKey {#flowbuiltinpropertykey}
+
+```ts
+type FlowBuiltinPropertyKey = 'label' | 'style.dashed'
+```
+
+设计器内建的属性路径，formatJsonPath 的写法。
+
 ## 全部导出
 
 ### clipboard

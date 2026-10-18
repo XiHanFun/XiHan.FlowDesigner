@@ -1,0 +1,87 @@
+/*
+ * Copyright (c) 2021-Present XiHanFun and contributors.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ */
+
+// 流程的俄语语言包。
+
+import type { XhConfig } from '@xihan-ui/web-components'
+import { designerShellRuRU } from '@xihan-ui/designer-shell/locale'
+import { flowLocale } from './types'
+
+/** 流程的俄语文案：查看器、设计器与 designer-shell 零件。 */
+export const flowRuRU: XhConfig = /* @__PURE__ */ flowLocale(designerShellRuRU, {
+  viewer: { label: 'Схема процесса' },
+  designer: {
+    label: 'Конструктор процессов',
+    toolbar: 'Действия конструктора',
+    openFile: 'Открыть файл',
+    undo: 'Отменить',
+    redo: 'Повторить',
+    delete: 'Удалить',
+    duplicate: 'Дублировать',
+    copy: 'Копировать',
+    cut: 'Вырезать',
+    paste: 'Вставить',
+    selectAll: 'Выбрать все',
+    alignLeft: 'Выровнять по левому краю',
+    alignCenter: 'Выровнять центры по горизонтали',
+    alignRight: 'Выровнять по правому краю',
+    alignTop: 'Выровнять по верхнему краю',
+    alignMiddle: 'Выровнять центры по вертикали',
+    alignBottom: 'Выровнять по нижнему краю',
+    distributeHorizontal: 'Распределить равномерно по горизонтали',
+    distributeVertical: 'Распределить равномерно по вертикали',
+    autoLayout: 'Расставить автоматически',
+    clearVertices: 'Убрать точки излома',
+    zoomIn: 'Увеличить',
+    zoomOut: 'Уменьшить',
+    zoomToFit: 'По размеру окна',
+    zoomToActual: '100 %',
+    exportPng: 'Экспорт в PNG',
+    exportSvg: 'Экспорт в SVG',
+    exportImage: 'Изображение схемы',
+    palette: 'Узлы',
+    paletteUncategorized: 'Прочее',
+    propertiesEmpty: 'Выберите узлы или связи, чтобы изменить их свойства',
+    propertiesMultiple: count => `Выбрано объектов: ${count}`,
+    edge: 'Связь',
+    propertyIssue: (property, message) => `${property}: ${message}`,
+    issuesEmpty: 'Проблем нет',
+    flow: 'Процесс',
+    propertyLabels: { 'label': 'Название', 'style.dashed': 'Пунктир' },
+    issues: {
+      'document.unsupported-version': text => `Версия определения процесса ${text('version')} не поддерживается`,
+      'node.duplicate-id': text => `Идентификатор узла «${text('id')}» используется несколько раз`,
+      'node.unknown-type': text => `Тип узла «${text('type')}» не зарегистрирован`,
+      'edge.duplicate-id': text => `Идентификатор связи «${text('id')}» используется несколько раз`,
+      'edge.dangling': text => `Связь указывает на несуществующий узел «${text('node')}»`,
+      'edge.unknown-port': text => `Порт «${text('port')}» не существует`,
+      'edge.invalid-direction': () => 'Направление порта не допускает такую связь',
+      'edge.self-loop': () => 'Узел нельзя связать с самим собой',
+      'edge.target-not-allowed': (_, type) => `«${type('sourceType')}» нельзя связать с «${type('targetType')}»`,
+      'edge.source-not-allowed': (_, type) => `«${type('targetType')}» не принимает связи от «${type('sourceType')}»`,
+      'node.max-incoming': text => `Максимум входящих связей: ${text('max')}, сейчас: ${text('count')}`,
+      'node.max-outgoing': text => `Максимум исходящих связей: ${text('max')}, сейчас: ${text('count')}`,
+      'port.max-connections': text => `Максимум связей для порта «${text('port')}»: ${text('max')}, сейчас: ${text('count')}`,
+      'type.min-count': (text, type) => `Минимум узлов «${type('type')}»: ${text('min')}, сейчас: ${text('count')}`,
+      'type.max-count': (text, type) => `Максимум узлов «${type('type')}»: ${text('max')}, сейчас: ${text('count')}`,
+      'node.isolated': () => 'Нет ни одной связи',
+      'node.missing-incoming': () => 'Нет входящей связи',
+      'node.missing-outgoing': () => 'Нет исходящей связи',
+      'node.unreachable': () => 'Недостижим из начального узла',
+      'required': () => 'Обязательное поле',
+      'invalid-type': () => 'Неверный тип значения',
+      'invalid-value': () => 'Недопустимое значение',
+      'out-of-range': () => 'Вне допустимого диапазона',
+      'not-integer': () => 'Должно быть целым числом',
+      'invalid-option': () => 'Нет среди вариантов',
+      'invalid-color': () => 'Недопустимый цвет',
+      'empty': () => 'Не может быть пустым',
+      'unknown-key': () => 'Содержит неизвестное поле',
+      'duplicate-key': () => 'Содержит повторяющийся ключ',
+      'duplicate-id': () => 'Содержит повторяющийся идентификатор',
+      'unknown-control': () => 'Неизвестный способ редактирования',
+    },
+  },
+})

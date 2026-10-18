@@ -1,0 +1,87 @@
+/*
+ * Copyright (c) 2021-Present XiHanFun and contributors.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ */
+
+// 流程的繁体中文语言包。
+
+import type { XhConfig } from '@xihan-ui/web-components'
+import { designerShellZhTW } from '@xihan-ui/designer-shell/locale'
+import { flowLocale } from './types'
+
+/** 流程的繁体中文文案：查看器、设计器与 designer-shell 零件。 */
+export const flowZhTW: XhConfig = /* @__PURE__ */ flowLocale(designerShellZhTW, {
+  viewer: { label: '流程圖' },
+  designer: {
+    label: '流程設計器',
+    toolbar: '設計器工具',
+    openFile: '開啟檔案',
+    undo: '復原',
+    redo: '重做',
+    delete: '刪除',
+    duplicate: '建立副本',
+    copy: '複製',
+    cut: '剪下',
+    paste: '貼上',
+    selectAll: '全選',
+    alignLeft: '靠左對齊',
+    alignCenter: '水平置中',
+    alignRight: '靠右對齊',
+    alignTop: '靠上對齊',
+    alignMiddle: '垂直置中',
+    alignBottom: '靠下對齊',
+    distributeHorizontal: '水平均分',
+    distributeVertical: '垂直均分',
+    autoLayout: '自動排版',
+    clearVertices: '清除轉折點',
+    zoomIn: '放大',
+    zoomOut: '縮小',
+    zoomToFit: '符合視窗大小',
+    zoomToActual: '100%',
+    exportPng: '匯出 PNG',
+    exportSvg: '匯出 SVG',
+    exportImage: '流程圖圖片',
+    palette: '節點',
+    paletteUncategorized: '其他',
+    propertiesEmpty: '選取節點或連線，在這裡編輯它們的屬性',
+    propertiesMultiple: count => `已選取 ${count} 個物件`,
+    edge: '連線',
+    propertyIssue: (property, message) => `${property}：${message}`,
+    issuesEmpty: '沒有問題',
+    flow: '流程',
+    propertyLabels: { 'label': '名稱', 'style.dashed': '虛線' },
+    issues: {
+      'document.unsupported-version': text => `不支援版本為 ${text('version')} 的流程定義`,
+      'node.duplicate-id': text => `節點 id「${text('id')}」重複`,
+      'node.unknown-type': text => `節點類型「${text('type')}」沒有登記`,
+      'edge.duplicate-id': text => `連線 id「${text('id')}」重複`,
+      'edge.dangling': text => `連線指向不存在的節點「${text('node')}」`,
+      'edge.unknown-port': text => `連接埠「${text('port')}」不存在`,
+      'edge.invalid-direction': () => '連接埠方向不允許這樣連接',
+      'edge.self-loop': () => '節點不能連向自己',
+      'edge.target-not-allowed': (_, type) => `「${type('sourceType')}」不能連向「${type('targetType')}」`,
+      'edge.source-not-allowed': (_, type) => `「${type('targetType')}」不接受來自「${type('sourceType')}」的連線`,
+      'node.max-incoming': text => `入線最多 ${text('max')} 條，現有 ${text('count')} 條`,
+      'node.max-outgoing': text => `出線最多 ${text('max')} 條，現有 ${text('count')} 條`,
+      'port.max-connections': text => `連接埠「${text('port')}」最多連 ${text('max')} 條，現有 ${text('count')} 條`,
+      'type.min-count': (text, type) => `至少需要 ${text('min')} 個「${type('type')}」，現有 ${text('count')} 個`,
+      'type.max-count': (text, type) => `「${type('type')}」最多 ${text('max')} 個，現有 ${text('count')} 個`,
+      'node.isolated': () => '沒有任何連線',
+      'node.missing-incoming': () => '缺少入線',
+      'node.missing-outgoing': () => '缺少出線',
+      'node.unreachable': () => '從開始節點走不到這裡',
+      'required': () => '必填',
+      'invalid-type': () => '取值類型不對',
+      'invalid-value': () => '取值不合法',
+      'out-of-range': () => '超出允許的範圍',
+      'not-integer': () => '必須是整數',
+      'invalid-option': () => '不在可選項目裡',
+      'invalid-color': () => '不是有效的顏色',
+      'empty': () => '不能為空',
+      'unknown-key': () => '含有無法辨識的欄位',
+      'duplicate-key': () => '含有重複的鍵',
+      'duplicate-id': () => '含有重複的 id',
+      'unknown-control': () => '沒有這種編輯方式',
+    },
+  },
+})

@@ -534,6 +534,7 @@ function viewerPage() {
     interfaceSection(router, 'OrthogonalRouterOptions'),
     '## 文案',
     interfaceSection(join(root, 'translations.ts'), 'FlowViewerTranslations'),
+    exportIndexSection('语言包', { root, file: join(root, 'locale', 'index.ts') }),
     exportIndexSection('全部导出', { root, file: join(root, 'index.ts') }),
   ])
 }
@@ -613,6 +614,9 @@ function designerPage() {
     interfaceSection(editor, 'FlowAutoLayoutOptions'),
     '## 文案',
     interfaceSection(packageSource('runtime', 'src', 'translations.ts'), 'FlowDesignerTranslations'),
+    interfaceSection(packageSource('runtime', 'src', 'designer-locale.ts'), 'FlowDesignerLocale'),
+    typeSection(packageSource('runtime', 'src', 'designer-locale.ts'), 'FlowIssueMessage'),
+    typeSection(packageSource('runtime', 'src', 'designer-locale.ts'), 'FlowBuiltinPropertyKey'),
     exportIndexSection('全部导出', { root, file: join(root, 'index.ts') }),
   ])
 }
