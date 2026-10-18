@@ -15,6 +15,7 @@ import {
   toWorkflowDefinition,
   XIHAN_WORKFLOW_ACTIVITY_TYPES,
   XIHAN_WORKFLOW_ASSIGNEE_RULES,
+  XIHAN_WORKFLOW_START_VARIABLES,
   XIHAN_WORKFLOW_TEXTS,
   xihanWorkflow,
   xihanWorkflowEnUS,
@@ -237,6 +238,27 @@ describe('xihanWorkflow 规则', () => {
       .toEqual(['invalid-type@nodes[1].data.properties.CcRules'])
     expect(at(validateDocument(document({ AssigneeRules: [{ type: 'Starter' }], EmptyAssigneeStrategy: 'Fallback' }), { extensions })))
       .toEqual(['required@nodes[1].data.properties.FallbackAssigneeRules'])
+  })
+
+  it('启动变量的取值：变量名不能为空、不能重名，必填是布尔，类型与说明是字符串', () => {
+    const document = (variables: unknown): FlowDocument => ({
+      version: 1,
+      data: { ...named, variables } as FlowDocument['data'],
+      nodes: [node('s', 'Start', 0), node('e', 'End', 200)],
+      edges: [edge('se', 's', 'e')],
+    })
+    const at = (variables: unknown): string[] => validateDocument(document(variables), { extensions }).map(issue => `${issue.code}@${formatJsonPath(issue.path)}`)
+    expect(createFlowModel([xihanWorkflow]).documentProperties.find(descriptor => descriptor.path.at(-1) === 'variables')!.control)
+      .toEqual({ kind: XIHAN_WORKFLOW_START_VARIABLES })
+    expect(at([{ name: 'amount', required: true, defaultValue: 0, type: 'number', description: '金额' }, { name: 'note', defaultValue: null }])).toEqual([])
+    expect(at({ name: 'amount' })).toEqual(['invalid-type@data.variables'])
+    expect(at(['amount'])).toEqual(['invalid-value@data.variables'])
+    expect(at([{ name: ' ' }])).toEqual(['empty@data.variables'])
+    expect(at([{ required: true }])).toEqual(['empty@data.variables'])
+    expect(at([{ name: 1 }])).toEqual(['invalid-value@data.variables'])
+    expect(at([{ name: 'a', required: 'yes' }])).toEqual(['invalid-value@data.variables'])
+    expect(at([{ name: 'a', description: 1 }])).toEqual(['invalid-value@data.variables'])
+    expect(at([{ name: 'a' }, { name: 'a' }])).toEqual(['duplicate-key@data.variables'])
   })
 
   it('必填的引擎属性：延时的时长、HTTP 地址、脚本代码等', () => {

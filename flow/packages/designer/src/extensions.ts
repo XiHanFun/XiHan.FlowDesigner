@@ -8,7 +8,7 @@
 import type { FlowDocument, FlowEdge, FlowNode, FlowRuleContext } from '@xihan-flow/core'
 import type { FlowDesignerTranslations, FlowImageExportOptions, FlowImageFormat, FlowRuntimeExtension, FlowRuntimeModel } from '@xihan-flow/runtime'
 import type { DesignerCommand, DesignerExporter, DesignerImporter } from '@xihan-ui/designer-kit'
-import type { PropertyEditorTable } from '@xihan-ui/designer-kit/properties'
+import type { PropertyEditorLayer, PropertyEditorTable } from '@xihan-ui/designer-kit/properties'
 import type { DesignerCommandTable, DesignerShellExtension } from '@xihan-ui/designer-shell'
 import type { XhFlowDesigner } from './flow-designer'
 import type { FlowPropertyEditor } from './panels/properties'
@@ -214,8 +214,8 @@ export interface FlowDesignerModel {
   readonly exporters: readonly FlowDesignerExporter[]
 }
 
-/** 合出设计器用的模型；任何一处重名都抛 DesignerExtensionError。 */
-export function createFlowDesignerModel(extensions: readonly FlowDesignerExtension[]): FlowDesignerModel {
+/** 合出设计器用的模型；editors 是垫在各扩展之下的内建编辑器。任何一处重名都抛 DesignerExtensionError。 */
+export function createFlowDesignerModel(extensions: readonly FlowDesignerExtension[], editors?: PropertyEditorLayer<FlowPropertyEditor>): FlowDesignerModel {
   const list = [FLOW_DESIGNER_EXTENSION, ...extensions]
   const runtime = createFlowRuntimeModel(list)
   const all = runtime.extensions as readonly FlowDesignerExtension[]
@@ -224,7 +224,7 @@ export function createFlowDesignerModel(extensions: readonly FlowDesignerExtensi
     extensions: all,
     runtime,
     commands: extensionCommands(all),
-    editors: extensionEditors<FlowPropertyEditor>(undefined, all),
+    editors: extensionEditors<FlowPropertyEditor>(editors, all),
     importers: all.flatMap(extension => extension.importers ?? []),
     exporters: all.flatMap(extension => extension.exporters ?? []),
   }

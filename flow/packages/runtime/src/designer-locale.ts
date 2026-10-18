@@ -77,6 +77,9 @@ export const FLOW_DESIGNER_EN_US: FlowDesignerLocale = {
   propertyIssue: (property, message) => `${property}: ${message}`,
   issuesEmpty: 'No problems',
   flow: 'Flow',
+  startVariableColumns: { name: 'Name', required: 'Required', defaultValue: 'Default value', description: 'Description' },
+  startVariableAdd: 'Add variable',
+  startVariableCell: (row, column) => `${column} of variable ${row}`,
   propertyLabels: { 'label': 'Label', 'style.dashed': 'Dashed' },
   issues: {
     'document.unsupported-version': text => `Unsupported flow definition version ${text('version')}`,

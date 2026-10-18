@@ -78,6 +78,7 @@ core 层只管取值对不对；属性面板里用什么控件编辑它，由设
 - 上下文里有当前值、属性描述、全部被编辑的对象与是否只读。`setValue` 写入新值，`undefined` 表示清除；`commit` 表示一次编辑结束，之后的写入另起一步撤销。
 - `editors` 有三张表：`byControl` 按编辑方式的种类，`byPath` 按属性路径，`byTarget` 按对象种类再按属性路径。对象种类是节点类型，连线是 `edge`，流程定义是 `document`；路径键是 `formatJsonPath` 的写法，如 `data.approver`。
 - 查找时先看 `byTarget`，再看 `byPath`，最后看 `byControl`；后面的扩展压过前面的。
+- 设计器内建的编辑器（如 XiHan 工作流预设的[启动变量](./xihan-workflow#启动变量)）垫在所有扩展之下，扩展在同一张表里登记同一个键就换掉它。
 
 ### 命令
 
