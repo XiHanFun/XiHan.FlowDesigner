@@ -141,7 +141,7 @@ declare function exportFlowImage(source: FlowImageSource, format: FlowImageForma
 declare function flowImageSvg(source: FlowImageSource, options?: FlowImageExportOptions): SVGSVGElement
 ```
 
-把画面上的流程图画成一份能单独打开的 SVG：连线层经 standaloneSvg 克隆（只供命中的透明粗线不要），节点按计算样式画成框、图标与文字，连线标签画成底框与文字；四周留白，按选项铺底色。坐标是世界坐标，1 个单位即 1 像素。流程图是空的时抛 RangeError。
+把画面上的流程图画成一份能单独打开的 SVG：连线层经 standaloneSvg 克隆（只供命中的透明粗线不要，克隆根上的表现属性挪到放连线的组上），节点按计算样式画成框、图标与文字，连线标签画成底框与文字；四周留白，按选项铺底色。颜色写成 sRGB 的 #rrggbb，透明度写进 fill-opacity / stroke-opacity；画布的字体写在根上，文字只写与它不同的那几项。坐标是世界坐标，1 个单位即 1 像素。流程图是空的时抛 RangeError。
 
 ### FlowImageSource {#flowimagesource}
 
@@ -294,7 +294,7 @@ declare function createOrthogonalRouter(options?: OrthogonalRouterOptions): Flow
 | `FlowImageExportOptions` | 接口 | 导出图片的选项。 |
 | `FlowImageFormat` | 类型 | 导出图片的格式。 |
 | `FlowImageSource` | 接口 | 画出图片要读的活元素：场景、画布上的连线层、节点与连线标签的元素，以及视口的缩放。 |
-| `flowImageSvg` | 函数 | 把画面上的流程图画成一份能单独打开的 SVG：连线层经 standaloneSvg 克隆（只供命中的透明粗线不要），节点按计算样式画成框、图标与文字，连线标签画成底框与文字；四周留白，按选项铺底色。 |
+| `flowImageSvg` | 函数 | 把画面上的流程图画成一份能单独打开的 SVG：连线层经 standaloneSvg 克隆（只供命中的透明粗线不要，克隆根上的表现属性挪到放连线的组上），节点按计算样式画成框、图标与文字，连线标签画成底框与文字；四周留白，按选项铺底色。 |
 
 ### node-renderer
 
