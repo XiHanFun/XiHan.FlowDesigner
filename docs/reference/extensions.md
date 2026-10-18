@@ -265,6 +265,7 @@ type PropertyCondition = { readonly path: JsonPath, readonly equals: JsonValue }
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
 | `panels?` | `readonly DesignerPanel<Ctx>[]` | 面板：各占外框的一个命名区，同一位置按扩展顺序上下排。 |
+| `settings?` | `readonly DesignerSettingsSection[]` | 设置分区：放进设置对话框，分区 id 不能与内置的 general 或别的扩展的重名，见 collectSettingsSections。 |
 
 ### FlowDesignerContext {#flowdesignercontext}
 
@@ -317,6 +318,7 @@ type FlowDesignerCommand = DesignerCommand<FlowDesignerContext>
 | --- | --- | --- |
 | `id` | `string` | 全局唯一；扩展的命令用扩展 id 加点加名字，如 @xihan-flow-pro/simulation.run。 |
 | `label` | `string \| ((context: Ctx) => string)` | 按钮与菜单项上的文字；给函数时每次刷新现取，随语言变。 |
+| `icon?` | `IconRecord` | 按钮与菜单项上的图标，图标集见 @xihan-ui/icons；工具栏按图标显示时，没有图标的命令退回显示文字。 |
 | `placement?` | `readonly DesignerCommandPlacement[]` | 缺省排列里出现在哪些位置；不给即只经快捷键或 commandLayout 出现。 |
 | `shortcut?` | `readonly string[]` | 快捷键，写法同 xh-kbd 的 keys：['Mod', 'Shift', 'P']，Mod 在 macOS 上是 ⌘，其余平台是 Ctrl。 |
 | `tone?` | `Tone` | 语气：按钮与菜单项按这族色显示，破坏性命令写 danger。不给即不带语气。 |
@@ -471,16 +473,20 @@ type FlowDesignerExporter = DesignerExporter<FlowExportContext>
 | `name` | `string` | 区名：写 slot="&lt;区名&gt;" 的子元素放进这个区，panels 也按它开关。 |
 | `position` | `DesignerFramePosition` | 区在外框里的位置。 |
 | `size?` | `number` | 所在位置的缺省大小（百分比）：start、end 占中间一行的宽度，bottom 占中间一列的高度；取该位置第一个区的值。 |
-| `minSize?` | `number` | 拖动时所在位置的下限（百分比），缺省 10；取该位置第一个区的值。 |
-| `label?` | `string` | 分隔条无障碍名称里的区名，缺省用 name。 |
+| `minSize?` | `number` | 拖动时所在位置的下限（百分比），缺省 10；取该位置第一个区的值。外框按尺寸槽算出的下限更大时以那个为准。 |
+| `label?` | `string` | 分隔条无障碍名称里的区名，缺省用 title，再缺省用 name。 |
+| `title?` | `string` | 面板头的标题：给了就把这个区画成一张卡片，头部写标题；只对 start、end、bottom 三个位置生效。 |
+| `subtitle?` | `string` | 面板头标题下的一行副标题，如属性面板当前对象的名字。 |
+| `help?` | `string` | 面板头的帮助：给了就在右上角出帮助钮，悬停或聚焦时弹出这段说明。 |
+| `closable?` | `boolean` | 面板头出关闭钮，点了收起这块面板（从 panels 里去掉它）；缺省 true。 |
 
 ### DesignerFramePosition {#designerframeposition}
 
 ```ts
-type DesignerFramePosition = 'top' | 'start' | 'center' | 'end' | 'bottom'
+type DesignerFramePosition = 'header' | 'top' | 'start' | 'center' | 'end' | 'bottom' | 'status'
 ```
 
-区的位置：上方一条、中间一行的左、中、右，以及中间一列的下方。
+区的位置：最上的顶栏、下面一条、中间一行的左、中、右、中间一列的下方，以及最下的状态栏。
 
 ## 属性编辑器
 
