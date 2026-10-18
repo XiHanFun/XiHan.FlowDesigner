@@ -123,5 +123,6 @@ export const xihanWorkflowKoKR: XihanWorkflowTexts = {
     'xihan-workflow.decision-multiple-defaults': '조건 분기에는 기본 분기를 하나만 둘 수 있습니다',
     'xihan-workflow.decision-no-default': '기본 분기나 조건 없는 분기를 추가하세요',
     'xihan-workflow.user-task-no-assignee': '담당자 규칙, 담당자 또는 담당자 표현식을 설정하세요',
+    'xihan-workflow.user-task-no-assignee-rules': '담당자 규칙을 설정하세요',
   },
 }

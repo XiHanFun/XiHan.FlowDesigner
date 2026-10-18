@@ -123,5 +123,6 @@ export const xihanWorkflowZhTW: XihanWorkflowTexts = {
     'xihan-workflow.decision-multiple-defaults': '條件分支至多一條預設分支',
     'xihan-workflow.decision-no-default': '加一條預設分支或無條件分支',
     'xihan-workflow.user-task-no-assignee': '設定受理人規則、受理人或受理人運算式',
+    'xihan-workflow.user-task-no-assignee-rules': '設定受理人規則',
   },
 }

@@ -123,6 +123,12 @@ export type XihanWorkflowIssueCode
     | 'xihan-workflow.decision-no-default'
     | 'xihan-workflow.user-task-no-assignee'
 
+/**
+ * 规则问题说明的键：问题码，外加同一条问题随预设选项换用的说明。
+ * xihan-workflow.user-task-no-assignee-rules 是 legacyAssignees 为 false 时缺受理人那条问题的说明，只提受理人规则。
+ */
+export type XihanWorkflowIssueTextKey = XihanWorkflowIssueCode | 'xihan-workflow.user-task-no-assignee-rules'
+
 /** 预设的全部文案。 */
 export interface XihanWorkflowTexts {
   /** 节点类型的显示名，键是活动类型。 */
@@ -135,8 +141,8 @@ export interface XihanWorkflowTexts {
   readonly properties: Readonly<Record<XihanWorkflowPropertyKey, string>>
   /** 下拉选项的文字。 */
   readonly options: Readonly<Record<XihanWorkflowOptionKey, string>>
-  /** 规则问题的说明。 */
-  readonly issues: Readonly<Record<XihanWorkflowIssueCode, string>>
+  /** 规则问题的说明，键见 XihanWorkflowIssueTextKey。 */
+  readonly issues: Readonly<Record<XihanWorkflowIssueTextKey, string>>
 }
 
 /** 覆盖部分文案：各部分分别按键覆盖英文缺省。 */
@@ -258,5 +264,6 @@ export const XIHAN_WORKFLOW_TEXTS: XihanWorkflowTexts = {
     'xihan-workflow.decision-multiple-defaults': 'A decision can have at most one default branch',
     'xihan-workflow.decision-no-default': 'Add a default branch or an unconditional branch',
     'xihan-workflow.user-task-no-assignee': 'Set assignee rules, assignees or an assignees expression',
+    'xihan-workflow.user-task-no-assignee-rules': 'Set assignee rules',
   },
 }

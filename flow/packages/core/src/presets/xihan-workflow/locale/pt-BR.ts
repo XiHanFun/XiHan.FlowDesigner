@@ -123,5 +123,6 @@ export const xihanWorkflowPtBR: XihanWorkflowTexts = {
     'xihan-workflow.decision-multiple-defaults': 'Uma decisão pode ter no máximo um ramo padrão',
     'xihan-workflow.decision-no-default': 'Adicione um ramo padrão ou um ramo sem condição',
     'xihan-workflow.user-task-no-assignee': 'Defina regras de responsáveis, responsáveis ou uma expressão de responsáveis',
+    'xihan-workflow.user-task-no-assignee-rules': 'Defina regras de responsáveis',
   },
 }
