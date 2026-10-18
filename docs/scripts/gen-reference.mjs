@@ -546,14 +546,14 @@ function shortcutText(keys) {
   return keys.map(key => (key === 'Mod' ? 'Ctrl / ⌘' : key)).join(' + ')
 }
 
-/** designer-shell 的内置命令：...designerShellCommands({ openSettings, helpUrl, icons }) 给了哪个选项就有哪条，文案在共用一桶里。 */
+/** designer-shell 的内置命令：...designerShellCommands({ frame, openSettings, helpUrl, icons }) 给了哪个选项就有哪条，文案在共用一桶里。 */
 function shellCommands(element) {
   const call = element.expression
   if (!flat(call).startsWith('designerShellCommands'))
     throw new Error(`[gen-reference] BUILTIN_COMMANDS 里展开的不是 designerShellCommands：${flat(element)}`)
   const options = new Map(call.arguments[0].properties.map(property => [nameOf(property), property.initializer]))
   const icons = new Map((options.get('icons')?.properties ?? []).map(property => [nameOf(property), flat(property.initializer)]))
-  return [['settings', 'openSettings'], ['help', 'helpUrl']]
+  return [['panels', 'frame'], ['settings', 'openSettings'], ['help', 'helpUrl']]
     .filter(([, option]) => options.has(option))
     .map(([id]) => ({ id, label: id, bucket: 'xh-designer-commands', icon: icons.get(id), shortcut: [], readonly: true }))
 }

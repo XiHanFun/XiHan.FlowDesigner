@@ -9,7 +9,7 @@ import type { FlowDocument, FlowEdge, FlowNode, FlowNodeType, FlowRuleContext } 
 import type { FlowDesignerTranslations, FlowImageExportOptions, FlowImageFormat, FlowRuntimeExtension, FlowRuntimeModel } from '@xihan-flow/runtime'
 import type { DesignerCommand, DesignerExporter, DesignerImporter } from '@xihan-ui/designer-kit'
 import type { PropertyEditorLayer, PropertyEditorTable } from '@xihan-ui/designer-kit/properties'
-import type { DesignerCommandsTranslations, DesignerCommandTable, DesignerSettings, DesignerSettingsSection, DesignerShellExtension } from '@xihan-ui/designer-shell'
+import type { DesignerCommandsTranslations, DesignerCommandTable, DesignerSettings, DesignerSettingsSection, DesignerShellExtension, XhDesignerFrameElement } from '@xihan-ui/designer-shell'
 import type { XhFlowDesigner } from './flow-designer'
 import type { FlowPropertyEditor } from './panels/properties'
 import { createFlowRuntimeModel } from '@xihan-flow/runtime'
@@ -33,6 +33,7 @@ import {
   FileImageIcon,
   FolderOpenIcon,
   MaximizeIcon,
+  PanelLeftIcon,
   RedoIcon,
   ScissorsIcon,
   SettingsIcon,
@@ -59,6 +60,8 @@ export interface FlowDesignerContext {
    * 基础分区（general.*）只有宿主或用户写了的键。
    */
   readonly settings: DesignerSettings
+  /** 设计器的外框：面板的开关经它；外框还没建出来时为 undefined。 */
+  readonly frame: XhDesignerFrameElement | undefined
 }
 
 /** 设计器的命令。 */
@@ -204,9 +207,10 @@ const BUILTIN_COMMANDS: readonly FlowDesignerCommand[] = [
   { id: 'export-svg', label: text('exportSvg'), icon: FileCodeIcon, enabled: ({ designer }) => designer.schema.nodes.length > 0, run: ({ designer }) => void saveImage(designer, 'svg') },
   ...designerShellCommands<FlowDesignerContext>({
     translations: context => context.commandTranslations,
+    frame: context => context.frame,
     openSettings: ({ designer }) => designer.openSettings(),
     helpUrl: () => FLOW_DESIGNER_HELP_URL,
-    icons: { settings: SettingsIcon, help: CircleHelpIcon },
+    icons: { panels: PanelLeftIcon, settings: SettingsIcon, help: CircleHelpIcon },
   }),
 ]
 
@@ -240,7 +244,7 @@ export const FLOW_TOOLBAR_LAYOUT: readonly (readonly string[])[] = [
   ['align-left', 'align-center', 'align-right', 'align-top', 'align-middle', 'align-bottom', 'distribute-horizontal', 'distribute-vertical', 'auto-layout'],
   ['zoom-out', 'zoom-in', 'zoom-to-fit', 'zoom-to-actual'],
   ['export-png', 'export-svg'],
-  ['settings', 'help'],
+  ['panels', 'settings', 'help'],
 ]
 
 /** 工具栏此刻的缺省排列：有导入器时在 FLOW_TOOLBAR_LAYOUT 前面多一组打开文件。 */

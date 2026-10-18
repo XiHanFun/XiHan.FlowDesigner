@@ -788,7 +788,7 @@ export class XhFlowDesigner extends XhReactiveElement {
 
   /** 交给命令、面板与扩展 setup 的上下文。 */
   #context(): FlowDesignerContext {
-    return { designer: this, translations: this.#translations(), commandTranslations: this.#commandTranslations(), settings: this.#resolvedSettings }
+    return { designer: this, translations: this.#translations(), commandTranslations: this.#commandTranslations(), settings: this.#resolvedSettings, frame: this.#layers?.frame }
   }
 
   #kbdPlatform(): 'mac' | 'other' {
@@ -1246,7 +1246,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     this.#renderStatus(layers, t)
     layers.minimap.element.hidden = !this.#showsMinimap()
     const shared = this.#commandTranslations()
-    const context: FlowDesignerContext = { designer: this, translations: t, commandTranslations: shared, settings: this.#resolvedSettings }
+    const context: FlowDesignerContext = { designer: this, translations: t, commandTranslations: shared, settings: this.#resolvedSettings, frame: layers.frame }
     const { commands } = this.#model
     if (this.#shows('toolbar')) {
       layers.commandBar.setDisplay(toolbarDisplayOf(this.#resolvedSettings))

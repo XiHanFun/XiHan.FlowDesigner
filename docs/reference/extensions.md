@@ -278,6 +278,7 @@ type PropertyCondition = { readonly path: JsonPath, readonly equals: JsonValue }
 | `translations` | `FlowDesignerTranslations` | 此刻生效的设计器文案。 |
 | `commandTranslations` | `DesignerCommandsTranslations` | 此刻生效的四款共用的命令文案（designer-shell 语言包的 xh-designer-commands 一桶）。 |
 | `settings` | `DesignerSettings` | 此刻生效的设置，键是「分区 id.条目 id」：设计器自己的「画布」与各扩展分区里的条目写了用写的、没写取缺省值，基础分区（general.*）只有宿主或用户写了的键。 |
+| `frame` | `XhDesignerFrameElement \| undefined` | 设计器的外框：面板的开关经它；外框还没建出来时为 undefined。 |
 
 ### createFlowDesignerModel() {#createflowdesignermodel}
 
@@ -314,7 +315,7 @@ type FlowDesignerCommand = DesignerCommand<FlowDesignerContext>
 
 ### DesignerCommand {#designercommand}
 
-一条命令：工具栏按钮、右键菜单项与快捷键共用。
+一条命令：工具栏按钮、右键菜单项与快捷键共用。给了 panel 是弹层命令，给了 menu 是菜单命令，在工具栏上点它分别打开锚在按钮上的弹层与菜单，两者只能给一个；两者都没给的普通命令必须有 run。登记时（mergeExtensions）不合这两条就抛 TypeError。
 
 类型参数 `Ctx = unknown`。
 
@@ -332,7 +333,10 @@ type FlowDesignerCommand = DesignerCommand<FlowDesignerContext>
 | --- | --- |
 | `enabled(context: Ctx): boolean` | 不给即总是可用。 |
 | `checked(context: Ctx): boolean` | 给了就是开关式命令，按钮与菜单项显示选中状态。 |
-| `run(context: Ctx): void` | 执行命令；按钮、菜单项与快捷键都只在命令此刻可用时调用它。 |
+| `run(context: Ctx): void` | 执行命令；按钮、菜单项与快捷键都只在命令此刻可用时调用它。弹层命令与菜单命令可以不给：工具栏上点它们是打开弹层或菜单，不调 run；给了 run，快捷键按下时调它（通常调工具栏的 open 打开同一份）。 |
+| `panel(context: Ctx): DesignerCommandPanel<Ctx>` | 弹层命令：每次打开时建出放进弹层的面板。 |
+| `menu(context: Ctx): readonly DesignerCommandMenuEntry[]` | 菜单命令：每次刷新时现算菜单的各项。 |
+| `select(value: string, context: Ctx): void` | 菜单命令的条目被选中时调用，value 是条目的 value；写成命令 id 的项选中时执行那条命令，不调它。 |
 
 ### DesignerCommandPlacement {#designercommandplacement}
 

@@ -136,6 +136,7 @@ declare function defineFlowDesigner(): void
 | `zoom-to-actual` | 实际大小 | `ZoomResetIcon` | — | 可用 |
 | `export-png` | 导出 PNG | `FileImageIcon` | — | 可用 |
 | `export-svg` | 导出 SVG | `FileCodeIcon` | — | 可用 |
+| `panels` | 面板 | `PanelLeftIcon` | — | 可用 |
 | `settings` | 设置 | `SettingsIcon` | — | 可用 |
 | `help` | 帮助 | `CircleHelpIcon` | — | 可用 |
 
@@ -150,7 +151,7 @@ declare function defineFlowDesigner(): void
 | 3 | `align-left` `align-center` `align-right` `align-top` `align-middle` `align-bottom` `distribute-horizontal` `distribute-vertical` `auto-layout` |
 | 4 | `zoom-out` `zoom-in` `zoom-to-fit` `zoom-to-actual` |
 | 5 | `export-png` `export-svg` |
-| 6 | `settings` `help` |
+| 6 | `panels` `settings` `help` |
 
 ### flowToolbarLayout() {#flowtoolbarlayout}
 
