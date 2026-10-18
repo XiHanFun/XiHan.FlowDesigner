@@ -15,7 +15,17 @@ import { XIHAN_WORKFLOW_TEXTS } from './texts'
 export { XIHAN_WORKFLOW_ASSIGNEE_RULES, xihanWorkflowNodeSize, xihanWorkflowPropertyKeys } from './activities'
 export { fromWorkflowDefinition, toWorkflowDefinition } from './definition'
 export type { FromWorkflowDefinitionOptions, XihanWorkflowDefinition, XihanWorkflowNode, XihanWorkflowTransition } from './definition'
-export { XIHAN_WORKFLOW_ACTIVITY_TYPES, XIHAN_WORKFLOW_TEXTS, xihanWorkflowZhCN } from './texts'
+export { xihanWorkflowDeDE } from './locale/de-DE'
+export { xihanWorkflowEnUS } from './locale/en-US'
+export { xihanWorkflowEsES } from './locale/es-ES'
+export { xihanWorkflowFrFR } from './locale/fr-FR'
+export { xihanWorkflowJaJP } from './locale/ja-JP'
+export { xihanWorkflowKoKR } from './locale/ko-KR'
+export { xihanWorkflowPtBR } from './locale/pt-BR'
+export { xihanWorkflowRuRU } from './locale/ru-RU'
+export { xihanWorkflowZhCN } from './locale/zh-CN'
+export { xihanWorkflowZhTW } from './locale/zh-TW'
+export { XIHAN_WORKFLOW_ACTIVITY_TYPES, XIHAN_WORKFLOW_TEXTS } from './texts'
 export type {
   XihanWorkflowActivityType,
   XihanWorkflowCategory,
@@ -32,7 +42,7 @@ export const XIHAN_WORKFLOW_ID = '@xihan-flow/xihan-workflow'
 
 /** createXihanWorkflow 的选项。 */
 export interface CreateXihanWorkflowOptions {
-  /** 文案，各部分按键覆盖英文缺省；中文直接传 xihanWorkflowZhCN。 */
+  /** 文案，各部分按键覆盖英文缺省；整套换语言直接传对应的语言包，如 xihanWorkflowZhCN、xihanWorkflowJaJP。 */
   readonly texts?: XihanWorkflowTextsOverride
   /**
    * 审批节点的属性面板里显示旧的受理人写法（Assignees、AssigneesExpression、CcUserIds），缺省 true。

@@ -4,17 +4,20 @@
  */
 
 import type { FlowDocument, FlowIssue } from '../../src'
-import type { XihanWorkflowDefinition } from '../../src/presets/xihan-workflow'
+import type { XihanWorkflowDefinition, XihanWorkflowTexts } from '../../src/presets/xihan-workflow'
 import { formatJsonPath } from '@xihan-ui/core/json'
 import { describe, expect, it } from 'vitest'
 import { createFlowModel, readDocument, resolveEdgeStyle, validateDocument } from '../../src'
+import * as presets from '../../src/presets/xihan-workflow'
 import {
   createXihanWorkflow,
   fromWorkflowDefinition,
   toWorkflowDefinition,
   XIHAN_WORKFLOW_ACTIVITY_TYPES,
   XIHAN_WORKFLOW_ASSIGNEE_RULES,
+  XIHAN_WORKFLOW_TEXTS,
   xihanWorkflow,
+  xihanWorkflowEnUS,
   xihanWorkflowZhCN,
 } from '../../src/presets/xihan-workflow'
 
@@ -140,6 +143,32 @@ describe('xihanWorkflow 节点类型', () => {
     const partial = createXihanWorkflow({ texts: { activities: { UserTask: '审批' } } })
     expect(createFlowModel([partial]).nodeTypes.get('UserTask')!.label).toBe('审批')
     expect(createFlowModel([partial]).nodeTypes.get('Start')!.label).toBe('Start')
+  })
+
+  it('十种语言的文案与 UI 的语言包一一对应，每份都写全英文缺省的每个键', () => {
+    const packs = Object.entries(presets).filter(([name]) => /^xihanWorkflow[A-Z][a-z][A-Z]{2}$/.test(name)) as [string, XihanWorkflowTexts][]
+    expect(packs.map(([name]) => name).sort()).toEqual([
+      'xihanWorkflowDeDE',
+      'xihanWorkflowEnUS',
+      'xihanWorkflowEsES',
+      'xihanWorkflowFrFR',
+      'xihanWorkflowJaJP',
+      'xihanWorkflowKoKR',
+      'xihanWorkflowPtBR',
+      'xihanWorkflowRuRU',
+      'xihanWorkflowZhCN',
+      'xihanWorkflowZhTW',
+    ])
+    expect(xihanWorkflowEnUS).toBe(XIHAN_WORKFLOW_TEXTS)
+    for (const [name, texts] of packs) {
+      for (const section of Object.keys(XIHAN_WORKFLOW_TEXTS) as (keyof XihanWorkflowTexts)[]) {
+        expect(Object.keys(texts[section]), `${name}.${section}`).toEqual(Object.keys(XIHAN_WORKFLOW_TEXTS[section]))
+        for (const [key, text] of Object.entries(texts[section]))
+          expect(text.trim(), `${name}.${section}.${key}`).not.toBe('')
+      }
+      const model = createFlowModel([createXihanWorkflow({ texts })])
+      expect(XIHAN_WORKFLOW_ACTIVITY_TYPES.map(type => model.nodeTypes.get(type)!.label)).toEqual(XIHAN_WORKFLOW_ACTIVITY_TYPES.map(type => texts.activities[type]))
+    }
   })
 })
 

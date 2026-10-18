@@ -4,7 +4,7 @@ XiHan.Framework 的[工作流引擎](https://framework.docs.xihanfun.com/guide/w
 
 ## 装上预设
 
-`createXihanWorkflow` 按文案生成一个 core 层扩展，交给查看器、设计器与 `validateDocument` 都可以。中文直接传 `xihanWorkflowZhCN`；不传是英文，也可以导入现成的英文扩展 `xihanWorkflow`。17 种节点类型各配了一枚 `@xihan-ui/icons` 的图标，画布上的节点与物料条目都画在文字前面，对应关系见[参考页](../reference/xihan-workflow)。
+`createXihanWorkflow` 按文案生成一个 core 层扩展，交给查看器、设计器与 `validateDocument` 都可以。不传文案是英文，也可以导入现成的英文扩展 `xihanWorkflow`。文案与流程的语言包一样按 XiHan.UI 的语言一一对应：`xihanWorkflowZhCN`、`xihanWorkflowZhTW`、`xihanWorkflowJaJP`、`xihanWorkflowKoKR`、`xihanWorkflowDeDE`、`xihanWorkflowFrFR`、`xihanWorkflowEsES`、`xihanWorkflowPtBR`、`xihanWorkflowRuRU` 与 `xihanWorkflowEnUS`，换哪种语言就把哪一份传给 `texts`；只改几处时传其中几个键，其余照英文。17 种节点类型各配了一枚 `@xihan-ui/icons` 的图标，画布上的节点与物料条目都画在文字前面，对应关系见[参考页](../reference/xihan-workflow)。
 
 <<< @/examples/schemas/approval.ts#extensions
 
