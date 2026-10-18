@@ -191,6 +191,10 @@ const NO_EXTENSIONS: readonly FlowDesignerExtension[] = []
 const ZOOM_STEP = 1.2
 const PAN_STEP = 48
 const FIT_PADDING = 24
+/** 没给落点的新节点在视口中央被占时往右下错开的一步（世界坐标）。 */
+const CASCADE_STEP = 24
+/** 找空位最多错开几步，再找不到就放在最后一处。 */
+const CASCADE_LIMIT = 256
 const EDGE_LAYER_MARGIN = 32
 /** 端口命中的屏幕距离（像素）。 */
 const PORT_HIT_DISTANCE = 12
@@ -538,13 +542,14 @@ export class XhFlowDesigner extends XhReactiveElement {
     this.#editor.history.markSaved()
   }
 
-  /** 新建节点并选中：at 是节点中心的世界坐标，缺省放在视口中央；位置吸附网格。 */
+  /** 新建节点并选中：at 是节点中心的世界坐标，缺省放在视口中央（中央被占时往右下错开）；位置吸附网格。 */
   addNode(type: string, at?: FlowPoint): FlowNode {
     const nodeType = this.#editor.model.nodeTypes.get(type)
     if (!nodeType)
       throw new Error(`[flow-designer] node type "${type}" is not registered`)
-    const center = at ?? this.#viewportCenter()
-    const topLeft = this.#snapToGrid({ x: center.x - nodeType.size.width / 2, y: center.y - nodeType.size.height / 2 })
+    const topLeft = at
+      ? this.#snapToGrid({ x: at.x - nodeType.size.width / 2, y: at.y - nodeType.size.height / 2 })
+      : this.#cascadePlace(nodeType.size)
     return this.#editor.addNode(type, topLeft)
   }
 
@@ -1326,6 +1331,35 @@ export class XhFlowDesigner extends XhReactiveElement {
     if (!root || root.clientWidth === 0 || root.clientHeight === 0)
       return undefined
     return { width: root.clientWidth, height: root.clientHeight }
+  }
+
+  /** 没给落点的新节点错开的一步（世界坐标）：有网格时取不小于它的网格整数倍。 */
+  #cascadeStep(): number {
+    return this.grid === false || !(this.grid > 0) ? CASCADE_STEP : Math.ceil(CASCADE_STEP / this.grid) * this.grid
+  }
+
+  /**
+   * 没给落点的新节点放在哪（左上角）：视口中央；那里已有节点（左上角相差不到半步）时往右下错一步，直到空出来。
+   * 错到视口右边或下边放不下时，从视口左上角另起一斜列接着错。
+   */
+  #cascadePlace(size: { width: number, height: number }): FlowPoint {
+    const center = this.#viewportCenter()
+    const step = this.#cascadeStep()
+    const view = this.#size()
+    const topLeft = view ? screenToWorld(this.#viewport, { x: 0, y: 0 }) : undefined
+    const bottomRight = view ? screenToWorld(this.#viewport, { x: view.width, y: view.height }) : undefined
+    const nodes = this.#editor.document.nodes
+    const taken = (point: FlowPoint): boolean => nodes.some(node => Math.abs(node.x - point.x) < step / 2 && Math.abs(node.y - point.y) < step / 2)
+    let point = this.#snapToGrid({ x: center.x - size.width / 2, y: center.y - size.height / 2 })
+    let column = 0
+    for (let round = 0; round < CASCADE_LIMIT && taken(point); round++) {
+      point = { x: point.x + step, y: point.y + step }
+      if (topLeft && bottomRight && (point.x + size.width > bottomRight.x || point.y + size.height > bottomRight.y)) {
+        column += 1
+        point = this.#snapToGrid({ x: topLeft.x + step * column, y: topLeft.y + step })
+      }
+    }
+    return point
   }
 
   #viewportCenter(): FlowPoint {

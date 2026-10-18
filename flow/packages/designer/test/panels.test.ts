@@ -5,6 +5,7 @@
 
 // @vitest-environment jsdom
 
+import type { FlowNode } from '@xihan-flow/core'
 import type { FlowDesignerExtension, XhFlowDesigner } from '../src'
 import { setXhConfig } from '@xihan-ui/web-components'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -320,6 +321,25 @@ describe('物料面板', () => {
     const added = designer.schema.nodes.at(-1)!
     expect([added.type, added.x, added.y]).toEqual(['task', 256, 176])
     expect(designer.getSelection().nodes).toEqual([added.id])
+  })
+
+  it('连点条目：新节点顺着右下方错开、不叠在一起，错到视口边上从左上角另起一列', async () => {
+    const designer = await mount()
+    placeCanvas(designer, 320, 240)
+    designer.setViewport({ x: 0, y: 0, zoom: 1 })
+    await settle(designer)
+    const before = designer.schema.nodes.length
+    for (let click = 0; click < 8; click++)
+      item(designer, 'task').click()
+    const added = designer.schema.nodes.slice(before)
+    const [first, second, third] = added as [FlowNode, FlowNode, FlowNode]
+    const step = second.x - first.x
+    expect(step).toBeGreaterThan(0)
+    expect([second.y - first.y, third.x - second.x, third.y - second.y]).toEqual([step, step, step])
+    expect(new Set(added.map(node => `${node.x},${node.y}`)).size).toBe(added.length)
+    const wrapped = added.find(node => node.x < first.x && node.y < first.y)!
+    expect([wrapped.x, wrapped.y]).toEqual([step, step])
+    expect(added.every(node => node.x + node.width <= 320 && node.y + node.height <= 240)).toBe(true)
   })
 
   it('拖进画布在松手处新建节点：拖动中按网格画落点、藏起跟手预览；松手在画布外不新建', async () => {

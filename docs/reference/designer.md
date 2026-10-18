@@ -47,7 +47,7 @@
 | `undo(): boolean` | 撤销一步；没有可撤销的返回 false。 |
 | `redo(): boolean` | 重做一步；没有可重做的返回 false。 |
 | `markSaved(): void` | 把当前状态记为已保存。 |
-| `addNode(type: string, at?: FlowPoint): FlowNode` | 新建节点并选中：at 是节点中心的世界坐标，缺省放在视口中央；位置吸附网格。 |
+| `addNode(type: string, at?: FlowPoint): FlowNode` | 新建节点并选中：at 是节点中心的世界坐标，缺省放在视口中央（中央被占时往右下错开）；位置吸附网格。 |
 | `select(selection: Partial<FlowSelection>): void` | 换成选中这些节点与连线，没写的一类清空。 |
 | `getSelection(): FlowSelection` | 当前选中的节点与连线。 |
 | `deleteSelection(): boolean` | 删除选中的节点（连带相连的连线）与连线；只读或没有选中时返回 false。 |
