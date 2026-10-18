@@ -310,6 +310,24 @@ describe('与引擎定义互转', () => {
     expect(JSON.parse(toWorkflowDefinition(solid).extraProperties!.designerEdges!)).toEqual({ t5: { style: { dashed: false } } })
   })
 
+  it('legacyAssignees 为 false 时审批节点不登记旧的受理人写法，已有的值照旧读写、往返不丢', () => {
+    const LEGACY = ['data.properties.Assignees', 'data.properties.AssigneesExpression', 'data.properties.CcUserIds']
+    const paths = (extension: typeof xihanWorkflow): string[] =>
+      createFlowModel([extension]).nodeTypes.get('UserTask')!.properties!.map(property => formatJsonPath(property.path))
+    expect(paths(xihanWorkflow)).toEqual(expect.arrayContaining(LEGACY))
+    const modern = createXihanWorkflow({ legacyAssignees: false })
+    expect(paths(modern).filter(path => LEGACY.includes(path))).toEqual([])
+    expect(paths(modern)).toContain('data.properties.AssigneeRules')
+
+    const legacyValues = { Assignees: ['u1'], AssigneesExpression: 'starter.manager', CcUserIds: ['u2'] }
+    const definition = { ...approval(), nodes: approval().nodes!.map(item => item.id === 'manager' ? { ...item, properties: { ...item.properties, ...legacyValues } } : item) }
+    const document = fromWorkflowDefinition(definition)
+    expect(validateDocument(document, { extensions: [modern] }).filter(issue => LEGACY.some(path => formatJsonPath(issue.path).endsWith(path)))).toEqual([])
+    const once = toWorkflowDefinition(document)
+    expect(once.nodes!.find(item => item.id === 'manager')!.properties).toMatchObject(legacyValues)
+    expect(toWorkflowDefinition(fromWorkflowDefinition(once))).toEqual(once)
+  })
+
   it('没有坐标的节点按连线自左向右排开；连线缺 id 时补上', () => {
     const document = fromWorkflowDefinition({ ...approval(), extraProperties: {}, transitions: approval().transitions!.map(transition => ({ ...transition, id: undefined })) })
     const x = (id: string): number => document.nodes.find(item => item.id === id)!.x
