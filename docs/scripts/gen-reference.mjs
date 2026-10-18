@@ -595,6 +595,7 @@ function designerPage() {
     `内置命令登记在 ${code('FLOW_DESIGNER_EXTENSION')} 里，工具栏、右键菜单与 ${code('commandLayout')} 都按 id 引用。名称取自中文语言包；快捷键在画布有焦点时生效，Ctrl / ⌘ 在 macOS 上是 ⌘，其它系统是 Ctrl。`,
     commandTable(extensions),
     layoutSection(extensions, 'FLOW_TOOLBAR_LAYOUT'),
+    functionSection(extensions, 'flowToolbarLayout'),
     functionSection(extensions, 'flowMenuLayout'),
     typeSection(extensions, 'FlowMenuSubject'),
     '## 类型',
@@ -632,7 +633,7 @@ function extensionsPage() {
   const kit = name => uiDeclaration('designer-kit', name)
   const shell = name => uiDeclaration('designer-shell', name)
   const inherited = name => `${code(name)} 从 XiHan.UI 继承的字段。`
-  return page('扩展', `扩展分三层：core 层登记节点类型、属性、编辑方式与规则，校验与编辑操作只读这一层；运行时层再加节点内容的渲染，见[查看器参考](./viewer#flowruntimeextension)；设计器层再加属性编辑器、命令、面板与 ${code('setup')}。下层的扩展对象可以直接交给上层的元素。用法见[扩展](../guide/extensions)。`, [
+  return page('扩展', `扩展分三层：core 层登记节点类型、属性、编辑方式与规则，校验与编辑操作只读这一层；运行时层再加节点内容的渲染，见[查看器参考](./viewer#flowruntimeextension)；设计器层再加属性编辑器、命令、面板、导入器、导出器与 ${code('setup')}。下层的扩展对象可以直接交给上层的元素。用法见[扩展](../guide/extensions)。`, [
     '## core 层',
     interfaceSection(coreExtensions, 'FlowCoreExtension'),
     interfaceSection(kit('DesignerExtensionCore'), 'DesignerExtensionCore', '###', inherited('FlowCoreExtension')),
@@ -656,7 +657,7 @@ function extensionsPage() {
     typeSection(kit('PropertyCondition'), 'PropertyCondition'),
     '## 设计器层',
     interfaceSection(designerExtensions, 'FlowDesignerExtension'),
-    interfaceSection(kit('DesignerExtensionBase'), 'DesignerExtensionBase', '###', `${inherited('FlowDesignerExtension')}${code('importers')}、${code('exporters')} 两个字段流程设计器不读取。`, ['importers', 'exporters']),
+    interfaceSection(kit('DesignerExtensionBase'), 'DesignerExtensionBase', '###', `${inherited('FlowDesignerExtension')}${code('importers')}、${code('exporters')} 由流程收窄了结果与上下文的类型，见上表。`, ['importers', 'exporters']),
     interfaceSection(shell('DesignerShellExtension'), 'DesignerShellExtension', '###', inherited('FlowDesignerExtension')),
     interfaceSection(designerExtensions, 'FlowDesignerContext'),
     functionSection(designerExtensions, 'createFlowDesignerModel'),
@@ -665,6 +666,16 @@ function extensionsPage() {
     typeSection(designerExtensions, 'FlowDesignerCommand'),
     interfaceSection(kit('DesignerCommand'), 'DesignerCommand'),
     typeSection(kit('DesignerCommandPlacement'), 'DesignerCommandPlacement'),
+    '## 导入与导出',
+    typeSection(designerExtensions, 'FlowDesignerImporter'),
+    typeSection(designerExtensions, 'FlowImportResult'),
+    interfaceSection(designerExtensions, 'FlowImportFragment'),
+    interfaceSection(designerExtensions, 'FlowImportDocument'),
+    interfaceSection(kit('DesignerImporter'), 'DesignerImporter'),
+    interfaceSection(kit('DesignerImportSource'), 'DesignerImportSource'),
+    typeSection(designerExtensions, 'FlowDesignerExporter'),
+    interfaceSection(designerExtensions, 'FlowExportContext'),
+    interfaceSection(kit('DesignerExporter'), 'DesignerExporter'),
     '## 面板',
     interfaceSection(shell('DesignerPanel'), 'DesignerPanel'),
     interfaceSection(shell('DesignerPanelInstance'), 'DesignerPanelInstance'),

@@ -81,6 +81,7 @@ function issueText(issue: FlowIssue, names: FlowIssueNames): string {
 export const DEFAULT_TRANSLATIONS: FlowDesignerTranslations = {
   label: 'Flow designer',
   toolbar: 'Designer tools',
+  openFile: 'Open file',
   undo: 'Undo',
   redo: 'Redo',
   delete: 'Delete',

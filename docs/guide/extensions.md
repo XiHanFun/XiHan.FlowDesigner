@@ -96,6 +96,20 @@ core 层只管取值对不对；属性面板里用什么控件编辑它，由设
 - `create` 在给 `extensions` 赋值、装上这个扩展时调用一次；之后设计器每次更新都调用 `update`，扩展被换下前调用 `destroy`。
 - 宿主写了设计器的 `panels` 时，扩展面板的区名也要列进去才显示。
 
+### 导入与导出
+
+`importers` 把粘贴、拖进画布的外部内容与打开的文件换成流程内容，`exporters` 把当前流程定义换成文件：
+
+<<< @/examples/snippets/import-export.ts#importers
+
+- 来源有三处：粘贴（`kind` 为 `clipboard`）、拖进画布（`drop`）与 `openFile()` 选的文件（`file`）。粘贴与拖放先列文件，再按链接、HTML、纯文本列出文本；来源按先后、导入器按扩展顺序问 `accepts`，第一个接下的导入。设计器自己复制出的内容直接粘贴，不经过导入器。
+- `import` 可以是异步的，返回 `{ nodes, edges }` 片段或 `{ document }` 整份流程定义，返回 `undefined` 时什么都不放。片段整体挪到落点（粘贴与打开文件时是视口中央，拖放时是指针处），左上角吸附网格，按粘贴的规则换新 id、选中并记一步撤销；整份定义换掉当前定义，同样记一步撤销，视口随后适配。
+- `import` 抛错，或结果的结构不合法、id 重复、用了没登记的节点类型时，派发 `import-error`，`detail` 里是导入器的 id、来源与错误，什么都不放；打开的文件没有导入器接下时也派发，此时没有导入器的 id。
+- 装了导入器后，工具栏最前面多出「打开文件」；宿主也可以自己调 `openFile()`。只读时导入一概不接。
+- `export(format, options)` 交给登记了这种格式的第一个导出器，`options` 原样放进上下文；得到的文件内容或文本存到哪里由宿主定。没有导出器认这种格式时返回被拒的 Promise（`RangeError`）。设计器自己不登记导出器。
+
+<<< @/examples/snippets/import-export.ts#export
+
 ### setup
 
 `setup` 在设计器连上文档时调用，返回的函数在断开或扩展被换下时调用，适合加监听、开定时器这类要清理的事：
@@ -104,6 +118,6 @@ core 层只管取值对不对；属性面板里用什么控件编辑它，由设
 
 ## 冲突
 
-节点类型、属性路径、编辑方式、命令 id、快捷键、面板的区名或扩展 id 在两个扩展里重复时，给 `extensions` 赋值当场抛 `DesignerExtensionError`（从 `@xihan-ui/designer-kit` 导入），元素保持原来的扩展。错误上带冲突的名字空间、名字与两个扩展的 id：
+节点类型、属性路径、编辑方式、命令 id、快捷键、面板的区名、导入器或导出器的 id、扩展 id 在两个扩展里重复时，给 `extensions` 赋值当场抛 `DesignerExtensionError`（从 `@xihan-ui/designer-kit` 导入），元素保持原来的扩展。错误上带冲突的名字空间、名字与两个扩展的 id：
 
 <<< @/examples/snippets/conflict.ts#conflict

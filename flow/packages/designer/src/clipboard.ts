@@ -29,7 +29,11 @@ export function decodeFlowClipboard(text: string): FlowClipboard | undefined {
   const decoded = decodeClipboard(text, PRODUCT)
   if (!decoded.ok || decoded.version !== VERSION || !isPlainObject(decoded.payload))
     return undefined
-  const { nodes, edges } = decoded.payload
+  return readFlowFragment(decoded.payload.nodes, decoded.payload.edges)
+}
+
+/** 读入一组节点与连线：节点或连线的结构不合法、id 重复时返回 undefined；两端不都在其中的连线照样读出。 */
+export function readFlowFragment(nodes: unknown, edges: unknown): FlowClipboard | undefined {
   const read = readDocument({ version: FLOW_DOCUMENT_VERSION, nodes, edges })
   if (!read.ok || hasDuplicateIds(read.document.nodes) || hasDuplicateIds(read.document.edges))
     return undefined
