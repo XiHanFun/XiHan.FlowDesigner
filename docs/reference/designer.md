@@ -13,7 +13,7 @@
 | `readonly` | `readonly` | `boolean \| undefined` | 只读：可以选择与浏览，不能修改；缺省 false。同名 attribute 三态：不写为缺省，写 "false" 为 false，其余写法（空串、"true" 等）为 true。 |
 | `grid` | — | `number \| false` | 拖动与新建节点时吸附的网格边长，false 不吸附网格；缺省 16。 |
 | `snap` | — | `boolean` | 拖动时吸附其它节点并显示对齐线；缺省 true。 |
-| `panels` | `panels` | `string \| undefined` | 要显示的面板，空格分隔：toolbar palette properties issues minimap。不写即全部显示，写空串则全部收起；同名 attribute。 |
+| `panels` | `panels` | `string \| undefined` | 要显示的面板，空格分隔：toolbar palette properties issues minimap。不写即全部显示，写空串则全部收起；同名 attribute。点了面板头的关闭钮时设计器改写它并派发 panels-change。 |
 | `paletteGroupOrder` | — | `readonly string[] \| undefined` | 物料面板里先列出的类别及其顺序，其余类别按登记顺序排在后面。 |
 | `paletteGroupLabels` | — | `Readonly<Record<string, string>> \| undefined` | 物料面板的类别标题，缺省直接显示 category。 |
 | `propertyGroupOrder` | — | `readonly string[] \| undefined` | 属性面板里先列出的分组及其顺序，其余分组按首次出现的顺序排在后面。 |
@@ -86,6 +86,7 @@
 | `import-error` | `{ importer?: string, source: DesignerImportSource, error: unknown }` | 导入没有成功：导入器抛了错，或给出的节点、连线或流程定义不合法、用了没登记的节点类型，importer 是导入器的 id；openFile() 选的文件没有导入器接下时也派发，此时没有 importer。 |
 | `export` | `{ format: FlowImageFormat, blob: Blob }` | 工具栏的导出命令导出了图片，带格式与文件；可以取消，取消后设计器不自己下载，宿主拿 blob 自己存。没被取消时存成 flow.png 或 flow.svg 下载。 |
 | `save` | `Record<string, never>` | 画布有焦点时按了 Ctrl / ⌘ + S；设计器不自己保存。 |
+| `panels-change` | `{ panels: string }` | 点了面板头的关闭钮，设计器已收起这块面板：panels 是收起之后要显示的面板（空格分隔），设计器的 panels 已换成它。 |
 
 ## 注册
 
@@ -253,6 +254,9 @@ type FlowDesignerPanel = 'toolbar' | 'palette' | 'properties' | 'issues' | 'mini
 | `propertiesEmpty` | `string` | 没有选中时属性面板里的提示。 |
 | `edge` | `string` | 属性面板里连线的类型名。 |
 | `issuesEmpty` | `string` | 没有问题时问题列表里的提示。 |
+| `paletteHelp` | `string` | 物料面板头的帮助。 |
+| `propertiesHelp` | `string` | 属性面板头的帮助。 |
+| `issuesHelp` | `string` | 问题列表面板头的帮助。 |
 | `flow` | `string` | 不落在节点或连线上的问题（如节点个数）所属的对象名。 |
 | `startVariableColumns` | `Readonly<Record<FlowStartVariableColumn, string>>` | 启动变量表的列名。 |
 | `startVariableAdd` | `string` | 启动变量表的新增按钮。 |

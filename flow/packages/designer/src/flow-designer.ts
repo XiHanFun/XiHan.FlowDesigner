@@ -32,6 +32,7 @@ import type { PropertyEditorLayer } from '@xihan-ui/designer-kit/properties'
 import type {
   CommandToolbar,
   DesignerCommandLayout,
+  DesignerFrameEventMap,
   DesignerFrameRegion,
   DesignerPanelHost,
   DesignerSnapOptions,
@@ -148,10 +149,15 @@ export interface FlowDesignerEventMap {
   'export': CustomEvent<{ format: FlowImageFormat, blob: Blob }>
   /** 画布有焦点时按了 Ctrl / ⌘ + S；设计器不自己保存。 */
   'save': CustomEvent<Record<string, never>>
+  /** 点了面板头的关闭钮，设计器已收起这块面板：panels 是收起之后要显示的面板（空格分隔），设计器的 panels 已换成它。 */
+  'panels-change': CustomEvent<{ panels: string }>
 }
 
 /** 可以开关的面板。 */
 export type FlowDesignerPanel = 'toolbar' | 'palette' | 'properties' | 'issues' | 'minimap'
+
+/** 不是外框的区、由设计器自己开关的面板。 */
+const OWN_PANELS: readonly FlowDesignerPanel[] = ['minimap']
 
 const EMPTY_SCHEMA: FlowDocument = { version: 1, nodes: [], edges: [] }
 const NO_EXTENSIONS: readonly FlowDesignerExtension[] = []
@@ -231,7 +237,7 @@ export class XhFlowDesigner extends XhReactiveElement {
   declare snap: boolean
   /**
    * 要显示的面板，空格分隔：toolbar palette properties issues minimap。不写即全部显示，写空串则全部收起；
-   * 同名 attribute。
+   * 同名 attribute。点了面板头的关闭钮时设计器改写它并派发 panels-change。
    */
   declare panels: string | undefined
   /** 物料面板里先列出的类别及其顺序，其余类别按登记顺序排在后面。 */
@@ -843,7 +849,11 @@ export class XhFlowDesigner extends XhReactiveElement {
       issues: () => this.#issues,
       locate: issue => this.#locate(issue),
     })
+    palette.element.headless = true
+    properties.element.headless = true
+    issues.element.headless = true
     const frame = createGeneratedElement(doc, 'xh-designer-frame', { 'data-part': 'frame' })
+    frame.addEventListener('panels-change', this.#onPanelsChange)
     toolbar.slot = 'toolbar'
     palette.element.slot = 'palette'
     canvas.slot = 'canvas'
@@ -995,30 +1005,49 @@ export class XhFlowDesigner extends XhReactiveElement {
     return shown === undefined || shown.has(panel)
   }
 
-  /** 外框的命名区：内置区带上本地化的区名（分隔条的无障碍名称要用），后面接扩展面板的区。 */
-  #frameRegions(t: FlowDesignerTranslations): readonly DesignerFrameRegion[] {
-    const labels: Readonly<Record<string, string>> = {
-      toolbar: t.toolbar,
-      palette: t.palette,
-      canvas: t.label,
-      properties: this.#config.translations<{ title: string }>('xh-designer-properties', { title: 'Properties' }).title,
-      issues: this.#config.translations<{ title: string }>('xh-designer-issues', { title: 'Problems' }).title,
+  /**
+   * 外框的命名区：工具栏与画布带上本地化的区名（分隔条的无障碍名称要用）；物料、属性与问题画成卡片，面板头写标题与帮助，
+   * 属性面板的副标题是当前编辑的对象。后面接扩展面板的区。
+   */
+  #frameRegions(t: FlowDesignerTranslations, layers: Layers): readonly DesignerFrameRegion[] {
+    const regions: Readonly<Record<string, Partial<DesignerFrameRegion>>> = {
+      toolbar: { label: t.toolbar },
+      palette: { title: t.palette, help: t.paletteHelp },
+      canvas: { label: t.label },
+      properties: {
+        title: this.#config.translations<{ title: string }>('xh-designer-properties', { title: 'Properties' }).title,
+        subtitle: layers.properties.element.heading,
+        help: t.propertiesHelp,
+      },
+      issues: {
+        title: this.#config.translations<{ title: string }>('xh-designer-issues', { title: 'Problems' }).title,
+        help: t.issuesHelp,
+      },
     }
-    const key = JSON.stringify(labels)
+    const key = JSON.stringify(regions)
     if (key !== this.#frameRegionsKey || this.#frameRegionsModel !== this.#model) {
       this.#frameRegionsKey = key
       this.#frameRegionsModel = this.#model
       this.#frameRegionList = [
-        ...DESIGNER_FRAME_REGIONS.map(region => ({ ...region, label: labels[region.name] ?? region.name })),
+        ...DESIGNER_FRAME_REGIONS.map(region => ({ ...region, ...regions[region.name] })),
         ...this.#model.extensions.flatMap(extension => (extension.panels ?? []).map(panel => panel.region)),
       ]
     }
     return this.#frameRegionList
   }
 
+  /** 外框收起了一块面板：外框只认自己的区，设计器自己的面板（小地图）照原样留着。 */
+  readonly #onPanelsChange = (event: Event): void => {
+    event.stopPropagation()
+    const frame = (event as DesignerFrameEventMap['panels-change']).detail.panels.split(' ').filter(Boolean)
+    const own = OWN_PANELS.filter(panel => this.#shows(panel))
+    const panels = [...frame, ...own].join(' ')
+    this.panels = panels
+    emitEvent(this, 'panels-change', { panels })
+  }
+
   #renderPanels(layers: Layers, t: FlowDesignerTranslations): void {
     layers.frame.panels = this.panels
-    layers.frame.regions = this.#frameRegions(t)
     layers.minimap.element.hidden = !this.#shows('minimap')
     const context: FlowDesignerContext = { designer: this, translations: t }
     const { commands } = this.#model
@@ -1032,6 +1061,7 @@ export class XhFlowDesigner extends XhReactiveElement {
       layers.issues.update(t)
     if (this.#shows('minimap'))
       layers.minimap.update()
+    layers.frame.regions = this.#frameRegions(t, layers)
     layers.panels.update(context)
   }
 

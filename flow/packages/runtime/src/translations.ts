@@ -73,6 +73,12 @@ export interface FlowDesignerTranslations {
   readonly propertyIssue: (property: string, message: string) => string
   /** 没有问题时问题列表里的提示。 */
   readonly issuesEmpty: string
+  /** 物料面板头的帮助。 */
+  readonly paletteHelp: string
+  /** 属性面板头的帮助。 */
+  readonly propertiesHelp: string
+  /** 问题列表面板头的帮助。 */
+  readonly issuesHelp: string
   /** 不落在节点或连线上的问题（如节点个数）所属的对象名。 */
   readonly flow: string
   /** 启动变量表的列名。 */
