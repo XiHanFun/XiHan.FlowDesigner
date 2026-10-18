@@ -88,6 +88,10 @@ export interface FlowDesignerTranslations {
   readonly statusDocument: (nodes: number, edges: number) => string
   /** 状态栏：选中一个节点时写它的位置与尺寸（世界坐标，取整）。 */
   readonly statusGeometry: (x: number, y: number, width: number, height: number) => string
+  /** 顶栏插入快捷钮那一条工具栏的可访问名。 */
+  readonly insertToolbar: string
+  /** 顶栏插入快捷钮的名字，入参是节点类型的显示名；钮上图标下面只写显示名。 */
+  readonly insertNode: (label: string) => string
   /** 不落在节点或连线上的问题（如节点个数）所属的对象名。 */
   readonly flow: string
   /** 启动变量表的列名。 */

@@ -259,6 +259,7 @@ type FlowDesignerPanel = 'toolbar' | 'palette' | 'properties' | 'issues' | 'mini
 | `settingsSnap` | `string` | 设置：吸附对齐开关的标签。 |
 | `settingsSnapHint` | `string` | 设置：吸附对齐开关的说明。 |
 | `statusZoom` | `string` | 状态栏：缩放一项的标签。 |
+| `insertToolbar` | `string` | 顶栏插入快捷钮那一条工具栏的可访问名。 |
 | `flow` | `string` | 不落在节点或连线上的问题（如节点个数）所属的对象名。 |
 | `startVariableColumns` | `Readonly<Record<FlowStartVariableColumn, string>>` | 启动变量表的列名。 |
 | `startVariableAdd` | `string` | 启动变量表的新增按钮。 |
@@ -272,6 +273,7 @@ type FlowDesignerPanel = 'toolbar' | 'palette' | 'properties' | 'issues' | 'mini
 | `statusSelected(count: number): string` | 状态栏：选中多个对象时左边写的话。 |
 | `statusDocument(nodes: number, edges: number): string` | 状态栏：什么都没选中时左边写流程里有多少节点与连线。 |
 | `statusGeometry(x: number, y: number, width: number, height: number): string` | 状态栏：选中一个节点时写它的位置与尺寸（世界坐标，取整）。 |
+| `insertNode(label: string): string` | 顶栏插入快捷钮的名字，入参是节点类型的显示名；钮上图标下面只写显示名。 |
 | `startVariableCell(row: number, column: string): string` | 启动变量表里一格的可访问名：第几个变量（从 1 起）、哪一列。 |
 
 ### FlowDesignerLocale {#flowdesignerlocale}

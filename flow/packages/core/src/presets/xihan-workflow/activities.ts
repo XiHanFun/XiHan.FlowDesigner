@@ -39,6 +39,8 @@ export const XIHAN_WORKFLOW_START_VARIABLES = 'xihan-workflow.start-variables'
 const ENTRY_TYPES = new Set<string>(['Start'])
 /** 不再流转的节点：结束类活动。 */
 const TERMINAL_TYPES = new Set<string>(['End', 'Terminate', 'Fault'])
+/** 常用的几种与它们在设计器顶栏的先后：顶栏放插入它们的快捷钮。 */
+const QUICK_INSERT_TYPES: readonly string[] = ['UserTask', 'Decision', 'Parallel', 'Join', 'End']
 /** 忽略连线条件、沿全部出线流转的节点。 */
 const FAN_OUT_TYPES = new Set<string>(['Parallel'])
 /** 会挂起等待的节点，节点超时只对它们生效。 */
@@ -265,6 +267,7 @@ export function xihanWorkflowNodeTypes(texts: XihanWorkflowTexts, options: Xihan
       ports: ENTRY_TYPES.has(type) ? 'out' : TERMINAL_TYPES.has(type) ? 'in' : 'both',
       ...(ENTRY_TYPES.has(type) ? { entry: true, minCount: 1, maxCount: 1 } : {}),
       ...(TERMINAL_TYPES.has(type) ? { terminal: true } : {}),
+      ...(QUICK_INSERT_TYPES.includes(type) ? { quickInsert: QUICK_INSERT_TYPES.indexOf(type) + 1 } : {}),
       properties: [
         { path: ['label'], control: { kind: 'text' }, group: 'basic', label: texts.properties.name },
         ...properties.map(property => descriptor(property, texts)),

@@ -5,7 +5,7 @@
 
 // 设计器层的扩展：在运行时层之上加属性编辑器、命令、面板、导入器、导出器与装上时的回调；内置命令也写成一个扩展。
 
-import type { FlowDocument, FlowEdge, FlowNode, FlowRuleContext } from '@xihan-flow/core'
+import type { FlowDocument, FlowEdge, FlowNode, FlowNodeType, FlowRuleContext } from '@xihan-flow/core'
 import type { FlowDesignerTranslations, FlowImageExportOptions, FlowImageFormat, FlowRuntimeExtension, FlowRuntimeModel } from '@xihan-flow/runtime'
 import type { DesignerCommand, DesignerExporter, DesignerImporter } from '@xihan-ui/designer-kit'
 import type { PropertyEditorLayer, PropertyEditorTable } from '@xihan-ui/designer-kit/properties'
@@ -13,7 +13,7 @@ import type { DesignerCommandsTranslations, DesignerCommandTable, DesignerSettin
 import type { XhFlowDesigner } from './flow-designer'
 import type { FlowPropertyEditor } from './panels/properties'
 import { createFlowRuntimeModel } from '@xihan-flow/runtime'
-import { extensionCommands, extensionEditors } from '@xihan-ui/designer-kit'
+import { DesignerExtensionError, extensionCommands, extensionEditors } from '@xihan-ui/designer-kit'
 import { collectSettingsSections, designerShellCommands } from '@xihan-ui/designer-shell'
 import {
   AlignObjectsBottomIcon,
@@ -217,6 +217,19 @@ export const FLOW_DESIGNER_EXTENSION: FlowDesignerExtension = {
   exporters: [IMAGE_EXPORTER],
 }
 
+/** 命令表并上顶栏的插入命令；扩展自己登记了同名命令时抛 DesignerExtensionError。 */
+function withQuickInsert(commands: DesignerCommandTable<FlowDesignerContext>, nodeTypes: readonly FlowNodeType[], extensions: readonly FlowDesignerExtension[]): DesignerCommandTable<FlowDesignerContext> {
+  const table = new Map(commands)
+  for (const command of quickInsertCommands(nodeTypes)) {
+    if (table.has(command.id)) {
+      const owner = extensions.find(extension => extension.commands?.some(item => item.id === command.id))?.id ?? FLOW_DESIGNER_EXTENSION.id
+      throw new DesignerExtensionError('command', command.id, [FLOW_DESIGNER_EXTENSION.id, owner])
+    }
+    table.set(command.id, command)
+  }
+  return table
+}
+
 /**
  * 工具栏的缺省排列；commandLayout 没写 toolbar 时用它，再把 placement 含 toolbar 的扩展命令追加成一组。
  * 有导入器时前面再加一组打开文件，见 flowToolbarLayout。
@@ -272,6 +285,28 @@ export interface FlowDesignerModel {
   readonly settings: readonly DesignerSettingsSection[]
 }
 
+/**
+ * 顶栏的插入快捷钮：节点类型给了 quickInsert 就有一条，按它从小到大排；id 是 insert:<类型>，钮上图标下面写显示名，
+ * 名字是「添加…」。只读时、或这种节点已到 maxCount 时不可用。
+ */
+function quickInsertCommands(nodeTypes: readonly FlowNodeType[]): FlowDesignerCommand[] {
+  return nodeTypes
+    .filter(type => type.quickInsert !== undefined)
+    .sort((a, b) => a.quickInsert! - b.quickInsert!)
+    .map((type): FlowDesignerCommand => {
+      const name = type.label ?? type.type
+      return {
+        id: `insert:${type.type}`,
+        label: ({ translations }) => translations.insertNode(name),
+        shortLabel: name,
+        ...(type.icon ? { icon: type.icon } : {}),
+        placement: ['header'],
+        enabled: ({ designer }) => !designer.readonly && (type.maxCount === undefined || designer.schema.nodes.filter(node => node.type === type.type).length < type.maxCount),
+        run: ({ designer }) => void designer.addNode(type.type),
+      }
+    })
+}
+
 /** 合出设计器用的模型；editors 是垫在各扩展之下的内建编辑器。任何一处重名都抛 DesignerExtensionError。 */
 export function createFlowDesignerModel(extensions: readonly FlowDesignerExtension[], editors?: PropertyEditorLayer<FlowPropertyEditor>): FlowDesignerModel {
   const list = [FLOW_DESIGNER_EXTENSION, ...extensions]
@@ -281,7 +316,7 @@ export function createFlowDesignerModel(extensions: readonly FlowDesignerExtensi
     list,
     extensions: all,
     runtime,
-    commands: extensionCommands(all),
+    commands: withQuickInsert(extensionCommands(all), runtime.nodeTypes.types, all),
     editors: extensionEditors<FlowPropertyEditor>(editors, all),
     importers: all.flatMap(extension => extension.importers ?? []),
     exporters: all.flatMap(extension => extension.exporters ?? []),

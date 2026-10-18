@@ -162,6 +162,11 @@ describe('resolveEdgeStyle', () => {
     expect(resolveEdgeStyle(edge({ style: { dashed: true } }), undefined)).toEqual({ dashed: true })
   })
 
+  it('quickInsert 不是有限数时登记就报错', () => {
+    expect(() => createNodeTypeRegistry([{ ...base, type: 'bad', ports: 'both', quickInsert: Number.NaN }])).toThrow(/quickInsert must be a finite number/)
+    expect(createNodeTypeRegistry([{ ...base, type: 'good', ports: 'both', quickInsert: 2 }]).get('good')!.quickInsert).toBe(2)
+  })
+
   it('规则不是 JSON 时登记就报错', () => {
     const rule = { when: { path: ['data', 'at'], equals: new Date(0) }, style: { dashed: true } } as unknown as NonNullable<FlowNodeTypeDefinition['outgoingEdgeStyles']>[number]
     expect(() => createNodeTypeRegistry([{ ...base, type: 'bad', ports: 'both', outgoingEdgeStyles: [rule] }])).toThrow(/outgoingEdgeStyles must be JSON/)

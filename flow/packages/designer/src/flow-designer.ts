@@ -214,6 +214,8 @@ interface Layers {
   /** 工具栏区里的容器，放命令工具栏。 */
   readonly toolbar: HTMLElement
   readonly commandBar: CommandToolbar<FlowDesignerContext>
+  /** 顶栏中段的插入快捷钮：有 header 位置的命令时才放进外框。 */
+  readonly headerBar: CommandToolbar<FlowDesignerContext>
   readonly palette: PalettePanel
   readonly properties: PropertiesPanel
   readonly issues: IssuesPanel
@@ -895,6 +897,8 @@ export class XhFlowDesigner extends XhReactiveElement {
     menu.trigger.addEventListener('keydown', this.#onKeyDown)
     canvas.append(menu.element)
     const commandBar = createCommandToolbar<FlowDesignerContext>(doc)
+    const headerBar = createCommandToolbar<FlowDesignerContext>(doc, { display: 'stacked' })
+    headerBar.element.slot = 'header-center'
     const toolbar = createGeneratedElement(doc, 'div')
     toolbar.dataset.part = 'command-bar'
     toolbar.append(commandBar.element)
@@ -955,7 +959,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     root.addEventListener('dblclick', this.#onDoubleClick)
     root.addEventListener('contextmenu', this.#onContextMenu)
     root.addEventListener('wheel', this.#onWheel, { passive: false })
-    this.#layers = { frame, canvas, root, world, edges, labels, nodes, ports, handles, overlay, dropPreview, transform, toolbar, commandBar, palette, properties, issues, minimap, menu, panels, settings, selectionStatus, zoomStatus }
+    this.#layers = { frame, canvas, root, world, edges, labels, nodes, ports, handles, overlay, dropPreview, transform, toolbar, commandBar, headerBar, palette, properties, issues, minimap, menu, panels, settings, selectionStatus, zoomStatus }
     panels.assign(this.#model.extensions, this.#context())
     this.#prepareMenu(menu, 'blank')
     return this.#layers
@@ -1247,6 +1251,15 @@ export class XhFlowDesigner extends XhReactiveElement {
     if (this.#shows('toolbar')) {
       layers.commandBar.setDisplay(toolbarDisplayOf(this.#resolvedSettings))
       layers.commandBar.update(arrangeCommands('toolbar', commands, flowToolbarLayout(this.canImport), this.commandLayout), commands, context, shared.toolbar)
+    }
+    const header = arrangeCommands('header', commands, [], this.commandLayout)
+    if (header.length > 0) {
+      layers.headerBar.update(header, commands, context, t.insertToolbar)
+      if (!layers.headerBar.element.isConnected)
+        layers.frame.append(layers.headerBar.element)
+    }
+    else {
+      layers.headerBar.element.remove()
     }
     if (this.#shows('palette'))
       layers.palette.update(this.#editor.model.nodeTypes, { order: this.paletteGroupOrder, labels: this.paletteGroupLabels }, t)
