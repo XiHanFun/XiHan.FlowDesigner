@@ -24,3 +24,4 @@ export type {
 export { defineFlowDesigner, FLOW_DESIGNER_TAG, XhFlowDesigner } from './flow-designer'
 export type { FlowDesignerEventMap, FlowDesignerPanel, FlowSchemaChangeKind } from './flow-designer'
 export type { FlowPropertyEditor, FlowPropertyEditorContext, FlowPropertyEditorInstance, FlowPropertyTarget } from './panels/properties'
+export { FLOW_SETTING_KEYS, FLOW_SETTINGS_SECTION } from './settings'

@@ -361,3 +361,10 @@ type FlowBuiltinPropertyKey = 'label' | 'style.dashed'
 | `FlowPropertyEditorContext` | 类型 | 交给属性编辑器的上下文：target 是当前全部被编辑的对象。 |
 | `FlowPropertyEditorInstance` | 类型 | 属性编辑器实例。 |
 | `FlowPropertyTarget` | 类型 | 交给属性编辑器的对象：kind 是节点类型（连线为 edge，流程定义为 document），value 是节点、连线或流程定义本身。 |
+
+### settings
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `FLOW_SETTING_KEYS` | 常量 | 「画布」分区各条目的键，即 settings 里的键（分区 id.条目 id）。 |
+| `FLOW_SETTINGS_SECTION` | 常量 | 设计器自己那个设置分区的 id，扩展不能再用。 |

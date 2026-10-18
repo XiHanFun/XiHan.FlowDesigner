@@ -8,7 +8,7 @@
 import type { FlowDesignerContext, FlowDesignerExtension, XhFlowDesigner } from '../src'
 import { DesignerExtensionError } from '@xihan-ui/designer-kit'
 import { afterEach, describe, expect, it } from 'vitest'
-import { defineFlowDesigner } from '../src'
+import { defineFlowDesigner, FLOW_SETTING_KEYS, FLOW_SETTINGS_SECTION } from '../src'
 import { mount, nodes, unmountAll } from './helpers'
 
 defineFlowDesigner()
@@ -81,7 +81,8 @@ describe('设置', () => {
     const probe: FlowDesignerExtension = { id: 'probe', commands: [{ id: 'probe.read', label: 'Read', placement: ['toolbar'], run: context => void seen.push(context.settings) }] }
     const designer = await mount((element) => {
       element.extensions = [nodes, probe]
-      element.settings = { 'flow.layoutDirection': 'LR', 'flow.layerGap': 100 }
+      // 宿主经包入口的常量给设置，不手写键
+      element.settings = { [FLOW_SETTING_KEYS.layoutDirection]: 'LR', [FLOW_SETTING_KEYS.layerGap]: 100 }
     })
     const at = (id: string): { x: number, y: number, width: number, height: number } => designer.schema.nodes.find(node => node.id === id)!
     designer.autoLayout()
@@ -91,6 +92,7 @@ describe('设置', () => {
     await designer.updateComplete
     designer.querySelector<HTMLButtonElement>('[data-part="command-bar"] button[value="probe.read"]')!.click()
     expect(seen[0]).toMatchObject({ 'flow.layoutDirection': 'LR', 'flow.nodeGap': 24, 'flow.layerGap': 100, 'flow.minimap': true, 'flow.snap': true })
+    expect([FLOW_SETTINGS_SECTION, Object.values(FLOW_SETTING_KEYS).every(key => key.startsWith(`${FLOW_SETTINGS_SECTION}.`))]).toEqual(['flow', true])
   })
 
   it('主题与主题色落在设计器元素上：亮暗写 data-theme，预设主题色写 data-brand，跟随页面时去掉', async () => {

@@ -4,15 +4,19 @@
  */
 
 // 设计器的设置：宿主管着主题，用户偏好存在宿主自己那里；独立使用时交给本机存储；从工具栏外的按钮打开设置。
+// 键都用包入口导出的常量，不手写字符串。
 
 import type { XhFlowDesigner } from '@xihan-flow/designer'
+import { FLOW_SETTING_KEYS, FLOW_SETTINGS_SECTION } from '@xihan-flow/designer'
+import { DESIGNER_SETTING_KEYS } from '@xihan-ui/designer-shell'
 
 type FlowSettings = NonNullable<XhFlowDesigner['settings']>
 
 // #region host
 export function wireSettings(designer: XhFlowDesigner, saved: FlowSettings, store: (settings: FlowSettings) => void): void {
-  designer.settings = saved
-  designer.settingsPolicy = { 'general.theme': 'hidden', 'general.brand': 'hidden', 'flow.snap': 'locked' }
+  // 宿主自己的缺省压在下面，用户存过的值盖在上面
+  designer.settings = { [FLOW_SETTING_KEYS.layoutDirection]: 'LR', ...saved }
+  designer.settingsPolicy = { [DESIGNER_SETTING_KEYS.theme]: 'hidden', [DESIGNER_SETTING_KEYS.brand]: 'hidden', [FLOW_SETTING_KEYS.snap]: 'locked' }
   designer.addEventListener('settings-change', (event) => {
     store((event as CustomEvent<{ settings: FlowSettings }>).detail.settings)
   })
@@ -30,6 +34,6 @@ export function standalone(designer: XhFlowDesigner): void {
 
 // #region open
 export function openCanvasSettings(designer: XhFlowDesigner): void {
-  designer.openSettings('flow')
+  designer.openSettings(FLOW_SETTINGS_SECTION)
 }
 // #endregion open
