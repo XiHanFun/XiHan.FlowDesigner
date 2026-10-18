@@ -6,7 +6,7 @@
 // 查看器的场景：把文档、节点类型与运行状态算成可直接绘制的节点框、连线路径、箭头与标签位置，不碰 DOM。
 
 import type { FlowDocument, FlowEdge, FlowEdgeRouter, FlowNode, FlowNodeType, FlowNodeTypeRegistry, FlowPoint, FlowRect } from '@xihan-flow/core'
-import { computeEdgeGeometry } from '@xihan-flow/core'
+import { computeEdgeGeometry, resolveEdgeStyle } from '@xihan-flow/core'
 import { unionRects } from '@xihan-ui/designer-kit'
 import { arrowHeadPath, polylinePointAt, roundedPolylinePath, shortenPolyline } from '@xihan-ui/viz'
 
@@ -50,6 +50,7 @@ export interface FlowSceneEdge {
   readonly label: string | undefined
   /** 标签位置：折线总长一半处。 */
   readonly labelPoint: FlowPoint | undefined
+  /** 画成虚线：连线自己写的外观，压在源节点类型按数据给的外观之上（resolveEdgeStyle）。 */
   readonly dashed: boolean
 }
 
@@ -77,6 +78,7 @@ export function buildScene(document: FlowDocument, registry: FlowNodeTypeRegistr
       highlighted: highlighted.has(node.id),
     }
   })
+  const types = new Map(nodes.map(node => [node.id, node.nodeType]))
   const geometry = computeEdgeGeometry(document, registry, options.route)
   const edges: FlowSceneEdge[] = document.edges.map((edge, index) => {
     const { anchored, points } = geometry[index]!
@@ -91,7 +93,7 @@ export function buildScene(document: FlowDocument, registry: FlowNodeTypeRegistr
       arrow: drawable ? arrowHeadPath(line[line.length - 1]!, points[points.length - 1]!, { length: arrowSize }) : '',
       label: edge.label || undefined,
       labelPoint: drawable ? polylinePointAt(points, 0.5) : undefined,
-      dashed: edge.style?.dashed === true,
+      dashed: resolveEdgeStyle(edge, types.get(edge.source.node)).dashed === true,
     }
   })
   return { nodes, edges, bounds: sceneBounds(nodes, edges) }

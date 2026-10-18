@@ -107,6 +107,7 @@ declare function createFlowModel(extensions?: readonly FlowCoreExtension[]): Flo
 | `maxCount?` | `number` | 文档中该类型节点的最多个数。 |
 | `properties?` | `readonly FlowPropertyDescriptor[]` | 属性面板里的属性，path 相对节点本身；校验按它们检查取值。 |
 | `outgoingEdges?` | `readonly FlowPropertyDescriptor[]` | 从这类节点连出的连线多出的属性，path 相对连线本身，如决策节点出线的条件与是否默认分支。 |
+| `outgoingEdgeStyles?` | `readonly FlowEdgeStyleRule[]` | 从这类节点连出的连线按数据给的外观，如条件分支的默认分支画成虚线：按先后逐条看，满足的依次并上。连线自己写的 style 逐项压过它们；推出的外观只用于绘制，不写回流程定义。 |
 | `meta?` | `JsonObject` | 扩展自用的数据；内核不解释。 |
 
 ### FlowPortPreset {#flowportpreset}
@@ -166,6 +167,15 @@ type FlowPortSide = 'top' | 'right' | 'bottom' | 'left'
 | --- | --- | --- |
 | `label?` | `string` | 新节点的标签。 |
 | `data?` | `JsonObject` | 新节点的 data，每次新建时深拷贝一份。 |
+
+### FlowEdgeStyleRule {#flowedgestylerule}
+
+按连线数据给的外观：when 对连线本身求值，满足时并上 style。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `when` | `PropertyCondition` | 条件，路径相对连线本身，如 ['data', 'isDefault']；写法同属性描述的 visibleWhen。 |
+| `style` | `FlowEdgeStyle` | 满足条件时的外观。 |
 
 ## 属性描述
 

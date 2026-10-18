@@ -3,9 +3,9 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-import type { FlowNodeTypeDefinition, FlowPort } from '../src'
+import type { FlowEdge, FlowNodeTypeDefinition, FlowPort } from '../src'
 import { describe, expect, it } from 'vitest'
-import { createNode, createNodeTypeRegistry, findPort, getPortPosition, portAllows } from '../src'
+import { createNode, createNodeTypeRegistry, findPort, getPortPosition, portAllows, resolveEdgeStyle } from '../src'
 
 const base = { size: { width: 120, height: 40 } } as const
 
@@ -134,5 +134,36 @@ describe('端口工具', () => {
     const registry = createNodeTypeRegistry([{ ...base, type: 't', ports: 'both' }])
     expect(findPort(registry.get('t')!, 'out')?.direction).toBe('out')
     expect(findPort(registry.get('t')!, 'x')).toBeUndefined()
+  })
+})
+
+describe('resolveEdgeStyle', () => {
+  const registry = createNodeTypeRegistry([{
+    ...base,
+    type: 'decision',
+    ports: 'both',
+    outgoingEdgeStyles: [
+      { when: { path: ['data', 'isDefault'], equals: true }, style: { dashed: true } },
+      { when: { path: ['data', 'muted'], filled: true }, style: { dashed: false } },
+    ],
+  }])
+  const decision = registry.get('decision')
+  const edge = (patch: Partial<FlowEdge> = {}): FlowEdge => ({ id: 'e', source: { node: 'd' }, target: { node: 'x' }, ...patch })
+
+  it('源节点类型的规则按先后并上满足条件的，都不满足时是空外观', () => {
+    expect(resolveEdgeStyle(edge(), decision)).toEqual({})
+    expect(resolveEdgeStyle(edge({ data: { isDefault: true } }), decision)).toEqual({ dashed: true })
+    expect(resolveEdgeStyle(edge({ data: { isDefault: true, muted: 'yes' } }), decision)).toEqual({ dashed: false })
+  })
+
+  it('连线自己写的外观逐项压过推出的；源节点类型未知时只有连线自己写的', () => {
+    expect(resolveEdgeStyle(edge({ data: { isDefault: true }, style: { dashed: false } }), decision)).toEqual({ dashed: false })
+    expect(resolveEdgeStyle(edge({ data: { isDefault: true } }), undefined)).toEqual({})
+    expect(resolveEdgeStyle(edge({ style: { dashed: true } }), undefined)).toEqual({ dashed: true })
+  })
+
+  it('规则不是 JSON 时登记就报错', () => {
+    const rule = { when: { path: ['data', 'at'], equals: new Date(0) }, style: { dashed: true } } as unknown as NonNullable<FlowNodeTypeDefinition['outgoingEdgeStyles']>[number]
+    expect(() => createNodeTypeRegistry([{ ...base, type: 'bad', ports: 'both', outgoingEdgeStyles: [rule] }])).toThrow(/outgoingEdgeStyles must be JSON/)
   })
 })

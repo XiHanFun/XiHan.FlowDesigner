@@ -7,7 +7,7 @@ import type { FlowDocument, FlowIssue } from '../../src'
 import type { XihanWorkflowDefinition } from '../../src/presets/xihan-workflow'
 import { formatJsonPath } from '@xihan-ui/core/json'
 import { describe, expect, it } from 'vitest'
-import { createFlowModel, readDocument, validateDocument } from '../../src'
+import { createFlowModel, readDocument, resolveEdgeStyle, validateDocument } from '../../src'
 import {
   createXihanWorkflow,
   fromWorkflowDefinition,
@@ -283,6 +283,23 @@ describe('与引擎定义互转', () => {
     const definition = toWorkflowDefinition(document)
     expect(JSON.parse(definition.extraProperties!.designerEdges!)).toEqual({ t5: { vertices: [{ x: 500, y: 200 }], style: { dashed: true } } })
     expect(fromWorkflowDefinition(definition)).toEqual(document)
+  })
+
+  it('条件分支的默认分支按 isDefault 画成虚线：没有 designerEdges 也推得出，推出的外观不写回定义', () => {
+    const decision = createFlowModel(extensions).nodeTypes.get('Decision')
+    const document = fromWorkflowDefinition(approval())
+    const dashed = (doc: FlowDocument, id: string): boolean | undefined => resolveEdgeStyle(doc.edges.find(item => item.id === id)!, decision).dashed
+    expect([dashed(document, 't4'), dashed(document, 't5')]).toEqual([undefined, true])
+    expect(document.edges.find(item => item.id === 't5')!.style).toBeUndefined()
+
+    const once = toWorkflowDefinition(document)
+    const twice = toWorkflowDefinition(fromWorkflowDefinition(once))
+    expect([once.extraProperties!.designerEdges, twice.extraProperties!.designerEdges]).toEqual([undefined, undefined])
+    expect(twice).toEqual(once)
+
+    const solid = { ...document, edges: document.edges.map(item => item.id === 't5' ? { ...item, style: { dashed: false } } : item) }
+    expect(dashed(solid, 't5')).toBe(false)
+    expect(JSON.parse(toWorkflowDefinition(solid).extraProperties!.designerEdges!)).toEqual({ t5: { style: { dashed: false } } })
   })
 
   it('没有坐标的节点按连线自左向右排开；连线缺 id 时补上', () => {

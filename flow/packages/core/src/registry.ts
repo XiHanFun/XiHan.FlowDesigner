@@ -5,11 +5,11 @@
 
 import type { IconRecord } from '@xihan-ui/core'
 import type { JsonObject } from '@xihan-ui/core/json'
-import type { PropertyControl, PropertyDescriptor } from '@xihan-ui/designer-kit/properties'
+import type { PropertyCondition, PropertyControl, PropertyDescriptor } from '@xihan-ui/designer-kit/properties'
 import type { FlowEdgeEnd } from './issues'
-import type { FlowNode, FlowPoint, FlowRect, FlowSize } from './schema'
+import type { FlowEdge, FlowEdgeStyle, FlowNode, FlowPoint, FlowRect, FlowSize } from './schema'
 import { cloneJson, findJsonViolation, formatJsonPath, getJsonAt } from '@xihan-ui/core/json'
-import { applyDefaults } from '@xihan-ui/designer-kit/properties'
+import { applyDefaults, evaluateCondition } from '@xihan-ui/designer-kit/properties'
 
 /** 端口方向：只入、只出或双向。 */
 export type FlowPortDirection = 'in' | 'out' | 'both'
@@ -61,6 +61,14 @@ export type FlowPropertyControl = PropertyControl | { readonly kind: string }
 /** 节点属性描述：path 相对节点本身，如 ['data', 'properties', 'Url']、['label']。 */
 export type FlowPropertyDescriptor = PropertyDescriptor<FlowPropertyControl>
 
+/** 按连线数据给的外观：when 对连线本身求值，满足时并上 style。 */
+export interface FlowEdgeStyleRule {
+  /** 条件，路径相对连线本身，如 ['data', 'isDefault']；写法同属性描述的 visibleWhen。 */
+  readonly when: PropertyCondition
+  /** 满足条件时的外观。 */
+  readonly style: FlowEdgeStyle
+}
+
 /** 新建节点时的默认值。 */
 export interface FlowNodeDefaults {
   /** 新节点的标签。 */
@@ -99,6 +107,11 @@ export interface FlowNodeTypeDefinition {
   readonly properties?: readonly FlowPropertyDescriptor[]
   /** 从这类节点连出的连线多出的属性，path 相对连线本身，如决策节点出线的条件与是否默认分支。 */
   readonly outgoingEdges?: readonly FlowPropertyDescriptor[]
+  /**
+   * 从这类节点连出的连线按数据给的外观，如条件分支的默认分支画成虚线：按先后逐条看，满足的依次并上。
+   * 连线自己写的 style 逐项压过它们；推出的外观只用于绘制，不写回流程定义。
+   */
+  readonly outgoingEdgeStyles?: readonly FlowEdgeStyleRule[]
   /** 扩展自用的数据；内核不解释。 */
   readonly meta?: JsonObject
 }
@@ -179,6 +192,19 @@ export function findPort(nodeType: FlowNodeType, portId: string): FlowPort | und
   return nodeType.ports.find(port => port.id === portId)
 }
 
+/**
+ * 连线此刻的外观：源节点类型的 outgoingEdgeStyles 按先后并上满足条件的，连线自己写的 style 再逐项压过；
+ * 源节点类型未知时只有连线自己写的。
+ */
+export function resolveEdgeStyle(edge: FlowEdge, sourceType: FlowNodeType | undefined): FlowEdgeStyle {
+  let style: FlowEdgeStyle = {}
+  for (const rule of sourceType?.outgoingEdgeStyles ?? []) {
+    if (evaluateCondition(rule.when, edge as unknown as JsonObject))
+      style = { ...style, ...rule.style }
+  }
+  return edge.style ? { ...style, ...edge.style } : style
+}
+
 /** 判断端口能否作为连线的指定一端：起点需可出，终点需可入。 */
 export function portAllows(port: FlowPort, end: FlowEdgeEnd): boolean {
   return port.direction === 'both' || port.direction === (end === 'source' ? 'out' : 'in')
@@ -213,6 +239,8 @@ function normalizeNodeType(definition: FlowNodeTypeDefinition): FlowNodeType {
   checkCount(type, 'connection.maxOutgoing', definition.connection?.maxOutgoing)
   checkJson(type, 'defaults.data', definition.defaults?.data)
   checkJson(type, 'meta', definition.meta)
+  for (const rule of definition.outgoingEdgeStyles ?? [])
+    checkJson(type, 'outgoingEdgeStyles', rule as unknown as JsonObject)
 
   const ports = typeof definition.ports === 'string'
     ? presetPorts(type, definition.ports)

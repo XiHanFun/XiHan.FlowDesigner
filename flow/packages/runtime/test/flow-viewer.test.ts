@@ -7,6 +7,7 @@
 
 import type { FlowDocument } from '@xihan-flow/core'
 import type { FlowRuntimeExtension, XhFlowViewer } from '../src'
+import { fromWorkflowDefinition, xihanWorkflow } from '@xihan-flow/core/presets/xihan-workflow'
 import { DesignerExtensionError } from '@xihan-ui/designer-kit'
 import { setXhConfig } from '@xihan-ui/web-components'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -89,6 +90,29 @@ describe('<xh-flow-viewer>', () => {
     await viewer.updateComplete
     expect([node('s').dataset.status, node('t').hasAttribute('data-highlighted')]).toEqual([undefined, false])
     expect(node('t').dataset.status).toBe('running')
+  })
+
+  it('装上 XiHan 工作流预设：读入的定义没有 designerEdges 时，条件分支的默认分支照 isDefault 画成虚线', async () => {
+    const viewer = await mount((element) => {
+      element.extensions = [xihanWorkflow]
+      element.schema = fromWorkflowDefinition({
+        code: 'leave',
+        name: '请假',
+        nodes: [
+          { id: 'start', activityType: 'Start' },
+          { id: 'check', activityType: 'Decision' },
+          { id: 'long', activityType: 'End' },
+          { id: 'short', activityType: 'End' },
+        ],
+        transitions: [
+          { id: 'a', sourceNodeId: 'start', targetNodeId: 'check' },
+          { id: 'b', sourceNodeId: 'check', targetNodeId: 'long', condition: 'days > 3' },
+          { id: 'c', sourceNodeId: 'check', targetNodeId: 'short', isDefault: true },
+        ],
+      })
+    })
+    const dashed = (id: string): boolean => viewer.querySelector(`[data-part="edge"][data-edge-id="${id}"]`)!.hasAttribute('data-dashed')
+    expect(['a', 'b', 'c'].map(dashed)).toEqual([false, false, true])
   })
 
   it('自定义节点内容', async () => {
