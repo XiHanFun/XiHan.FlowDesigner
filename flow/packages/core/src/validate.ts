@@ -44,6 +44,7 @@ export const DEFAULT_ISSUE_SEVERITY: Readonly<Record<FlowValidationIssueCode, Is
   'invalid-option': 'error',
   'invalid-color': 'error',
   'invalid-value': 'error',
+  'duplicate-value': 'error',
   'unknown-key': 'error',
   'unknown-control': 'error',
 }

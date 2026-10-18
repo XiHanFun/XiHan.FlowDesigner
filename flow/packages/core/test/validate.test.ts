@@ -294,7 +294,7 @@ describe('validateDocument', () => {
   })
 
   it('缺省严重程度表覆盖全部校验问题码', () => {
-    expect(Object.keys(DEFAULT_ISSUE_SEVERITY)).toHaveLength(27)
+    expect(Object.keys(DEFAULT_ISSUE_SEVERITY)).toHaveLength(28)
   })
 })
 
