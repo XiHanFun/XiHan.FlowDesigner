@@ -82,6 +82,53 @@ describe('工具栏', () => {
   })
 })
 
+type FrameElement = HTMLElement & {
+  regions: readonly { name: string, title?: string, subtitle?: string, help?: string }[]
+  showsPanel: (name: string) => boolean
+}
+
+describe('外框卡片', () => {
+  it('物料、属性与问题画成卡片：面板头写标题与帮助，属性面板的副标题是当前编辑的对象；零件不画自己的标题', async () => {
+    const designer = await mount()
+    await settleFrame(designer)
+    const frame = designer.querySelector<FrameElement>('xh-designer-frame')!
+    const region = (name: string) => frame.regions.find(item => item.name === name)!
+    expect(['palette', 'properties', 'issues'].map(name => [region(name).title, typeof region(name).help])).toEqual([
+      ['Nodes', 'string'],
+      ['Properties', 'string'],
+      ['Problems', 'string'],
+    ])
+    expect([region('toolbar').title, region('canvas').title]).toEqual([undefined, undefined])
+    designer.select({ nodes: ['t'] })
+    await settleFrame(designer)
+    expect(region('properties').subtitle).toBe('任务 · t')
+    expect(frame.querySelector('[data-region="properties"] [data-part="panel-subtitle"]')!.textContent).toBe('任务 · t')
+    const parts = ['xh-designer-palette', 'xh-designer-properties', 'xh-designer-issues'].map(tag => designer.querySelector<HTMLElement & { headless?: boolean }>(tag)!)
+    expect(parts.map(element => element.headless)).toEqual([true, true, true])
+  })
+
+  it('点面板头的关闭钮收起这块面板：panels 换成外框剩下的区，设计器自己的小地图照原样，派发 panels-change', async () => {
+    const designer = await mount()
+    await settleFrame(designer)
+    const frame = designer.querySelector<FrameElement>('xh-designer-frame')!
+    const seen: string[] = []
+    designer.addEventListener('panels-change', event => seen.push((event as CustomEvent<{ panels: string }>).detail.panels))
+    frame.querySelector<HTMLButtonElement>('[data-region="palette"] [data-part="panel-close"]')!.click()
+    await settleFrame(designer)
+    expect(seen).toEqual([designer.panels])
+    const shown = designer.panels!.split(' ')
+    expect(shown).toEqual(expect.arrayContaining(['toolbar', 'properties', 'issues', 'minimap']))
+    expect([shown.includes('palette'), frame.showsPanel('palette'), frame.showsPanel('properties')]).toEqual([false, false, true])
+
+    designer.panels = 'toolbar properties issues'
+    await settleFrame(designer)
+    frame.querySelector<HTMLButtonElement>('[data-region="issues"] [data-part="panel-close"]')!.click()
+    await settleFrame(designer)
+    expect(designer.panels).toBe('toolbar properties')
+    expect(designer.querySelector<HTMLElement>('xh-designer-minimap')!.hidden).toBe(true)
+  })
+})
+
 describe('物料面板', () => {
   function palette(designer: Element): HTMLElement & { updateComplete: Promise<unknown> } {
     return designer.querySelector('xh-designer-palette')!
