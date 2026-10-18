@@ -72,13 +72,36 @@ describe('查看器导出图片', () => {
     expect(x! + width!).toBeGreaterThanOrEqual(310)
 
     const background = svg.firstElementChild!
-    expect([background.localName, background.getAttribute('fill')]).toEqual(['rect', 'rgb(255, 255, 255)'])
+    expect([background.localName, background.getAttribute('fill')]).toEqual(['rect', '#ffffff'])
     expect(Array.from(svg.querySelectorAll('text'), text => text.textContent)).toEqual(['提交', '开始', '审批'])
     expect(svg.querySelectorAll('path[d]').length).toBeGreaterThanOrEqual(2)
     const icon = svg.querySelector('svg')!
     expect(icon.getAttribute('viewBox')).toBe('0 0 24 24')
     expect(icon.querySelector('path')!.getAttribute('d')).toBe('M8 5v14l11-7z')
     expect(svg.querySelector('[class], [data-part], [style]')).toBeNull()
+  })
+
+  it('颜色写成 sRGB 的 #rrggbb，自带的透明度写进透明度属性；画布的字体写在根上，与它相同的文字不再写', async () => {
+    const viewer = await mount()
+    const font = { fontFamily: 'serif', fontSize: '13px', fontWeight: '400' }
+    Object.assign(viewer.querySelector<HTMLElement>('[data-part="viewport"]')!.style, font)
+    const label = viewer.querySelector<HTMLElement>('[data-part="edge-label"]')!
+    Object.assign(label.style, font, { color: 'rgb(255, 0, 0)', backgroundColor: 'rgba(10, 20, 30, 0.5)', border: '1px solid rgba(0, 0, 255, 0.25)' })
+    const task = viewer.querySelector<HTMLElement>('[data-part="node"][data-node-id="t"]')!
+    Object.assign(task.style, font, { fontStyle: 'italic', fontWeight: '600' })
+    Object.assign(viewer.querySelector<HTMLElement>('[data-part="node"][data-node-id="s"] [data-part="node-label"]')!.style, font)
+    const svg = await parse(await viewer.export('svg', { background: 'rgba(255, 255, 255, 0.8)' }))
+    expect([svg.getAttribute('font-family'), svg.getAttribute('font-size'), svg.getAttribute('font-weight')]).toEqual(['serif', '13px', '400'])
+    const background = svg.firstElementChild!
+    expect([background.getAttribute('fill'), background.getAttribute('fill-opacity')]).toEqual(['#ffffff', '0.8'])
+    const [submit, start, approve] = Array.from(svg.querySelectorAll('text'))
+    expect([submit!.getAttribute('fill'), submit!.hasAttribute('fill-opacity')]).toEqual(['#ff0000', false])
+    expect(['font-family', 'font-size', 'font-weight', 'font-style'].filter(name => start!.hasAttribute(name))).toEqual([])
+    expect([approve!.getAttribute('font-style'), approve!.getAttribute('font-weight'), approve!.hasAttribute('font-family')]).toEqual(['italic', '600', false])
+    const frame = submit!.previousElementSibling!
+    expect([frame.getAttribute('fill'), frame.getAttribute('fill-opacity'), frame.getAttribute('stroke'), frame.getAttribute('stroke-opacity')])
+      .toEqual(['#0a141e', '0.5', '#0000ff', '0.25'])
+    expect(new XMLSerializer().serializeToString(svg)).not.toMatch(/rgba?\(/)
   })
 
   it('写 transparent 时不铺底色；画布与外层都透明时缺省也不铺', async () => {
