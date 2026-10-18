@@ -31,7 +31,7 @@ function toolbarItem(designer: Element, command: string): HTMLButtonElement {
 describe('工具栏', () => {
   it('条目带文案，可用状态随历史、选择与只读变化', async () => {
     const designer = await mount()
-    expect(designer.querySelector('xh-toolbar [data-xh-part="root"]')!.getAttribute('aria-label')).toBe('Designer tools')
+    expect(designer.querySelector('xh-toolbar [data-xh-part="root"]')!.getAttribute('aria-label')).toBe('Designer actions')
     expect(toolbarItem(designer, 'undo').textContent).toBe('Undo')
     const disabled = (): string[] => ['undo', 'redo', 'delete', 'duplicate', 'align-left', 'distribute-horizontal', 'auto-layout', 'zoom-in']
       .filter(command => toolbarItem(designer, command).disabled)
@@ -54,6 +54,15 @@ describe('工具栏', () => {
     expect(disabled()).toEqual(['undo', 'redo', 'delete', 'duplicate', 'align-left', 'distribute-horizontal', 'auto-layout'])
   })
 
+  it('内置命令都带图标，删除带 danger 语气；名字写在按钮上', async () => {
+    const designer = await mount()
+    const items = Array.from(designer.querySelectorAll<HTMLButtonElement>('[data-part="toolbar"] button[data-xh-part="item"]'))
+    expect(items.length).toBeGreaterThan(10)
+    expect(items.filter(item => !item.hasAttribute('data-icon')).map(item => item.value)).toEqual([])
+    expect([toolbarItem(designer, 'delete').getAttribute('data-tone'), toolbarItem(designer, 'undo').getAttribute('data-tone')]).toEqual(['danger', null])
+    expect(toolbarItem(designer, 'zoom-to-fit').getAttribute('aria-label')).toBe('Zoom to fit')
+  })
+
   it('点条目执行对应命令，禁用的条目不执行', async () => {
     const designer = await mount()
     designer.select({ nodes: ['t'] })
@@ -68,14 +77,14 @@ describe('工具栏', () => {
     expect(designer.getViewport().zoom).toBeCloseTo(1.2)
   })
 
-  it('panels 里没列工具栏时收起，文案跟着全局配置变', async () => {
+  it('panels 里没列工具栏时收起，通用命令的文案跟着全局配置里 xh-designer-commands 那一桶变', async () => {
     const designer = await mount(element => element.setAttribute('panels', 'palette properties'))
     await settleFrame(designer)
     expect(part(designer, 'toolbar')).toHaveLength(0)
     expect(part(designer, 'palette')).toHaveLength(1)
     expect(part(designer, 'issues')).toHaveLength(0)
     designer.removeAttribute('panels')
-    setXhConfig({ translations: { 'xh-flow-designer': { undo: '撤销' } } })
+    setXhConfig({ translations: { 'xh-designer-commands': { undo: '撤销' } } })
     await settleFrame(designer)
     expect(part(designer, 'toolbar')).toHaveLength(1)
     expect(toolbarItem(designer, 'undo').textContent).toBe('撤销')
@@ -424,11 +433,11 @@ describe('右键菜单', () => {
     rightClick(designer.querySelector('[data-part="node"][data-node-id="t"]')!)
     await designer.updateComplete
     expect(designer.getSelection().nodes).toEqual(['t'])
-    expect(items()).toEqual(['duplicate', 'copy', 'cut', 'delete'])
+    expect(items()).toEqual(['cut', 'copy', 'duplicate', 'delete'])
 
     designer.select({ nodes: ['s', 't', 'e'] })
     rightClick(designer.querySelector('[data-part="node"][data-node-id="t"]')!)
-    expect(items()).toEqual(['duplicate', 'copy', 'cut', 'delete', 'align-left', 'align-center', 'align-right', 'align-top', 'align-middle', 'align-bottom', 'distribute-horizontal', 'distribute-vertical'])
+    expect(items()).toEqual(['cut', 'copy', 'duplicate', 'delete', 'align-left', 'align-center', 'align-right', 'align-top', 'align-middle', 'align-bottom', 'distribute-horizontal', 'distribute-vertical'])
 
     rightClick(part(designer, 'edge-hit')[0]!)
     expect(items()).toEqual(['delete', 'clear-vertices(x)'])
@@ -450,7 +459,7 @@ describe('右键菜单', () => {
     designer.readonly = true
     await designer.updateComplete
     rightClick(designer.querySelector('[data-part="node"][data-node-id="t"]')!)
-    expect(items()).toEqual(['duplicate(x)', 'copy', 'cut(x)', 'delete(x)'])
+    expect(items()).toEqual(['cut(x)', 'copy', 'duplicate(x)', 'delete(x)'])
     menu.dispatchEvent(new CustomEvent('select', { detail: { value: 'delete' } }))
     menu.dispatchEvent(new CustomEvent('select', { detail: { value: 'cut' } }))
     expect(designer.schema.nodes).toHaveLength(4)

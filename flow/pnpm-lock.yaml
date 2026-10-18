@@ -102,6 +102,9 @@ importers:
       '@xihan-ui/designer-shell':
         specifier: link:../../../../XiHan.UI/ui/packages/features/designer-shell
         version: link:../../../../XiHan.UI/ui/packages/features/designer-shell
+      '@xihan-ui/icons':
+        specifier: link:../../../../XiHan.UI/ui/packages/design/icons
+        version: link:../../../../XiHan.UI/ui/packages/design/icons
       '@xihan-ui/pointer':
         specifier: link:../../../../XiHan.UI/ui/packages/engine/pointer
         version: link:../../../../XiHan.UI/ui/packages/engine/pointer

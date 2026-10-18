@@ -35,6 +35,7 @@ import type { PropertyEditorLayer, PropertySwatchOption } from '@xihan-ui/design
 import type {
   CommandToolbar,
   DesignerCommandLayout,
+  DesignerCommandsTranslations,
   DesignerFrameEventMap,
   DesignerFrameRegion,
   DesignerPanelHost,
@@ -82,6 +83,7 @@ import {
   createDesignerSettingsHost,
   createPanelHost,
   defineDesignerShellElement,
+  DESIGNER_COMMANDS_EN_US,
   DESIGNER_FRAME_REGIONS,
   importSources,
   parseDesignerPanels,
@@ -776,7 +778,7 @@ export class XhFlowDesigner extends XhReactiveElement {
 
   /** 交给命令、面板与扩展 setup 的上下文。 */
   #context(): FlowDesignerContext {
-    return { designer: this, translations: this.#translations(), settings: this.#resolvedSettings }
+    return { designer: this, translations: this.#translations(), commandTranslations: this.#commandTranslations(), settings: this.#resolvedSettings }
   }
 
   #kbdPlatform(): 'mac' | 'other' {
@@ -1146,9 +1148,9 @@ export class XhFlowDesigner extends XhReactiveElement {
    * 外框的命名区：工具栏与画布带上本地化的区名（分隔条的无障碍名称要用）；物料、属性与问题画成卡片，面板头写标题与帮助，
    * 属性面板的副标题是当前编辑的对象。后面接扩展面板的区。
    */
-  #frameRegions(t: FlowDesignerTranslations, layers: Layers): readonly DesignerFrameRegion[] {
+  #frameRegions(t: FlowDesignerTranslations, toolbar: string, layers: Layers): readonly DesignerFrameRegion[] {
     const regions: Readonly<Record<string, Partial<DesignerFrameRegion>>> = {
-      toolbar: { label: t.toolbar },
+      toolbar: { label: toolbar },
       palette: { title: t.palette, help: t.paletteHelp },
       canvas: { label: t.label },
       properties: {
@@ -1186,10 +1188,11 @@ export class XhFlowDesigner extends XhReactiveElement {
   #renderPanels(layers: Layers, t: FlowDesignerTranslations): void {
     layers.frame.panels = this.panels
     layers.minimap.element.hidden = !this.#showsMinimap()
-    const context: FlowDesignerContext = { designer: this, translations: t, settings: this.#resolvedSettings }
+    const shared = this.#commandTranslations()
+    const context: FlowDesignerContext = { designer: this, translations: t, commandTranslations: shared, settings: this.#resolvedSettings }
     const { commands } = this.#model
     if (this.#shows('toolbar'))
-      layers.commandBar.update(arrangeCommands('toolbar', commands, flowToolbarLayout(this.canImport), this.commandLayout), commands, context, t.toolbar)
+      layers.commandBar.update(arrangeCommands('toolbar', commands, flowToolbarLayout(this.canImport), this.commandLayout), commands, context, shared.toolbar)
     if (this.#shows('palette'))
       layers.palette.update(this.#editor.model.nodeTypes, { order: this.paletteGroupOrder, labels: this.paletteGroupLabels }, t)
     if (this.#shows('properties'))
@@ -1198,7 +1201,7 @@ export class XhFlowDesigner extends XhReactiveElement {
       layers.issues.update(t)
     if (this.#showsMinimap())
       layers.minimap.update()
-    layers.frame.regions = this.#frameRegions(t, layers)
+    layers.frame.regions = this.#frameRegions(t, shared.toolbar, layers)
     layers.panels.update(context)
   }
 
@@ -1688,6 +1691,11 @@ export class XhFlowDesigner extends XhReactiveElement {
 
   #translations(): FlowDesignerTranslations {
     return this.#config.translations<FlowDesignerTranslations>(FLOW_DESIGNER_TAG, DEFAULT_FLOW_DESIGNER_TRANSLATIONS, this.translations)
+  }
+
+  /** 四款共用的命令文案：designer-shell 语言包的 xh-designer-commands 一桶。 */
+  #commandTranslations(): DesignerCommandsTranslations {
+    return this.#config.translations<DesignerCommandsTranslations>('xh-designer-commands', DESIGNER_COMMANDS_EN_US)
   }
 
   readonly #onWheel = (event: WheelEvent): void => {

@@ -9,12 +9,39 @@ import type { FlowDocument, FlowEdge, FlowNode, FlowRuleContext } from '@xihan-f
 import type { FlowDesignerTranslations, FlowImageExportOptions, FlowImageFormat, FlowRuntimeExtension, FlowRuntimeModel } from '@xihan-flow/runtime'
 import type { DesignerCommand, DesignerExporter, DesignerImporter } from '@xihan-ui/designer-kit'
 import type { PropertyEditorLayer, PropertyEditorTable } from '@xihan-ui/designer-kit/properties'
-import type { DesignerCommandTable, DesignerSettings, DesignerSettingsSection, DesignerShellExtension } from '@xihan-ui/designer-shell'
+import type { DesignerCommandsTranslations, DesignerCommandTable, DesignerSettings, DesignerSettingsSection, DesignerShellExtension } from '@xihan-ui/designer-shell'
 import type { XhFlowDesigner } from './flow-designer'
 import type { FlowPropertyEditor } from './panels/properties'
 import { createFlowRuntimeModel } from '@xihan-flow/runtime'
 import { extensionCommands, extensionEditors } from '@xihan-ui/designer-kit'
 import { collectSettingsSections } from '@xihan-ui/designer-shell'
+import {
+  AlignObjectsBottomIcon,
+  AlignObjectsCenterIcon,
+  AlignObjectsLeftIcon,
+  AlignObjectsMiddleIcon,
+  AlignObjectsRightIcon,
+  AlignObjectsTopIcon,
+  ClipboardIcon,
+  CopyIcon,
+  CopyPlusIcon,
+  DistributeHorizontalIcon,
+  DistributeVerticalIcon,
+  EraserIcon,
+  FileCodeIcon,
+  FileImageIcon,
+  FolderOpenIcon,
+  MaximizeIcon,
+  RedoIcon,
+  ScissorsIcon,
+  SquareDashedIcon,
+  TrashIcon,
+  UndoIcon,
+  WorkflowIcon,
+  ZoomInIcon,
+  ZoomOutIcon,
+  ZoomResetIcon,
+} from '@xihan-ui/icons'
 import { FLOW_SETTINGS_SECTION } from './settings'
 
 /** 命令、面板与扩展装上时拿到的上下文。 */
@@ -23,6 +50,8 @@ export interface FlowDesignerContext {
   readonly designer: XhFlowDesigner
   /** 此刻生效的设计器文案。 */
   readonly translations: FlowDesignerTranslations
+  /** 此刻生效的四款共用的命令文案（designer-shell 语言包的 xh-designer-commands 一桶）。 */
+  readonly commandTranslations: DesignerCommandsTranslations
   /**
    * 此刻生效的设置，键是「分区 id.条目 id」：设计器自己的「画布」与各扩展分区里的条目写了用写的、没写取缺省值，
    * 基础分区（general.*）只有宿主或用户写了的键。
@@ -71,6 +100,7 @@ export interface FlowDesignerExtension extends FlowRuntimeExtension, Omit<Design
 type TextKey = { [K in keyof FlowDesignerTranslations]: FlowDesignerTranslations[K] extends string ? K : never }[keyof FlowDesignerTranslations]
 
 const text = (key: TextKey) => (context: FlowDesignerContext): string => context.translations[key]
+const shared = (key: keyof DesignerCommandsTranslations) => (context: FlowDesignerContext): string => context.commandTranslations[key]
 const editable = (test: (designer: XhFlowDesigner) => boolean) => ({ designer }: FlowDesignerContext): boolean => !designer.readonly && test(designer)
 const selectedNodes = (designer: XhFlowDesigner): number => designer.getSelection().nodes.length
 
@@ -111,41 +141,48 @@ async function saveImage(designer: XhFlowDesigner, format: FlowImageFormat): Pro
   setTimeout(() => URL.revokeObjectURL(url), 0)
 }
 
-/** 内置命令：打开文件、撤销重做、剪贴板、选择、对齐分布、布局、缩放与导出图片。 */
+/**
+ * 内置命令：打开文件、撤销重做、剪贴板、选择、对齐分布、布局、缩放与导出图片，各带图标。四款都有的通用命令取 designer-shell 的
+ * 共用文案，流程专属的取设计器文案；会删掉内容的删除写 danger 语气。
+ */
 const BUILTIN_COMMANDS: readonly FlowDesignerCommand[] = [
-  { id: 'open-file', label: text('openFile'), enabled: editable(d => d.canImport), run: ({ designer }) => designer.openFile() },
-  { id: 'undo', label: text('undo'), shortcut: ['Mod', 'Z'], enabled: editable(d => d.canUndo), run: ({ designer }) => designer.undo() },
-  { id: 'redo', label: text('redo'), shortcut: ['Mod', 'Shift', 'Z'], enabled: editable(d => d.canRedo), run: ({ designer }) => designer.redo() },
-  { id: 'copy', label: text('copy'), enabled: ({ designer }) => selectedNodes(designer) > 0, run: ({ designer }) => designer.copy() },
-  { id: 'cut', label: text('cut'), enabled: editable(d => selectedNodes(d) > 0), run: ({ designer }) => designer.cut() },
-  { id: 'paste', label: text('paste'), enabled: editable(d => d.canPaste), run: ({ designer }) => designer.paste() },
+  { id: 'open-file', label: text('openFile'), icon: FolderOpenIcon, enabled: editable(d => d.canImport), run: ({ designer }) => designer.openFile() },
+  { id: 'undo', label: shared('undo'), icon: UndoIcon, shortcut: ['Mod', 'Z'], enabled: editable(d => d.canUndo), run: ({ designer }) => designer.undo() },
+  { id: 'redo', label: shared('redo'), icon: RedoIcon, shortcut: ['Mod', 'Shift', 'Z'], enabled: editable(d => d.canRedo), run: ({ designer }) => designer.redo() },
+  { id: 'cut', label: shared('cut'), icon: ScissorsIcon, enabled: editable(d => selectedNodes(d) > 0), run: ({ designer }) => designer.cut() },
+  { id: 'copy', label: shared('copy'), icon: CopyIcon, enabled: ({ designer }) => selectedNodes(designer) > 0, run: ({ designer }) => designer.copy() },
+  { id: 'paste', label: shared('paste'), icon: ClipboardIcon, enabled: editable(d => d.canPaste), run: ({ designer }) => designer.paste() },
+  { id: 'duplicate', label: shared('duplicate'), icon: CopyPlusIcon, shortcut: ['Mod', 'D'], enabled: editable(d => selectedNodes(d) > 0), run: ({ designer }) => designer.duplicate() },
   {
     id: 'delete',
-    label: text('delete'),
+    label: shared('delete'),
+    icon: TrashIcon,
+    tone: 'danger',
     shortcut: ['Delete'],
     enabled: editable(d => selectedNodes(d) + d.getSelection().edges.length > 0),
     run: ({ designer }) => designer.deleteSelection(),
   },
-  { id: 'duplicate', label: text('duplicate'), shortcut: ['Mod', 'D'], enabled: editable(d => selectedNodes(d) > 0), run: ({ designer }) => designer.duplicate() },
   {
     id: 'select-all',
-    label: text('selectAll'),
+    label: shared('selectAll'),
+    icon: SquareDashedIcon,
     shortcut: ['Mod', 'A'],
     enabled: ({ designer }) => designer.schema.nodes.length > 0,
     run: ({ designer }) => designer.select({ nodes: designer.schema.nodes.map(node => node.id), edges: designer.schema.edges.map(edge => edge.id) }),
   },
-  { id: 'align-left', label: text('alignLeft'), enabled: editable(d => selectedNodes(d) >= 2), run: ({ designer }) => designer.align('left') },
-  { id: 'align-center', label: text('alignCenter'), enabled: editable(d => selectedNodes(d) >= 2), run: ({ designer }) => designer.align('center-vertical') },
-  { id: 'align-right', label: text('alignRight'), enabled: editable(d => selectedNodes(d) >= 2), run: ({ designer }) => designer.align('right') },
-  { id: 'align-top', label: text('alignTop'), enabled: editable(d => selectedNodes(d) >= 2), run: ({ designer }) => designer.align('top') },
-  { id: 'align-middle', label: text('alignMiddle'), enabled: editable(d => selectedNodes(d) >= 2), run: ({ designer }) => designer.align('center-horizontal') },
-  { id: 'align-bottom', label: text('alignBottom'), enabled: editable(d => selectedNodes(d) >= 2), run: ({ designer }) => designer.align('bottom') },
-  { id: 'distribute-horizontal', label: text('distributeHorizontal'), enabled: editable(d => selectedNodes(d) >= 3), run: ({ designer }) => designer.distribute('horizontal') },
-  { id: 'distribute-vertical', label: text('distributeVertical'), enabled: editable(d => selectedNodes(d) >= 3), run: ({ designer }) => designer.distribute('vertical') },
-  { id: 'auto-layout', label: text('autoLayout'), enabled: editable(d => d.schema.nodes.length > 0), run: ({ designer }) => designer.autoLayout() },
+  { id: 'align-left', label: shared('alignLeft'), icon: AlignObjectsLeftIcon, enabled: editable(d => selectedNodes(d) >= 2), run: ({ designer }) => designer.align('left') },
+  { id: 'align-center', label: shared('alignCenter'), icon: AlignObjectsCenterIcon, enabled: editable(d => selectedNodes(d) >= 2), run: ({ designer }) => designer.align('center-vertical') },
+  { id: 'align-right', label: shared('alignRight'), icon: AlignObjectsRightIcon, enabled: editable(d => selectedNodes(d) >= 2), run: ({ designer }) => designer.align('right') },
+  { id: 'align-top', label: shared('alignTop'), icon: AlignObjectsTopIcon, enabled: editable(d => selectedNodes(d) >= 2), run: ({ designer }) => designer.align('top') },
+  { id: 'align-middle', label: shared('alignMiddle'), icon: AlignObjectsMiddleIcon, enabled: editable(d => selectedNodes(d) >= 2), run: ({ designer }) => designer.align('center-horizontal') },
+  { id: 'align-bottom', label: shared('alignBottom'), icon: AlignObjectsBottomIcon, enabled: editable(d => selectedNodes(d) >= 2), run: ({ designer }) => designer.align('bottom') },
+  { id: 'distribute-horizontal', label: shared('distributeHorizontal'), icon: DistributeHorizontalIcon, enabled: editable(d => selectedNodes(d) >= 3), run: ({ designer }) => designer.distribute('horizontal') },
+  { id: 'distribute-vertical', label: shared('distributeVertical'), icon: DistributeVerticalIcon, enabled: editable(d => selectedNodes(d) >= 3), run: ({ designer }) => designer.distribute('vertical') },
+  { id: 'auto-layout', label: text('autoLayout'), icon: WorkflowIcon, enabled: editable(d => d.schema.nodes.length > 0), run: ({ designer }) => designer.autoLayout() },
   {
     id: 'clear-vertices',
     label: text('clearVertices'),
+    icon: EraserIcon,
     enabled: editable(selectedVertices),
     run: ({ designer }) => {
       const selected = new Set(designer.getSelection().edges)
@@ -154,12 +191,12 @@ const BUILTIN_COMMANDS: readonly FlowDesignerCommand[] = [
         .map(edge => ({ type: 'updateEdge', id: edge.id, patch: { vertices: null } })))
     },
   },
-  { id: 'zoom-out', label: text('zoomOut'), shortcut: ['-'], run: ({ designer }) => designer.zoomOut() },
-  { id: 'zoom-in', label: text('zoomIn'), shortcut: ['+'], run: ({ designer }) => designer.zoomIn() },
-  { id: 'zoom-to-fit', label: text('zoomToFit'), shortcut: ['0'], run: ({ designer }) => designer.zoomToFit() },
-  { id: 'zoom-to-actual', label: text('zoomToActual'), run: ({ designer }) => designer.zoomToActual() },
-  { id: 'export-png', label: text('exportPng'), enabled: ({ designer }) => designer.schema.nodes.length > 0, run: ({ designer }) => void saveImage(designer, 'png') },
-  { id: 'export-svg', label: text('exportSvg'), enabled: ({ designer }) => designer.schema.nodes.length > 0, run: ({ designer }) => void saveImage(designer, 'svg') },
+  { id: 'zoom-out', label: shared('zoomOut'), icon: ZoomOutIcon, shortcut: ['-'], run: ({ designer }) => designer.zoomOut() },
+  { id: 'zoom-in', label: shared('zoomIn'), icon: ZoomInIcon, shortcut: ['+'], run: ({ designer }) => designer.zoomIn() },
+  { id: 'zoom-to-fit', label: shared('zoomToFit'), icon: MaximizeIcon, shortcut: ['0'], run: ({ designer }) => designer.zoomToFit() },
+  { id: 'zoom-to-actual', label: shared('zoomToActual'), icon: ZoomResetIcon, run: ({ designer }) => designer.zoomToActual() },
+  { id: 'export-png', label: text('exportPng'), icon: FileImageIcon, enabled: ({ designer }) => designer.schema.nodes.length > 0, run: ({ designer }) => void saveImage(designer, 'png') },
+  { id: 'export-svg', label: text('exportSvg'), icon: FileCodeIcon, enabled: ({ designer }) => designer.schema.nodes.length > 0, run: ({ designer }) => void saveImage(designer, 'svg') },
 ]
 
 /** 设计器的内置扩展：内置命令与图片导出器。节点类型、连线属性等 core 层的内置部分在 FLOW_CORE_EXTENSION 里。 */
@@ -195,7 +232,7 @@ export function flowMenuLayout(subject: FlowMenuSubject, selectedNodes: number):
     return [['delete', 'clear-vertices']]
   if (subject === 'blank')
     return [['paste', 'select-all'], ['auto-layout', 'zoom-to-fit']]
-  const groups = [['duplicate', 'copy', 'cut', 'delete']]
+  const groups = [['cut', 'copy', 'duplicate', 'delete']]
   if (selectedNodes >= 2)
     groups.push(['align-left', 'align-center', 'align-right', 'align-top', 'align-middle', 'align-bottom'])
   if (selectedNodes >= 3)

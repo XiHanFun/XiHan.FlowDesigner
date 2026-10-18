@@ -89,7 +89,7 @@ describe('扩展', () => {
     await designer.updateComplete
     expect(setup).toHaveBeenCalledTimes(1)
     expect(setup.mock.calls[0]![0].designer).toBe(designer)
-    expect(setup.mock.calls[0]![0].translations.undo).toBe('Undo')
+    expect([setup.mock.calls[0]![0].translations.autoLayout, setup.mock.calls[0]![0].commandTranslations.undo]).toEqual(['Auto layout', 'Undo'])
 
     designer.extensions = [tracked, nodes]
     expect([setup.mock.calls.length, cleanup.mock.calls.length]).toEqual([1, 0])
@@ -126,7 +126,7 @@ describe('扩展', () => {
     expect(designer.querySelector('[data-part="toolbar"] button[value="acme.hello"]')!.textContent).toBe('Hello 3')
 
     designer.querySelector('[data-part="node"][data-node-id="t"]')!.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
-    expect(menuItems(content)).toEqual(['duplicate', 'copy', 'cut', 'delete', 'acme.hello'])
+    expect(menuItems(content)).toEqual(['cut', 'copy', 'duplicate', 'delete', 'acme.hello'])
     const shortcut = content.querySelector('[data-xh-part="item"][value="acme.hello"] [data-xh-part="item-shortcut"]')!
     expect(shortcut.textContent).toBe('Ctrl+Shift+H')
     designer.querySelector('xh-context-menu')!.dispatchEvent(new CustomEvent('select', { detail: { value: 'acme.hello' } }))
@@ -162,7 +162,7 @@ describe('扩展', () => {
     const element = frame.querySelector('section[slot="acme-sim"]')!
     expect(element).not.toBeNull()
     expect(frame.regions.map(region => region.name)).toEqual(['header', 'toolbar', 'palette', 'canvas', 'properties', 'issues', 'status', 'acme-sim'])
-    expect(frame.regions.find(region => region.name === 'toolbar')!.label).toBe('Designer tools')
+    expect(frame.regions.find(region => region.name === 'toolbar')!.label).toBe('Designer actions')
     designer.select({ nodes: ['t'] })
     await settle(designer)
     expect(update.mock.calls.at(-1)![0].designer.getSelection().nodes).toEqual(['t'])
