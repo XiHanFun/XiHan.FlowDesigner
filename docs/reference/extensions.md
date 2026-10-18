@@ -278,10 +278,10 @@ type PropertyCondition = { readonly path: JsonPath, readonly equals: JsonValue }
 ### createFlowDesignerModel() {#createflowdesignermodel}
 
 ```ts
-declare function createFlowDesignerModel(extensions: readonly FlowDesignerExtension[]): FlowDesignerModel
+declare function createFlowDesignerModel(extensions: readonly FlowDesignerExtension[], editors?: PropertyEditorLayer<FlowPropertyEditor>): FlowDesignerModel
 ```
 
-合出设计器用的模型；任何一处重名都抛 DesignerExtensionError。
+合出设计器用的模型；editors 是垫在各扩展之下的内建编辑器。任何一处重名都抛 DesignerExtensionError。
 
 ### FlowDesignerModel {#flowdesignermodel}
 

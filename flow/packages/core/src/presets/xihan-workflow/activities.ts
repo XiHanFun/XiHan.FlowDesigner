@@ -32,6 +32,9 @@ import {
 /** 受理人规则的编辑方式：值是 { type, values } 的数组，编辑器由宿主提供（按 control.kind 登记）。 */
 export const XIHAN_WORKFLOW_ASSIGNEE_RULES = 'xihan-workflow.assignee-rules'
 
+/** 启动变量的编辑方式：值是 { name, required?, defaultValue?, description? } 的数组，设计器内建它的编辑器。 */
+export const XIHAN_WORKFLOW_START_VARIABLES = 'xihan-workflow.start-variables'
+
 /** 只能连出、不能连入的节点。 */
 const ENTRY_TYPES = new Set<string>(['Start'])
 /** 不再流转的节点：结束类活动。 */
@@ -66,6 +69,7 @@ const boolean: FlowPropertyControl = { kind: 'boolean' }
 const tags: FlowPropertyControl = { kind: 'tags' }
 const version: FlowPropertyControl = { kind: 'number', integer: true, min: 1 }
 const assigneeRules: FlowPropertyControl = { kind: XIHAN_WORKFLOW_ASSIGNEE_RULES }
+const startVariables: FlowPropertyControl = { kind: XIHAN_WORKFLOW_START_VARIABLES }
 
 const ACTIVITIES: readonly ActivitySpec[] = [
   { type: 'Start', category: 'control', properties: [] },
@@ -286,6 +290,6 @@ export function xihanWorkflowDocumentProperties(texts: XihanWorkflowTexts): Flow
     { path: ['data', 'category'], control: { kind: 'text' }, group: 'basic', label: label.category },
     { path: ['data', 'description'], control: multiline, group: 'basic', label: label.description },
     { path: ['data', 'enableCompensation'], control: boolean, group: 'execution', label: label.enableCompensation },
-    { path: ['data', 'variables'], control: json, group: 'basic', label: label.variables },
+    { path: ['data', 'variables'], control: startVariables, group: 'basic', label: label.variables },
   ]
 }

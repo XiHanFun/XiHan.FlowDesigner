@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-// XiHan 工作流引擎发布定义时把关、而通用校验覆盖不到的规则，以及受理人规则这种编辑方式的取值检查。
+// XiHan 工作流引擎发布定义时把关、而通用校验覆盖不到的规则，以及受理人规则、启动变量这两种编辑方式的取值检查。
 
 import type { SchemaRule } from '@xihan-ui/designer-kit'
 import type { ControlKind } from '@xihan-ui/designer-kit/properties'
@@ -102,6 +102,34 @@ export const ASSIGNEE_RULES_CONTROL: ControlKind = {
         return 'invalid-value'
       if (rule.type === 'Expression' && (values.length !== 1 || !hasText(values[0])))
         return 'invalid-value'
+    }
+    return undefined
+  },
+}
+
+const isOptionalText = (value: unknown): boolean => value === undefined || value === null || typeof value === 'string'
+
+/**
+ * 启动变量的取值：对象的数组，name 不能为空、不能重名；required 是布尔，type 与 description 是字符串，
+ * 这三项与 defaultValue 都可以不写。
+ */
+export const START_VARIABLES_CONTROL: ControlKind = {
+  check(value) {
+    if (!Array.isArray(value))
+      return 'invalid-type'
+    const names = new Set<string>()
+    for (const variable of value) {
+      if (!isPlainObject(variable))
+        return 'invalid-value'
+      if (variable.name !== undefined && typeof variable.name !== 'string')
+        return 'invalid-value'
+      if (!hasText(variable.name))
+        return 'empty'
+      if ((variable.required !== undefined && typeof variable.required !== 'boolean') || !isOptionalText(variable.type) || !isOptionalText(variable.description))
+        return 'invalid-value'
+      if (names.has(variable.name as string))
+        return 'duplicate-key'
+      names.add(variable.name as string)
     }
     return undefined
   },

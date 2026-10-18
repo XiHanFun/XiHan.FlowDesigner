@@ -317,7 +317,7 @@
 | 分类 | `data.category` | `text` | 基本 | — |
 | 描述 | `data.description` | `text` | 基本 | — |
 | 启用补偿 | `data.enableCompensation` | `boolean` | 执行 | — |
-| 启动变量 | `data.variables` | `json` | 基本 | — |
+| 启动变量 | `data.variables` | `xihan-workflow.start-variables` | 基本 | — |
 
 ## 规则
 
@@ -338,7 +338,7 @@
 declare function createXihanWorkflow(options?: CreateXihanWorkflowOptions): FlowCoreExtension
 ```
 
-按文案生成预设扩展。节点类型与属性的文字写在扩展里，换语言就换一个扩展对象（同一个 id，按卸下再装上处理）；物料分类与属性分组的文字交给设计器的 paletteGroupLabels、propertyGroupLabels。受理人规则的编辑方式是 XIHAN_WORKFLOW_ASSIGNEE_RULES，编辑器由宿主经设计器扩展的 editors.byControl 提供。
+按文案生成预设扩展。节点类型与属性的文字写在扩展里，换语言就换一个扩展对象（同一个 id，按卸下再装上处理）；物料分类与属性分组的文字交给设计器的 paletteGroupLabels、propertyGroupLabels。受理人规则的编辑方式是 XIHAN_WORKFLOW_ASSIGNEE_RULES，编辑器由宿主经设计器扩展的 editors.byControl 提供；启动变量的编辑方式是 XIHAN_WORKFLOW_START_VARIABLES，设计器内建它的编辑器，宿主同样可以按种类换掉。
 
 ### CreateXihanWorkflowOptions {#createxihanworkflowoptions}
 
@@ -445,6 +445,7 @@ fromWorkflowDefinition 的选项。
 | 名称 | 种类 | 说明 |
 | --- | --- | --- |
 | `XIHAN_WORKFLOW_ASSIGNEE_RULES` | 常量 | 受理人规则的编辑方式：值是 { type, values } 的数组，编辑器由宿主提供（按 control.kind 登记）。 |
+| `XIHAN_WORKFLOW_START_VARIABLES` | 常量 | 启动变量的编辑方式：值是 { name, required?, defaultValue?, description? } 的数组，设计器内建它的编辑器。 |
 | `xihanWorkflowNodeSize` | 函数 | 节点在画布上的尺寸：开始与结束类小一些，其余（含宿主自定义的活动）一样大。 |
 | `xihanWorkflowPropertyKeys` | 函数 | 各活动类型在 data.properties 下读的键，供一致性核对。 |
 

@@ -28,6 +28,7 @@ import type {
 } from '@xihan-flow/core'
 import type { FlowDesignerTranslations, FlowImageExportOptions, FlowImageFormat, FlowScene, FlowSceneEdge, FlowSceneNode } from '@xihan-flow/runtime'
 import type { AlignMode, DesignerImportSource, DistributeAxis, ExecuteOptions, ExtensionHost, Viewport } from '@xihan-ui/designer-kit'
+import type { PropertyEditorLayer } from '@xihan-ui/designer-kit/properties'
 import type {
   CommandToolbar,
   DesignerCommandLayout,
@@ -42,7 +43,9 @@ import type { PointerSession } from '@xihan-ui/pointer'
 import type { KeyedChildren, PropertyValues } from '@xihan-ui/web-components/authoring'
 import type { FlowAutoLayoutOptions, FlowClipboard, FlowEditor, FlowSelection } from './editor'
 import type { FlowDesignerContext, FlowDesignerExtension, FlowDesignerImporter, FlowDesignerModel, FlowImportFragment, FlowMenuSubject } from './extensions'
+import type { FlowPropertyEditor } from './panels/properties'
 import { getPortPosition, portAllows, readDocument } from '@xihan-flow/core'
+import { XIHAN_WORKFLOW_START_VARIABLES } from '@xihan-flow/core/presets/xihan-workflow'
 import { buildScene, createOrthogonalRouter, DEFAULT_FLOW_DESIGNER_TRANSLATIONS, defaultNodeRenderer, exportFlowImage } from '@xihan-flow/runtime'
 import { detectKbdPlatform } from '@xihan-ui/core/hotkey'
 import {
@@ -94,7 +97,7 @@ import {
   XhConfigController,
   XhReactiveElement,
 } from '@xihan-ui/web-components/authoring'
-import { defineXhElement, XhContextMenuElement, XhIconElement, XhToolbarElement } from '@xihan-ui/web-components/define'
+import { defineXhElement, XhCheckboxElement, XhContextMenuElement, XhFieldArrayElement, XhIconElement, XhToolbarElement } from '@xihan-ui/web-components/define'
 import { encodeFlowClipboard, readFlowClipboard, readFlowFragment, writeFlowClipboard } from './clipboard'
 import { createFlowEditor } from './editor'
 import { createFlowDesignerModel, FLOW_DESIGNER_EXTENSION, flowMenuLayout, flowToolbarLayout, IMAGE_RENDERERS } from './extensions'
@@ -103,6 +106,7 @@ import { IssuesPanel } from './panels/issues'
 import { MinimapPanel } from './panels/minimap'
 import { paletteNodeType, PalettePanel } from './panels/palette'
 import { PropertiesPanel } from './panels/properties'
+import { startVariablesEditor } from './start-variables'
 
 /** 设计器的标签名。 */
 export const FLOW_DESIGNER_TAG = 'xh-flow-designer'
@@ -256,7 +260,12 @@ export class XhFlowDesigner extends XhReactiveElement {
   #frameRegionsModel: FlowDesignerModel | undefined
   readonly #keys: KeyedChildren = new WeakMap()
   #extensions: readonly FlowDesignerExtension[] | undefined
-  #model: FlowDesignerModel = createFlowDesignerModel(NO_EXTENSIONS)
+  /** 设计器内建、垫在各扩展之下的属性编辑器。 */
+  readonly #builtinEditors: PropertyEditorLayer<FlowPropertyEditor> = {
+    byControl: { [XIHAN_WORKFLOW_START_VARIABLES]: startVariablesEditor({ ownerDocument: () => this.ownerDocument, translations: () => this.#translations() }) },
+  }
+
+  #model: FlowDesignerModel = createFlowDesignerModel(NO_EXTENSIONS, this.#builtinEditors)
   readonly #editor: FlowEditor = createFlowEditor({ document: EMPTY_SCHEMA, extensions: this.#model.list })
   readonly #host: ExtensionHost<FlowDesignerExtension> = createExtensionHost<FlowDesignerExtension, FlowDesignerContext>({
     builtins: [FLOW_DESIGNER_EXTENSION],
@@ -351,7 +360,7 @@ export class XhFlowDesigner extends XhReactiveElement {
   set extensions(value: readonly FlowDesignerExtension[] | undefined) {
     if (value === this.#extensions)
       return
-    const model = createFlowDesignerModel(value ?? NO_EXTENSIONS)
+    const model = createFlowDesignerModel(value ?? NO_EXTENSIONS, this.#builtinEditors)
     this.#ensureLayers().panels.assign(model.extensions, this.#context())
     if (this.isConnected)
       this.#host.assign(value ?? NO_EXTENSIONS)
@@ -1711,6 +1720,8 @@ export function defineFlowDesigner(): void {
   defineXhElement('xh-icon', XhIconElement)
   defineXhElement('xh-toolbar', XhToolbarElement)
   defineXhElement('xh-context-menu', XhContextMenuElement)
+  defineXhElement('xh-field-array', XhFieldArrayElement)
+  defineXhElement('xh-checkbox', XhCheckboxElement)
   defineDesignerShellElement('xh-designer-frame', XhDesignerFrameElement)
   defineDesignerShellElement('xh-designer-palette', XhDesignerPaletteElement)
   defineDesignerShellElement('xh-designer-properties', XhDesignerPropertiesElement)

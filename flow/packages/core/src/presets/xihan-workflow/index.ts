@@ -8,11 +8,11 @@
 
 import type { FlowCoreExtension } from '../../extensions'
 import type { XihanWorkflowTexts, XihanWorkflowTextsOverride } from './texts'
-import { XIHAN_WORKFLOW_ASSIGNEE_RULES, xihanWorkflowDocumentProperties, xihanWorkflowNodeTypes } from './activities'
-import { ASSIGNEE_RULES_CONTROL, XIHAN_WORKFLOW_RULES } from './rules'
+import { XIHAN_WORKFLOW_ASSIGNEE_RULES, XIHAN_WORKFLOW_START_VARIABLES, xihanWorkflowDocumentProperties, xihanWorkflowNodeTypes } from './activities'
+import { ASSIGNEE_RULES_CONTROL, START_VARIABLES_CONTROL, XIHAN_WORKFLOW_RULES } from './rules'
 import { XIHAN_WORKFLOW_TEXTS } from './texts'
 
-export { XIHAN_WORKFLOW_ASSIGNEE_RULES, xihanWorkflowNodeSize, xihanWorkflowPropertyKeys } from './activities'
+export { XIHAN_WORKFLOW_ASSIGNEE_RULES, XIHAN_WORKFLOW_START_VARIABLES, xihanWorkflowNodeSize, xihanWorkflowPropertyKeys } from './activities'
 export { fromWorkflowDefinition, toWorkflowDefinition } from './definition'
 export type { FromWorkflowDefinitionOptions, XihanWorkflowDefinition, XihanWorkflowNode, XihanWorkflowTransition } from './definition'
 export { xihanWorkflowDeDE } from './locale/de-DE'
@@ -68,7 +68,8 @@ function mergeTexts(override: XihanWorkflowTextsOverride | undefined): XihanWork
 /**
  * 按文案生成预设扩展。节点类型与属性的文字写在扩展里，换语言就换一个扩展对象（同一个 id，按卸下再装上处理）；
  * 物料分类与属性分组的文字交给设计器的 paletteGroupLabels、propertyGroupLabels。
- * 受理人规则的编辑方式是 XIHAN_WORKFLOW_ASSIGNEE_RULES，编辑器由宿主经设计器扩展的 editors.byControl 提供。
+ * 受理人规则的编辑方式是 XIHAN_WORKFLOW_ASSIGNEE_RULES，编辑器由宿主经设计器扩展的 editors.byControl 提供；
+ * 启动变量的编辑方式是 XIHAN_WORKFLOW_START_VARIABLES，设计器内建它的编辑器，宿主同样可以按种类换掉。
  */
 export function createXihanWorkflow(options: CreateXihanWorkflowOptions = {}): FlowCoreExtension {
   const texts = mergeTexts(options.texts)
@@ -77,7 +78,7 @@ export function createXihanWorkflow(options: CreateXihanWorkflowOptions = {}): F
     id: XIHAN_WORKFLOW_ID,
     nodeTypes: xihanWorkflowNodeTypes(texts, { legacyAssignees: options.legacyAssignees }),
     documentProperties: xihanWorkflowDocumentProperties(texts),
-    controls: { [XIHAN_WORKFLOW_ASSIGNEE_RULES]: ASSIGNEE_RULES_CONTROL },
+    controls: { [XIHAN_WORKFLOW_ASSIGNEE_RULES]: ASSIGNEE_RULES_CONTROL, [XIHAN_WORKFLOW_START_VARIABLES]: START_VARIABLES_CONTROL },
     rules: XIHAN_WORKFLOW_RULES,
     issueText: issue => (Object.hasOwn(messages, issue.code) ? messages[issue.code] : undefined),
   }

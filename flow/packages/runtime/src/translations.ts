@@ -75,7 +75,16 @@ export interface FlowDesignerTranslations {
   readonly issuesEmpty: string
   /** 不落在节点或连线上的问题（如节点个数）所属的对象名。 */
   readonly flow: string
+  /** 启动变量表的列名。 */
+  readonly startVariableColumns: Readonly<Record<FlowStartVariableColumn, string>>
+  /** 启动变量表的新增按钮。 */
+  readonly startVariableAdd: string
+  /** 启动变量表里一格的可访问名：第几个变量（从 1 起）、哪一列。 */
+  readonly startVariableCell: (row: number, column: string) => string
 }
+
+/** 启动变量表的列：变量名、必填、缺省值、说明。 */
+export type FlowStartVariableColumn = 'name' | 'required' | 'defaultValue' | 'description'
 
 /** 拼问题说明时用到的名称。 */
 export interface FlowIssueNames {

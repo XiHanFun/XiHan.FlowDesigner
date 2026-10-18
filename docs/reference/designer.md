@@ -254,6 +254,8 @@ type FlowDesignerPanel = 'toolbar' | 'palette' | 'properties' | 'issues' | 'mini
 | `edge` | `string` | 属性面板里连线的类型名。 |
 | `issuesEmpty` | `string` | 没有问题时问题列表里的提示。 |
 | `flow` | `string` | 不落在节点或连线上的问题（如节点个数）所属的对象名。 |
+| `startVariableColumns` | `Readonly<Record<FlowStartVariableColumn, string>>` | 启动变量表的列名。 |
+| `startVariableAdd` | `string` | 启动变量表的新增按钮。 |
 
 | 方法 | 说明 |
 | --- | --- |
@@ -261,6 +263,7 @@ type FlowDesignerPanel = 'toolbar' | 'palette' | 'properties' | 'issues' | 'mini
 | `propertyLabel(key: string): string` | 属性描述没有给 label 时的标签，key 是 formatJsonPath 写出的属性路径。 |
 | `issue(issue: FlowIssue, names: FlowIssueNames): string` | 问题的说明文字。 |
 | `propertyIssue(property: string, message: string): string` | 落在某个属性上的问题：属性名与问题说明拼在一起。 |
+| `startVariableCell(row: number, column: string): string` | 启动变量表里一格的可访问名：第几个变量（从 1 起）、哪一列。 |
 
 ### FlowDesignerLocale {#flowdesignerlocale}
 
@@ -310,7 +313,7 @@ type FlowBuiltinPropertyKey = 'label' | 'style.dashed'
 
 | 名称 | 种类 | 说明 |
 | --- | --- | --- |
-| `createFlowDesignerModel` | 函数 | 合出设计器用的模型；任何一处重名都抛 DesignerExtensionError。 |
+| `createFlowDesignerModel` | 函数 | 合出设计器用的模型；editors 是垫在各扩展之下的内建编辑器。 |
 | `FLOW_DESIGNER_EXTENSION` | 常量 | 设计器的内置扩展：内置命令与图片导出器。 |
 | `FLOW_TOOLBAR_LAYOUT` | 常量 | 工具栏的缺省排列；commandLayout 没写 toolbar 时用它，再把 placement 含 toolbar 的扩展命令追加成一组。 |
 | `FlowDesignerCommand` | 类型 | 设计器的命令。 |
