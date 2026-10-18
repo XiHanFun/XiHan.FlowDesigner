@@ -99,6 +99,8 @@ describe('启动变量的内建编辑器', () => {
     expect([cell(first!, 'name').value, cell(first!, 'required').checked, cell(first!, 'defaultValue').value, cell(first!, 'description').value])
       .toEqual(['amount', true, '100', '金额'])
     expect(cell(first!, 'defaultValue').getAttribute('aria-label')).toBe('Default value of variable 1')
+    // 勾选框与同一行的文本框同一个尺寸档
+    expect(new Set(['name', 'required', 'defaultValue', 'description'].map(column => cell(first!, column).getAttribute('size')))).toEqual(new Set(['sm']))
     expect(list.querySelector('[data-xh-part="add-trigger"]')!.textContent).toBe('Add variable')
   })
 
