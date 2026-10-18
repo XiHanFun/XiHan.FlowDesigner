@@ -282,7 +282,7 @@ describe('问题列表', () => {
     return Array.from(list(designer).querySelectorAll<HTMLElement>('[data-part="issue"]'))
   }
 
-  it('列出问题与错误、警告数，错误在前；落在属性上的带属性名，节点上标出最严重的一级', async () => {
+  it('列出问题，错误在前，错误、警告数在面板头里；落在属性上的带属性名，节点上标出最严重的一级', async () => {
     const designer = await mount(element => element.extensions = [typed])
     await settle(designer)
     expect(rows(designer).map(item => [item.tagName, item.dataset.severity, item.querySelector('[data-part="issue-subject"]')!.textContent, item.querySelector('[data-part="issue-message"]')!.textContent])).toEqual([
@@ -291,7 +291,8 @@ describe('问题列表', () => {
       ['BUTTON', 'warning', '任务', 'No outgoing connection'],
       ['BUTTON', 'warning', '结束', 'Not connected'],
     ])
-    const filter = list(designer).querySelector('[data-part="filter"]')!
+    const filter = designer.querySelector('[data-region="issues"] [data-part="panel-actions"] > [data-part="filter"]')!
+    expect(list(designer).querySelector('[data-part="filter"]')).toBeNull()
     expect(filter.querySelector('button[value="error"]')!.textContent).toBe('2 errors')
     expect(filter.querySelector('button[value="warning"]')!.textContent).toBe('2 warnings')
     expect(designer.querySelector<HTMLElement>('[data-part="node"][data-node-id="t"]')!.dataset.issue).toBe('error')

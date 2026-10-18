@@ -859,7 +859,10 @@ export class XhFlowDesigner extends XhReactiveElement {
     canvas.slot = 'canvas'
     properties.element.slot = 'properties'
     issues.element.slot = 'issues'
-    frame.append(toolbar, palette.element, canvas, properties.element, issues.element)
+    // 问题列表带计数的严重程度开关放进它所在卡片的面板头
+    const issueSummary = issues.element.summary
+    issueSummary.slot = 'issues-actions'
+    frame.append(toolbar, palette.element, canvas, properties.element, issues.element, issueSummary)
     const panels = createPanelHost<FlowDesignerContext>(frame)
     this.append(frame)
     root.addEventListener('pointerdown', this.#onPointerDown)
