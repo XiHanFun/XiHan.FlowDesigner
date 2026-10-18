@@ -16,7 +16,7 @@ aside: false
 
 <<< @/examples/demos/designer.ts#setup
 
-<FlowDemo name="designer" />
+<FlowDemo name="designer" fullscreen />
 
 - `extensions` 与查看器的是同一类扩展，设计器层的扩展还能登记属性编辑器、命令与面板，见[扩展](./extensions)。同一个扩展对象换了引用会当作卸下再装上，宿主要保持引用稳定。
 - 给 `schema` 赋值即装载：清空撤销历史与选择，重新适配视口。赋回当前这一份不会重新装载。

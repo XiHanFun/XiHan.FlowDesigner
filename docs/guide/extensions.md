@@ -69,7 +69,7 @@ core 层只管取值对不对；属性面板里用什么控件编辑它，由设
 
 设计器层的扩展可以与 core 层的分开写，一起放进 `extensions`。下面的示例里，审批人用下拉框选，工具栏多了「加一个审批」与「吸附网格」，右侧多了一块统计，双击节点时连同它的出线一起选中：
 
-<FlowDemo name="extension" />
+<FlowDemo name="extension" fullscreen />
 
 <<< @/examples/demos/extension.ts#use
 
