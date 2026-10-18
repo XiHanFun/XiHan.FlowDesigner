@@ -11,10 +11,10 @@ import type { DesignerSettingItem, DesignerSettings, DesignerSettingsSection } f
 import type { LayeredDirection } from '@xihan-ui/viz/graph'
 import { settingKey, settingValue } from '@xihan-ui/designer-shell'
 
-/** 设计器自己那个设置分区的 id，扩展不能再用。 */
+/** 设计器自己那个设置分区的 id，扩展不能再用。宿主给缺省或读设置时用它与 FLOW_SETTING_KEYS，不手写字符串。 */
 export const FLOW_SETTINGS_SECTION = 'flow'
 
-/** 「画布」分区各条目的键。 */
+/** 「画布」分区各条目的键，即 settings 里的键（分区 id.条目 id）。 */
 export const FLOW_SETTING_KEYS = {
   layoutDirection: 'flow.layoutDirection',
   nodeGap: 'flow.nodeGap',
