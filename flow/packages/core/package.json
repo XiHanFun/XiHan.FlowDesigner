@@ -57,6 +57,7 @@
   "dependencies": {
     "@xihan-ui/core": "catalog:",
     "@xihan-ui/designer-kit": "catalog:",
+    "@xihan-ui/icons": "catalog:",
     "@xihan-ui/viz": "catalog:"
   }
 }

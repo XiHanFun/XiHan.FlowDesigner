@@ -3,11 +3,31 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-// XiHan 工作流的 17 种节点类型、按源节点类型的出线属性与流程定义级属性。
+// XiHan 工作流的 17 种节点类型（各配一枚 @xihan-ui/icons 的图标）、按源节点类型的出线属性与流程定义级属性。
 // 节点的引擎属性放在 data.properties 下，键名与引擎一致；超时、失败续行、重试策略放在 data 下，字段名与定义 JSON 一致。
 
+import type { IconRecord } from '@xihan-ui/core'
 import type { FlowEdgeStyleRule, FlowNodeTypeDefinition, FlowPropertyControl, FlowPropertyDescriptor } from '../../registry'
 import type { XihanWorkflowActivityType, XihanWorkflowCategory, XihanWorkflowGroup, XihanWorkflowPropertyKey, XihanWorkflowTexts } from './texts'
+import {
+  BanIcon,
+  BellIcon,
+  CircleCheckIcon,
+  CpuIcon,
+  FileTextIcon,
+  GitBranchIcon,
+  GlobeIcon,
+  LayersIcon,
+  ListChecksIcon,
+  MegaphoneIcon,
+  PencilIcon,
+  PlayIcon,
+  PuzzleIcon,
+  RefreshIcon,
+  TimerIcon,
+  TriangleAlertIcon,
+  UserCheckIcon,
+} from '@xihan-ui/icons'
 
 /** 受理人规则的编辑方式：值是 { type, values } 的数组，编辑器由宿主提供（按 control.kind 登记）。 */
 export const XIHAN_WORKFLOW_ASSIGNEE_RULES = 'xihan-workflow.assignee-rules'
@@ -189,6 +209,27 @@ function outgoingEdges(type: string, texts: XihanWorkflowTexts): FlowPropertyDes
   ]
 }
 
+/** 各活动类型的图标：画布上的节点与物料条目都画在文字前面。 */
+const ACTIVITY_ICONS: Readonly<Record<XihanWorkflowActivityType, IconRecord>> = {
+  Start: PlayIcon,
+  End: CircleCheckIcon,
+  Decision: GitBranchIcon,
+  Parallel: LayersIcon,
+  Join: ListChecksIcon,
+  Delay: TimerIcon,
+  SubWorkflow: PuzzleIcon,
+  ForEach: RefreshIcon,
+  Terminate: BanIcon,
+  Fault: TriangleAlertIcon,
+  UserTask: UserCheckIcon,
+  SetVariable: PencilIcon,
+  Http: GlobeIcon,
+  Script: CpuIcon,
+  PublishEvent: MegaphoneIcon,
+  WaitSignal: BellIcon,
+  Log: FileTextIcon,
+}
+
 /** 条件分支的出线外观：默认分支画成虚线。 */
 const DECISION_EDGE_STYLES: readonly FlowEdgeStyleRule[] = [{ when: { path: ['data', 'isDefault'], equals: true }, style: { dashed: true } }]
 
@@ -201,6 +242,7 @@ export function xihanWorkflowNodeTypes(texts: XihanWorkflowTexts): FlowNodeTypeD
       type,
       label: texts.activities[type],
       category: spec.category,
+      icon: ACTIVITY_ICONS[type],
       size: xihanWorkflowNodeSize(type),
       ports: ENTRY_TYPES.has(type) ? 'out' : TERMINAL_TYPES.has(type) ? 'in' : 'both',
       ...(ENTRY_TYPES.has(type) ? { entry: true, minCount: 1, maxCount: 1 } : {}),

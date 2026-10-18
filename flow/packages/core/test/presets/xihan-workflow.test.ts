@@ -88,6 +88,14 @@ describe('xihanWorkflow 节点类型', () => {
     expect(model.controls[XIHAN_WORKFLOW_ASSIGNEE_RULES]).toBeDefined()
   })
 
+  it('每种活动都配了图标，图标各不相同，是能直接画的图标记录', () => {
+    const types = createFlowModel(extensions).nodeTypes.types
+    expect(types.filter(type => type.icon === undefined).map(type => type.type)).toEqual([])
+    expect(new Set(types.map(type => type.icon!.name)).size).toBe(XIHAN_WORKFLOW_ACTIVITY_TYPES.length)
+    for (const type of types)
+      expect([type.icon!.viewBox, type.icon!.nodes.length > 0]).toEqual(['0 0 24 24', true])
+  })
+
   it('出线属性随源节点类型：条件分支有条件、优先级与默认分支，并行分支忽略条件，结束类没有出线', () => {
     const model = createFlowModel(extensions)
     const paths = (type: string): string[] => model.edgePropertiesOf(type).map(descriptor => formatJsonPath(descriptor.path))
