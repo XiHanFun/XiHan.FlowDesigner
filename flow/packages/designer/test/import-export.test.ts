@@ -64,7 +64,7 @@ function focusCanvas(designer: XhFlowDesigner): void {
 }
 
 function toolbarItems(designer: Element): string[] {
-  return Array.from(designer.querySelectorAll<HTMLButtonElement>('[data-part="toolbar"] button[data-xh-part="item"]'), item => item.value)
+  return Array.from(designer.querySelectorAll<HTMLButtonElement>('[data-part="command-bar"] button[data-xh-part="item"]'), item => item.value)
 }
 
 /** 记下问过的来源，返回 accepts 的结果。 */
@@ -222,7 +222,7 @@ describe('打开文件', () => {
     designer.setViewport({ x: 0, y: 0, zoom: 1 })
     const file = new File(['{}'], 'leave.json', { type: 'application/json' })
     const picker = chooseFile(file)
-    designer.querySelector<HTMLButtonElement>('[data-part="toolbar"] button[value="open-file"]')!.click()
+    designer.querySelector<HTMLButtonElement>('[data-part="command-bar"] button[value="open-file"]')!.click()
     expect(picker.opened()).toBe(1)
     expect(seen).toEqual([{ kind: 'file', mime: 'application/json', name: 'leave.json', file }])
     await flush()
@@ -252,7 +252,7 @@ describe('打开文件', () => {
     })
     readonly.openFile()
     expect(picker.opened()).toBe(0)
-    expect(readonly.querySelector<HTMLButtonElement>('[data-part="toolbar"] button[value="open-file"]')!.disabled).toBe(true)
+    expect(readonly.querySelector<HTMLButtonElement>('[data-part="command-bar"] button[value="open-file"]')!.disabled).toBe(true)
 
     readonly.readonly = false
     readonly.openFile()
@@ -307,7 +307,7 @@ describe('导出', () => {
     expect(toolbarItems(designer).slice(-2)).toEqual(['export-png', 'export-svg'])
     designer.schema = { version: 1, nodes: [], edges: [] }
     await designer.updateComplete
-    expect(designer.querySelector<HTMLButtonElement>('[data-part="toolbar"] button[value="export-svg"]')!.disabled).toBe(true)
+    expect(designer.querySelector<HTMLButtonElement>('[data-part="command-bar"] button[value="export-svg"]')!.disabled).toBe(true)
   })
 
   it('导出命令派发可取消的 export 事件：取消后不下载，没取消时存成 flow.svg', async () => {
@@ -323,7 +323,7 @@ describe('导出', () => {
       if (cancel)
         event.preventDefault()
     })
-    const button = designer.querySelector<HTMLButtonElement>('[data-part="toolbar"] button[value="export-svg"]')!
+    const button = designer.querySelector<HTMLButtonElement>('[data-part="command-bar"] button[value="export-svg"]')!
     button.click()
     await vi.waitFor(() => expect(events).toHaveLength(1))
     expect(events[0]!.format).toBe('svg')
