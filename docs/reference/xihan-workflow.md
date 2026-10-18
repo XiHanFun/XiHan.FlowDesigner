@@ -8,25 +8,25 @@
 
 下表与各节点类型的属性取自中文文案的预设（`createXihanWorkflow({ texts: xihanWorkflowZhCN })`）。类型名就是引擎的活动类型。
 
-| 类型 | 名称 | 类别 | 端口 | 个数与可达性 |
-| --- | --- | --- | --- | --- |
-| [`Start`](#start) | 开始 | 流程控制 | 右侧出口 | 可达性的起点，不要求入线；恰好 1 个 |
-| [`End`](#end) | 结束 | 流程控制 | 左侧入口 | 不要求出线 |
-| [`Decision`](#decision) | 条件分支 | 流程控制 | 左侧入口、右侧出口 | — |
-| [`Parallel`](#parallel) | 并行分支 | 流程控制 | 左侧入口、右侧出口 | — |
-| [`Join`](#join) | 汇聚 | 流程控制 | 左侧入口、右侧出口 | — |
-| [`Delay`](#delay) | 延时 | 流程控制 | 左侧入口、右侧出口 | — |
-| [`SubWorkflow`](#subworkflow) | 子流程 | 流程控制 | 左侧入口、右侧出口 | — |
-| [`ForEach`](#foreach) | 遍历 | 流程控制 | 左侧入口、右侧出口 | — |
-| [`Terminate`](#terminate) | 终止 | 流程控制 | 左侧入口 | 不要求出线 |
-| [`Fault`](#fault) | 抛出故障 | 流程控制 | 左侧入口 | 不要求出线 |
-| [`UserTask`](#usertask) | 人工任务 | 人工 | 左侧入口、右侧出口 | — |
-| [`SetVariable`](#setvariable) | 设置变量 | 数据 | 左侧入口、右侧出口 | — |
-| [`Http`](#http) | HTTP 请求 | 集成 | 左侧入口、右侧出口 | — |
-| [`Script`](#script) | 脚本 | 集成 | 左侧入口、右侧出口 | — |
-| [`PublishEvent`](#publishevent) | 发布事件 | 事件 | 左侧入口、右侧出口 | — |
-| [`WaitSignal`](#waitsignal) | 等待信号 | 事件 | 左侧入口、右侧出口 | — |
-| [`Log`](#log) | 日志 | 工具 | 左侧入口、右侧出口 | — |
+| 类型 | 名称 | 类别 | 图标 | 端口 | 个数与可达性 |
+| --- | --- | --- | --- | --- | --- |
+| [`Start`](#start) | 开始 | 流程控制 | `PlayIcon` | 右侧出口 | 可达性的起点，不要求入线；恰好 1 个 |
+| [`End`](#end) | 结束 | 流程控制 | `CircleCheckIcon` | 左侧入口 | 不要求出线 |
+| [`Decision`](#decision) | 条件分支 | 流程控制 | `GitBranchIcon` | 左侧入口、右侧出口 | — |
+| [`Parallel`](#parallel) | 并行分支 | 流程控制 | `LayersIcon` | 左侧入口、右侧出口 | — |
+| [`Join`](#join) | 汇聚 | 流程控制 | `ListChecksIcon` | 左侧入口、右侧出口 | — |
+| [`Delay`](#delay) | 延时 | 流程控制 | `TimerIcon` | 左侧入口、右侧出口 | — |
+| [`SubWorkflow`](#subworkflow) | 子流程 | 流程控制 | `PuzzleIcon` | 左侧入口、右侧出口 | — |
+| [`ForEach`](#foreach) | 遍历 | 流程控制 | `RefreshIcon` | 左侧入口、右侧出口 | — |
+| [`Terminate`](#terminate) | 终止 | 流程控制 | `BanIcon` | 左侧入口 | 不要求出线 |
+| [`Fault`](#fault) | 抛出故障 | 流程控制 | `TriangleAlertIcon` | 左侧入口 | 不要求出线 |
+| [`UserTask`](#usertask) | 人工任务 | 人工 | `UserCheckIcon` | 左侧入口、右侧出口 | — |
+| [`SetVariable`](#setvariable) | 设置变量 | 数据 | `PencilIcon` | 左侧入口、右侧出口 | — |
+| [`Http`](#http) | HTTP 请求 | 集成 | `GlobeIcon` | 左侧入口、右侧出口 | — |
+| [`Script`](#script) | 脚本 | 集成 | `CpuIcon` | 左侧入口、右侧出口 | — |
+| [`PublishEvent`](#publishevent) | 发布事件 | 事件 | `MegaphoneIcon` | 左侧入口、右侧出口 | — |
+| [`WaitSignal`](#waitsignal) | 等待信号 | 事件 | `BellIcon` | 左侧入口、右侧出口 | — |
+| [`Log`](#log) | 日志 | 工具 | `FileTextIcon` | 左侧入口、右侧出口 | — |
 
 ### Start · 开始 {#start}
 

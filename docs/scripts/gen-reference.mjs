@@ -703,6 +703,11 @@ function extensionsPage() {
 
 // —— XiHan 工作流引擎预设 ——
 
+/** @xihan-ui/icons 里图标的导出名：play → PlayIcon。 */
+function iconExportName(name) {
+  return `${name.replace(/(^|-)(\w)/g, (_, __, letter) => letter.toUpperCase())}Icon`
+}
+
 const PORT_NAMES = { in: '左侧入口', out: '右侧出口', both: '左侧入口、右侧出口', none: '没有端口' }
 
 /** 节点类型的个数与可达性要求。 */
@@ -761,10 +766,11 @@ function xihanWorkflowPage() {
   const sections = [
     '## 节点类型',
     `下表与各节点类型的属性取自中文文案的预设（${code('createXihanWorkflow({ texts: xihanWorkflowZhCN })')}）。类型名就是引擎的活动类型。`,
-    table(['类型', '名称', '类别', '端口', '个数与可达性'], preset.nodeTypes.map(type => [
+    table(['类型', '名称', '类别', '图标', '端口', '个数与可达性'], preset.nodeTypes.map(type => [
       `[${code(type.type, true)}](#${anchorOf(type.type)})`,
       type.label,
       categories[type.category] ?? type.category,
+      type.icon ? code(iconExportName(type.icon.name), true) : '—',
       PORT_NAMES[type.ports] ?? '具名端口',
       nodeTypeTraits(type),
     ])),
