@@ -78,6 +78,22 @@ xh-flow-viewer [data-part='node'][data-status='skipped'] {
 
 <<< @/examples/snippets/router.ts#straight
 
+## 导出图片
+
+`export(format, options)` 把画面上的流程图导出成图片，得到 `Blob`：`svg` 是能单独打开的 SVG 文件，`png` 在它上面栅格化。节点的框、图标与文字，连线、箭头与标签都画进去，颜色与字体取画面此刻的样式（运行状态的描边颜色也在），换成具体值写进文件，脱离页面也一样。
+
+| 选项 | 说明 |
+| --- | --- |
+| `scale` | 倍率，只对 PNG 有效，缺省 1；给高分屏看时写 2。图太大、超过浏览器画布的上限时自动降倍率，按比例缩小 |
+| `background` | 底色，任何 CSS 颜色；缺省取画布此刻的底色（画布透明时往外找第一层不透明的），写 `transparent` 不铺 |
+| `padding` | 四周的留白，缺省 24 |
+
+```ts
+const png = await viewer.export('png', { scale: 2 })
+```
+
+自定义节点内容只按节点的文字导出一行。PNG 里的文字用本机的系统字体画，不加载网页字体；SVG 文件里写的是字体名，打开它的机器上有这个字体就用它。流程图是空的时以 `RangeError` 拒绝。
+
 ## 文案
 
 查看器只有一句给读屏的名称，缺省是英文 `Flow diagram`，中文语言包里是「流程图」。单个实例要改时写 `translations`，它压在全局配置之上。

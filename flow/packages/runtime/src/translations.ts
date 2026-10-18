@@ -46,6 +46,12 @@ export interface FlowDesignerTranslations {
   readonly zoomOut: string
   readonly zoomToFit: string
   readonly zoomToActual: string
+  /** 导出成 PNG 图片。 */
+  readonly exportPng: string
+  /** 导出成 SVG 图片。 */
+  readonly exportSvg: string
+  /** 内置图片导出器的名称。 */
+  readonly exportImage: string
   /** 物料面板的标题。 */
   readonly palette: string
   /** 没有类别的节点类型所在分组的标题。 */

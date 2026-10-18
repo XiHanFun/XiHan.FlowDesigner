@@ -26,7 +26,7 @@ import type {
   FlowRect,
   FlowValidateOptions,
 } from '@xihan-flow/core'
-import type { FlowDesignerTranslations, FlowScene, FlowSceneEdge, FlowSceneNode } from '@xihan-flow/runtime'
+import type { FlowDesignerTranslations, FlowImageExportOptions, FlowImageFormat, FlowScene, FlowSceneEdge, FlowSceneNode } from '@xihan-flow/runtime'
 import type { AlignMode, DesignerImportSource, DistributeAxis, ExecuteOptions, ExtensionHost, Viewport } from '@xihan-ui/designer-kit'
 import type {
   CommandToolbar,
@@ -43,7 +43,7 @@ import type { KeyedChildren, PropertyValues } from '@xihan-ui/web-components/aut
 import type { FlowAutoLayoutOptions, FlowClipboard, FlowEditor, FlowSelection } from './editor'
 import type { FlowDesignerContext, FlowDesignerExtension, FlowDesignerImporter, FlowDesignerModel, FlowImportFragment, FlowMenuSubject } from './extensions'
 import { getPortPosition, portAllows, readDocument } from '@xihan-flow/core'
-import { buildScene, createOrthogonalRouter, defaultNodeRenderer } from '@xihan-flow/runtime'
+import { buildScene, createOrthogonalRouter, defaultNodeRenderer, exportFlowImage } from '@xihan-flow/runtime'
 import { detectKbdPlatform } from '@xihan-ui/core/hotkey'
 import {
   centerOn,
@@ -96,7 +96,7 @@ import {
 import { defineXhElement, XhContextMenuElement, XhIconElement, XhToolbarElement } from '@xihan-ui/web-components/define'
 import { encodeFlowClipboard, readFlowClipboard, readFlowFragment, writeFlowClipboard } from './clipboard'
 import { createFlowEditor } from './editor'
-import { createFlowDesignerModel, FLOW_DESIGNER_EXTENSION, flowMenuLayout, flowToolbarLayout } from './extensions'
+import { createFlowDesignerModel, FLOW_DESIGNER_EXTENSION, flowMenuLayout, flowToolbarLayout, IMAGE_RENDERERS } from './extensions'
 import { ContextMenuPanel } from './panels/context-menu'
 import { IssuesPanel } from './panels/issues'
 import { MinimapPanel } from './panels/minimap'
@@ -137,6 +137,11 @@ export interface FlowDesignerEventMap {
    * openFile() 选的文件没有导入器接下时也派发，此时没有 importer。
    */
   'import-error': CustomEvent<{ importer?: string, source: DesignerImportSource, error: unknown }>
+  /**
+   * 工具栏的导出命令导出了图片，带格式与文件；可以取消，取消后设计器不自己下载，宿主拿 blob 自己存。
+   * 没被取消时存成 flow.png 或 flow.svg 下载。
+   */
+  'export': CustomEvent<{ format: FlowImageFormat, blob: Blob }>
   /** 画布有焦点时按了 Ctrl / ⌘ + S；设计器不自己保存。 */
   'save': CustomEvent<Record<string, never>>
 }
@@ -279,6 +284,7 @@ export class XhFlowDesigner extends XhReactiveElement {
 
   constructor() {
     super()
+    IMAGE_RENDERERS.set(this, (format, options) => this.#renderImage(format, options))
     this.readonly = false
     this.grid = 16
     this.snap = true
@@ -652,6 +658,35 @@ export class XhFlowDesigner extends XhReactiveElement {
     void this.updateComplete
       .then(() => properties.element.updateComplete)
       .then(() => properties.focusField(path))
+  }
+
+  /** 把画面上的流程图画成图片：选中的节点与连线按没选中的样子画，内置的图片导出器经它取图。 */
+  async #renderImage(format: FlowImageFormat, options: FlowImageExportOptions): Promise<Blob> {
+    if (format !== 'svg' && format !== 'png')
+      throw new RangeError(`[flow-designer] no image format "${String(format)}"`)
+    await this.updateComplete
+    const scene = this.#scene
+    if (!scene)
+      throw new RangeError('[flow-designer] 流程图是空的，没有可导出的内容')
+    const layers = this.#ensureLayers()
+    const selected = Array.from(layers.world.querySelectorAll('[data-selected]'))
+    for (const element of selected)
+      element.removeAttribute('data-selected')
+    try {
+      // 独立的 SVG 在 exportFlowImage 里同步画好，之后才栅格化，选中标记随即放回
+      return exportFlowImage({
+        scene,
+        canvas: layers.root,
+        edges: layers.edges,
+        node: id => childWith(layers.nodes, 'nodeId', id),
+        label: id => childWith(layers.labels, 'edgeId', id),
+        zoom: this.#viewport.zoom,
+      }, format, options)
+    }
+    finally {
+      for (const element of selected)
+        element.setAttribute('data-selected', '')
+    }
   }
 
   /** 交给命令、面板与扩展 setup 的上下文。 */
@@ -1681,6 +1716,15 @@ export function defineFlowDesigner(): void {
   defineDesignerShellElement('xh-designer-minimap', XhDesignerMinimapElement)
   defineDesignerShellElement('xh-designer-transform', XhDesignerTransformElement)
   registerElement(FLOW_DESIGNER_TAG, XhFlowDesigner)
+}
+
+/** 父元素里 data-* 等于 value 的直接子元素。 */
+function childWith(parent: HTMLElement, key: string, value: string): HTMLElement | null {
+  for (const child of Array.from(parent.children)) {
+    if (child instanceof HTMLElement && child.dataset[key] === value)
+      return child
+  }
+  return null
 }
 
 /** 端口的显示名写进端口里的 port-label；没有显示名时撤掉。 */

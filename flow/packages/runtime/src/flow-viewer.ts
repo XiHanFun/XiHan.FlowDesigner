@@ -11,6 +11,7 @@ import type { Viewport } from '@xihan-ui/designer-kit'
 import type { PointerSession } from '@xihan-ui/pointer'
 import type { KeyedChildren, PropertyValues } from '@xihan-ui/web-components/authoring'
 import type { FlowRuntimeExtension, FlowRuntimeModel } from './extensions'
+import type { FlowImageExportOptions, FlowImageFormat } from './image-export'
 import type { FlowNodeStatus, FlowScene, FlowSceneEdge, FlowSceneNode } from './scene'
 import type { FlowViewerTranslations } from './translations'
 import { centerOn, DEFAULT_VIEWPORT, expandRect, fitRect, panBy, revealRect, wheelZoomFactor, zoomBy } from '@xihan-ui/designer-kit'
@@ -27,6 +28,7 @@ import {
 } from '@xihan-ui/web-components/authoring'
 import { defineXhElement, XhIconElement } from '@xihan-ui/web-components/define'
 import { createFlowRuntimeModel } from './extensions'
+import { exportFlowImage } from './image-export'
 import { defaultNodeRenderer } from './node-renderer'
 import { createOrthogonalRouter } from './router'
 import { buildScene } from './scene'
@@ -167,6 +169,28 @@ export class XhFlowViewer extends XhReactiveElement {
     this.#renderNodes(layers)
     if (!this.#fitIfPending())
       this.#applyViewport(false)
+  }
+
+  /**
+   * 把画面上的流程图导出成图片：svg 是能单独打开的 SVG 文件，png 按倍率栅格化；颜色与字体取画面此刻的样式，
+   * 节点、图标、连线与标签都画进去。选项见 FlowImageExportOptions。流程图是空的、format 不是这两种时以 RangeError 拒绝。
+   */
+  async export(format: FlowImageFormat, options?: FlowImageExportOptions): Promise<Blob> {
+    if (format !== 'svg' && format !== 'png')
+      throw new RangeError(`[xh-flow-viewer] no image format "${String(format)}"`)
+    await this.updateComplete
+    const scene = this.#scene
+    if (!scene)
+      throw new RangeError('[xh-flow-viewer] 流程图是空的，没有可导出的内容')
+    const layers = this.#ensureLayers()
+    return exportFlowImage({
+      scene,
+      canvas: layers.root,
+      edges: layers.edges,
+      node: id => childWith(layers.nodes, 'nodeId', id),
+      label: id => childWith(layers.labels, 'edgeId', id),
+      zoom: this.#viewport.zoom,
+    }, format, options)
   }
 
   /** 当前视口。 */
@@ -525,6 +549,15 @@ export class XhFlowViewer extends XhReactiveElement {
 export function defineFlowViewer(): void {
   defineXhElement('xh-icon', XhIconElement)
   registerElement(FLOW_VIEWER_TAG, XhFlowViewer)
+}
+
+/** 父元素里 data-* 等于 value 的直接子元素。 */
+function childWith(parent: HTMLElement, key: string, value: string): HTMLElement | null {
+  for (const child of Array.from(parent.children)) {
+    if (child instanceof HTMLElement && child.dataset[key] === value)
+      return child
+  }
+  return null
 }
 
 function createEdgeGroup(doc: Document): SVGGElement {
