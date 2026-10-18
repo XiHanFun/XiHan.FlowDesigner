@@ -96,7 +96,7 @@ declare function createFlowModel(extensions?: readonly FlowCoreExtension[]): Flo
 | `type` | `string` | 类型名，节点的 type 写它。 |
 | `label?` | `string` | 显示名：物料面板、属性面板的标题与问题说明里用它，不给时显示 type；节点自己没写标签时画布上也显示它。 |
 | `category?` | `string` | 物料面板里的类别，按它分组。 |
-| `icon?` | `string` | 图标名；内核与内置渲染不解释，自定义的节点渲染可以从节点类型上读它。 |
+| `icon?` | `IconRecord` | 图标：内置的节点渲染画在文字前面，物料面板的条目也显示它；自定义的节点渲染可以从节点类型上读它。 |
 | `size` | `FlowSize` | 新建节点的尺寸。 |
 | `ports` | `FlowPortPreset \| readonly FlowPortDefinition[]` | 端口：预设，或具名端口的列表。 |
 | `defaults?` | `FlowNodeDefaults` | 新建节点时写入的标签与 data。 |
@@ -124,10 +124,10 @@ type FlowPortPreset = 'in' | 'out' | 'both' | 'none'
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
 | `id` | `string` | 端口 id，连线端点的 port 写它；同一节点类型里不能重复。 |
-| `direction` | `FlowPortDirection` |  |
-| `side` | `FlowPortSide` |  |
+| `direction` | `FlowPortDirection` | 方向：in 只能连入，out 只能连出，both 两样都行。 |
+| `side` | `FlowPortSide` | 端口在节点的哪条边上。 |
 | `offset?` | `number` | 沿所在边从左到右或从上到下的相对位置，取值 0 到 1，缺省 0.5。 |
-| `label?` | `string` | 端口的显示名；内核与内置渲染不解释。 |
+| `label?` | `string` | 端口的显示名：设计器把它写在端口外侧，随端口一起显出；内核不解释。 |
 | `maxConnections?` | `number` | 该端口最多连接的连线数。 |
 
 ### FlowPortDirection {#flowportdirection}

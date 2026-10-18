@@ -52,6 +52,7 @@ const typed: FlowDesignerExtension = {
     type: 'task',
     label: '任务',
     category: '活动',
+    icon: { name: 'play', viewBox: '0 0 24 24', nodes: [{ tag: 'path', attrs: { d: 'M8 5v14l11-7z' } }] },
     size: { width: 100, height: 40 },
     ports: 'both',
     properties: [
@@ -88,7 +89,7 @@ function notUpgraded(): string[] {
 }
 
 describe('defineFlowDesigner 按需注册', () => {
-  it('只调 defineFlowDesigner：工具栏、物料、属性面板七种编辑器、问题列表、小地图与右键菜单里的 xh-* 元素都已升级', async () => {
+  it('只调 defineFlowDesigner：工具栏、物料、节点图标、属性面板七种编辑器、问题列表、小地图与右键菜单里的 xh-* 元素都已升级', async () => {
     const designer = await mount(element => element.extensions = [typed])
     designer.select({ nodes: ['t'] })
     await settle(designer)
@@ -106,6 +107,7 @@ describe('defineFlowDesigner 按需注册', () => {
       'xh-designer-properties',
       'xh-designer-transform',
       'xh-field',
+      'xh-icon',
       'xh-number-field',
       'xh-select',
       'xh-splitter',

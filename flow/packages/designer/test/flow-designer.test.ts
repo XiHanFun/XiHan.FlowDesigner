@@ -116,6 +116,32 @@ describe('<xh-flow-designer>', () => {
     ])
   })
 
+  it('写了显示名的端口把名字画在端口外侧，按所在的边标出 data-side；没有显示名的不带，去掉后撤掉', async () => {
+    const branching = (yes?: string): FlowDesignerExtension => ({
+      id: 'test',
+      nodeTypes: [nodes.nodeTypes![0]!, {
+        type: 'task',
+        size: { width: 100, height: 40 },
+        ports: [
+          { id: 'in', direction: 'in', side: 'left' },
+          { id: 'yes', direction: 'out', side: 'right', label: yes },
+          { id: 'no', direction: 'out', side: 'bottom', label: '驳回' },
+        ],
+      }, nodes.nodeTypes![2]!],
+    })
+    const designer = await mount(d => d.extensions = [branching('同意')])
+    const label = (port: string): string | undefined => portElement(designer, 't', port).querySelector('[data-part="port-label"]')?.textContent ?? undefined
+    expect(['in', 'yes', 'no'].map(port => [portElement(designer, 't', port).dataset.side, label(port)])).toEqual([
+      ['left', undefined],
+      ['right', '同意'],
+      ['bottom', '驳回'],
+    ])
+    designer.extensions = [branching()]
+    await designer.updateComplete
+    expect(label('yes')).toBeUndefined()
+    expect(label('no')).toBe('驳回')
+  })
+
   it('点选节点，Shift 点选追加与取消，点空白清空选择', async () => {
     const designer = await mount()
     const changes: unknown[] = []

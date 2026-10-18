@@ -43,7 +43,7 @@ import type { KeyedChildren, PropertyValues } from '@xihan-ui/web-components/aut
 import type { FlowAutoLayoutOptions, FlowClipboard, FlowEditor, FlowSelection } from './editor'
 import type { FlowDesignerContext, FlowDesignerExtension, FlowDesignerImporter, FlowDesignerModel, FlowImportFragment, FlowMenuSubject } from './extensions'
 import { getPortPosition, portAllows, readDocument } from '@xihan-flow/core'
-import { buildScene, createOrthogonalRouter } from '@xihan-flow/runtime'
+import { buildScene, createOrthogonalRouter, defaultNodeRenderer } from '@xihan-flow/runtime'
 import { detectKbdPlatform } from '@xihan-ui/core/hotkey'
 import {
   centerOn,
@@ -93,7 +93,7 @@ import {
   XhConfigController,
   XhReactiveElement,
 } from '@xihan-ui/web-components/authoring'
-import { defineXhElement, XhContextMenuElement, XhToolbarElement } from '@xihan-ui/web-components/define'
+import { defineXhElement, XhContextMenuElement, XhIconElement, XhToolbarElement } from '@xihan-ui/web-components/define'
 import { encodeFlowClipboard, readFlowClipboard, readFlowFragment, writeFlowClipboard } from './clipboard'
 import { createFlowEditor } from './editor'
 import { createFlowDesignerModel, FLOW_DESIGNER_EXTENSION, flowMenuLayout, flowToolbarLayout } from './extensions'
@@ -862,11 +862,8 @@ export class XhFlowDesigner extends XhReactiveElement {
     element.style.top = `${rect.y}px`
     element.style.width = `${rect.width}px`
     element.style.height = `${rect.height}px`
-    const render = this.#model.runtime.renderers.get(node.type)
-    if (render)
-      render(element, { node, nodeType: sceneNode.nodeType, label: sceneNode.label, status: undefined, highlighted: false })
-    else if (element.textContent !== sceneNode.label)
-      element.textContent = sceneNode.label
+    const render = this.#model.runtime.renderers.get(node.type) ?? defaultNodeRenderer
+    render(element, { node, nodeType: sceneNode.nodeType, label: sceneNode.label, status: undefined, highlighted: false })
   }
 
   #renderPorts(layers: Layers): void {
@@ -879,6 +876,8 @@ export class XhFlowDesigner extends XhReactiveElement {
       element.dataset.nodeId = item.sceneNode.id
       element.dataset.portId = item.port.id
       element.dataset.direction = item.port.direction
+      element.dataset.side = item.port.side
+      paintPortLabel(element, item.port.label)
       element.style.left = `${item.at.x}px`
       element.style.top = `${item.at.y}px`
       return element
@@ -1672,6 +1671,7 @@ export class XhFlowDesigner extends XhReactiveElement {
  * 宿主不必再全量注册。重复调用不报错。
  */
 export function defineFlowDesigner(): void {
+  defineXhElement('xh-icon', XhIconElement)
   defineXhElement('xh-toolbar', XhToolbarElement)
   defineXhElement('xh-context-menu', XhContextMenuElement)
   defineDesignerShellElement('xh-designer-frame', XhDesignerFrameElement)
@@ -1681,6 +1681,22 @@ export function defineFlowDesigner(): void {
   defineDesignerShellElement('xh-designer-minimap', XhDesignerMinimapElement)
   defineDesignerShellElement('xh-designer-transform', XhDesignerTransformElement)
   registerElement(FLOW_DESIGNER_TAG, XhFlowDesigner)
+}
+
+/** 端口的显示名写进端口里的 port-label；没有显示名时撤掉。 */
+function paintPortLabel(port: HTMLElement, label: string | undefined): void {
+  let text = port.firstElementChild as HTMLElement | null
+  if (label === undefined) {
+    text?.remove()
+    return
+  }
+  if (!text) {
+    text = createGeneratedElement(port.ownerDocument, 'span')
+    text.dataset.part = 'port-label'
+    port.append(text)
+  }
+  if (text.textContent !== label)
+    text.textContent = label
 }
 
 function placeBox(element: HTMLElement, rect: FlowRect | undefined): void {

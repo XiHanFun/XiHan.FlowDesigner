@@ -56,7 +56,7 @@
 declare function defineFlowViewer(): void
 ```
 
-注册 &lt;xh-flow-viewer&gt;；重复调用不报错。
+注册 &lt;xh-flow-viewer&gt; 与内置节点渲染用到的 &lt;xh-icon&gt;；重复调用不报错。
 
 ## 节点渲染
 
@@ -66,7 +66,7 @@ declare function defineFlowViewer(): void
 type FlowNodeRenderer = (container: HTMLElement, context: FlowNodeRenderContext) => void
 ```
 
-自定义节点内容：每次绘制都会调用，把内容写进 container；不给时显示标签文字。
+自定义节点内容：每次绘制都会调用，把内容写进 container；不给时用 defaultNodeRenderer。
 
 ### FlowNodeRenderContext {#flownoderendercontext}
 
@@ -80,6 +80,14 @@ type FlowNodeRenderer = (container: HTMLElement, context: FlowNodeRenderContext)
 | `status` | `FlowNodeStatus \| undefined` | 节点此刻的运行状态；没有状态时为 undefined。 |
 | `highlighted` | `boolean` | 节点是否高亮。 |
 
+### defaultNodeRenderer() {#defaultnoderenderer}
+
+```ts
+declare function defaultNodeRenderer(container: HTMLElement, { nodeType, label }: FlowNodeRenderContext): void
+```
+
+内置的节点内容：节点类型给了 icon 时图标（data-part="node-icon"）在前、文字（data-part="node-label"）在后，没给时节点里只有文字。没有登记渲染的节点类型用它，自定义的渲染也可以调它画出同样的内容。重画时复用已有的图标与文字节点。图标是 &lt;xh-icon&gt;，defineFlowViewer() 与 defineFlowDesigner() 会注册它。
+
 ### FlowRuntimeExtension {#flowruntimeextension}
 
 流程运行时层的扩展：在 core 层之上加节点内容的渲染，查看器与设计器都读它。
@@ -88,7 +96,7 @@ type FlowNodeRenderer = (container: HTMLElement, context: FlowNodeRenderContext)
 
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
-| `nodeRenderers?` | `Readonly<Record<string, FlowNodeRenderer>>` | 节点内容的渲染，键是节点类型；没给渲染的类型画标签。 |
+| `nodeRenderers?` | `Readonly<Record<string, FlowNodeRenderer>>` | 节点内容的渲染，键是节点类型；没给渲染的类型用 defaultNodeRenderer 画图标与文字。 |
 
 ### createFlowRuntimeModel() {#createflowruntimemodel}
 
@@ -139,12 +147,18 @@ declare function createOrthogonalRouter(options?: OrthogonalRouterOptions): Flow
 
 | 名称 | 种类 | 说明 |
 | --- | --- | --- |
-| `defineFlowViewer` | 函数 | 注册 &lt;xh-flow-viewer&gt;；重复调用不报错。 |
+| `defineFlowViewer` | 函数 | 注册 &lt;xh-flow-viewer&gt; 与内置节点渲染用到的 &lt;xh-icon&gt;；重复调用不报错。 |
 | `FLOW_VIEWER_TAG` | 常量 | 查看器的标签名。 |
 | `FlowNodeRenderContext` | 接口 | 自定义节点内容时拿到的上下文。 |
-| `FlowNodeRenderer` | 类型 | 自定义节点内容：每次绘制都会调用，把内容写进 container；不给时显示标签文字。 |
+| `FlowNodeRenderer` | 类型 | 自定义节点内容：每次绘制都会调用，把内容写进 container；不给时用 defaultNodeRenderer。 |
 | `FlowViewerEventMap` | 接口 | 查看器派发的事件；x / y 为浏览器视口坐标。 |
 | `XhFlowViewer` | 类 | 流程查看器 &lt;xh-flow-viewer&gt;：只读显示流程、运行状态与高亮。 |
+
+### node-renderer
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `defaultNodeRenderer` | 函数 | 内置的节点内容：节点类型给了 icon 时图标（data-part="node-icon"）在前、文字（data-part="node-label"）在后，没给时节点里只有文字。 |
 
 ### router
 

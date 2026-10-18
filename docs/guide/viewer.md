@@ -58,7 +58,7 @@ xh-flow-viewer [data-part='node'][data-status='skipped'] {
 
 ## 自定义节点内容
 
-运行时层的扩展可以给某个节点类型登记渲染函数 `nodeRenderers`：每次绘制都会调用，把内容写进节点元素。上下文里有节点、节点类型、要显示的文字、运行状态与是否高亮。没登记渲染的类型照常显示名称。渲染函数只用 DOM API 建节点，不把数据拼进 `innerHTML`。
+运行时层的扩展可以给某个节点类型登记渲染函数 `nodeRenderers`：每次绘制都会调用，把内容写进节点元素。上下文里有节点、节点类型、要显示的文字、运行状态与是否高亮。没登记渲染的类型由 `defaultNodeRenderer` 画：节点类型给了 `icon` 时图标在前、名称在后，没给时只有名称；自己的渲染函数也可以先调它画出同样的内容再加别的。渲染函数只用 DOM API 建节点，不把数据拼进 `innerHTML`。
 
 <<< @/examples/demos/viewer-renderer.ts#renderer
 

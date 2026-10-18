@@ -10,7 +10,7 @@ import { DesignerExtensionError } from '@xihan-ui/designer-kit'
 
 /** 流程运行时层的扩展：在 core 层之上加节点内容的渲染，查看器与设计器都读它。 */
 export interface FlowRuntimeExtension extends FlowCoreExtension {
-  /** 节点内容的渲染，键是节点类型；没给渲染的类型画标签。 */
+  /** 节点内容的渲染，键是节点类型；没给渲染的类型用 defaultNodeRenderer 画图标与文字。 */
   readonly nodeRenderers?: Readonly<Record<string, FlowNodeRenderer>>
 }
 

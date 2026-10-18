@@ -106,6 +106,14 @@ describe('物料面板', () => {
     Reflect.deleteProperty(document, 'elementFromPoint')
   })
 
+  it('节点类型给了图标时物料条目带上图标', async () => {
+    const play = { name: 'play', viewBox: '0 0 24 24', nodes: [{ tag: 'path' as const, attrs: { d: 'M8 5v14l11-7z' } }] }
+    const designer = await mount(d => d.extensions = [{ id: 'test', nodeTypes: definitions.map(definition => definition.type === 'task' ? { ...definition, icon: play } : definition) }])
+    await settle(designer)
+    expect((item(designer, 'task').querySelector('xh-icon') as HTMLElement & { icon?: unknown }).icon).toBe(play)
+    expect(item(designer, 'start').querySelector('xh-icon')).toBeNull()
+  })
+
   it('按类别分组，没有类别的排最后；分组的先后与标题可换', async () => {
     const designer = await mount()
     await settle(designer)

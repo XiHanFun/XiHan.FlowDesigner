@@ -10,7 +10,7 @@ import type { FlowRuntimeExtension, XhFlowViewer } from '../src'
 import { DesignerExtensionError } from '@xihan-ui/designer-kit'
 import { setXhConfig } from '@xihan-ui/web-components'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { defineFlowViewer, FLOW_VIEWER_TAG } from '../src'
+import { defaultNodeRenderer, defineFlowViewer, FLOW_VIEWER_TAG } from '../src'
 import { flowZhCN } from '../src/locale'
 
 defineFlowViewer()
@@ -101,6 +101,38 @@ describe('<xh-flow-viewer>', () => {
     })
     expect((part(viewer, 'node') as HTMLElement[]).map(node => node.textContent)).toEqual(['开始:-', '审批:waiting'])
     expect(render).toHaveBeenCalledTimes(2)
+  })
+
+  it('节点类型给了图标时内置渲染画出图标与文字，去掉图标后只剩文字；自定义渲染可以调 defaultNodeRenderer', async () => {
+    const play = { name: 'play', viewBox: '0 0 24 24', nodes: [{ tag: 'path' as const, attrs: { d: 'M8 5v14l11-7z' } }] }
+    const iconic: FlowRuntimeExtension = { id: 'test', nodeTypes: [{ ...nodes.nodeTypes![0]!, icon: play }, nodes.nodeTypes![1]!] }
+    const viewer = await mount(element => element.extensions = [iconic])
+    const start = viewer.querySelector<HTMLElement>('[data-part="node"][data-node-id="s"]')!
+    const icon = start.querySelector<HTMLElement & { icon?: unknown }>(':scope > xh-icon[data-part="node-icon"]')!
+    expect(icon.icon).toBe(play)
+    expect(customElements.get('xh-icon')).toBeDefined()
+    expect(icon.matches(':defined')).toBe(true)
+    expect(start.querySelector('[data-part="node-label"]')!.textContent).toBe('开始')
+    expect(start.textContent).toBe('开始')
+    const task = viewer.querySelector<HTMLElement>('[data-part="node"][data-node-id="t"]')!
+    expect([task.childElementCount, task.textContent]).toEqual([0, '审批'])
+
+    viewer.schema = { ...document, nodes: [{ ...document.nodes[0]!, label: '发起' }, document.nodes[1]!] }
+    await viewer.updateComplete
+    expect(start.querySelector(':scope > xh-icon')).toBe(icon)
+    expect(start.textContent).toBe('发起')
+
+    viewer.extensions = [nodes]
+    await viewer.updateComplete
+    expect([start.childElementCount, start.textContent]).toEqual([0, '发起'])
+
+    viewer.extensions = [iconic, { id: 'wrap', nodeRenderers: { start: (container, context) => {
+      defaultNodeRenderer(container, context)
+      container.dataset.wrapped = ''
+    } } }]
+    await viewer.updateComplete
+    expect(start.hasAttribute('data-wrapped')).toBe(true)
+    expect(start.querySelector(':scope > xh-icon')).not.toBeNull()
   })
 
   it('同一类型的渲染给了两次时赋值当场抛错，属性保持原值', async () => {

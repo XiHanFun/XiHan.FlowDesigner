@@ -58,7 +58,7 @@ export class PalettePanel {
     this.element.groups = groupTypes(registry.types, order).map((group): DesignerPaletteGroup => ({
       id: group.category ?? '',
       label: group.category === undefined ? t.paletteUncategorized : Object.hasOwn(labels, group.category) ? labels[group.category]! : group.category,
-      items: group.types.map(nodeType => ({ id: nodeType.type, label: nodeType.label ?? nodeType.type, payload: nodeType.type })),
+      items: group.types.map(nodeType => ({ id: nodeType.type, label: nodeType.label ?? nodeType.type, icon: nodeType.icon, payload: nodeType.type })),
     }))
   }
 }

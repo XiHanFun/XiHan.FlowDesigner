@@ -93,6 +93,7 @@ xh-flow-viewer [data-part='node'] {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: var(--xh-space-1);
   overflow: hidden;
   padding: 0 var(--xh-space-2);
   border: var(--xh-stroke-thin) solid var(--xh-border-default);
@@ -101,6 +102,10 @@ xh-flow-viewer [data-part='node'] {
   color: var(--xh-fg-default);
   text-align: center;
   cursor: pointer;
+}
+
+xh-flow-viewer [data-part='node-icon'] {
+  flex: none;
 }
 
 xh-flow-viewer [data-part='node']:hover {
