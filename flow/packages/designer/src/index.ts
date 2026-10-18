@@ -7,7 +7,7 @@
 
 export { decodeFlowClipboard, encodeFlowClipboard } from './clipboard'
 export type { FlowAutoLayoutOptions, FlowClipboard, FlowSelection } from './editor'
-export { createFlowDesignerModel, FLOW_DESIGNER_EXTENSION, FLOW_TOOLBAR_LAYOUT, flowMenuLayout, flowToolbarLayout } from './extensions'
+export { createFlowDesignerModel, FLOW_DESIGNER_EXTENSION, FLOW_DESIGNER_HELP_URL, FLOW_TOOLBAR_LAYOUT, flowMenuLayout, flowToolbarLayout } from './extensions'
 export type {
   FlowDesignerCommand,
   FlowDesignerContext,

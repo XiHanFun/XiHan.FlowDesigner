@@ -546,13 +546,27 @@ function shortcutText(keys) {
   return keys.map(key => (key === 'Mod' ? 'Ctrl / ⌘' : key)).join(' + ')
 }
 
+/** designer-shell 的内置命令：...designerShellCommands({ openSettings, helpUrl, icons }) 给了哪个选项就有哪条，文案在共用一桶里。 */
+function shellCommands(element) {
+  const call = element.expression
+  if (!flat(call).startsWith('designerShellCommands'))
+    throw new Error(`[gen-reference] BUILTIN_COMMANDS 里展开的不是 designerShellCommands：${flat(element)}`)
+  const options = new Map(call.arguments[0].properties.map(property => [nameOf(property), property.initializer]))
+  const icons = new Map((options.get('icons')?.properties ?? []).map(property => [nameOf(property), flat(property.initializer)]))
+  return [['settings', 'openSettings'], ['help', 'helpUrl']]
+    .filter(([, option]) => options.has(option))
+    .map(([id]) => ({ id, label: id, bucket: 'xh-designer-commands', icon: icons.get(id), shortcut: [], readonly: true }))
+}
+
 /**
  * 内置命令：从 BUILTIN_COMMANDS 的字面量里取 id、文案键、图标与快捷键；文案写 text(键) 的取设计器文案，写 shared(键) 的
- * 取 designer-shell 的共用命令文案；enabled 由 editable 包着的只读时不可用。
+ * 取 designer-shell 的共用命令文案；enabled 由 editable 包着的只读时不可用。展开的 designerShellCommands 按选项列出。
  */
 function builtinCommands(file) {
   const { node } = declaration(file, 'BUILTIN_COMMANDS')
-  return node.initializer.elements.map((element) => {
+  return node.initializer.elements.flatMap((element) => {
+    if (element.properties === undefined)
+      return shellCommands(element)
     const fields = new Map(element.properties.map(property => [nameOf(property), property.initializer]))
     const id = fields.get('id').text
     const match = /^(text|shared)\('(\w+)'\)$/.exec(flat(fields.get('label')))
