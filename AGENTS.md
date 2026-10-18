@@ -54,7 +54,7 @@ XiHan.FlowDesigner 是框架无关的流程设计器，以原生 Web Components 
 
 ```bash
 # XiHan.UI/ui
-pnpm --filter "@xihan-ui/web-components..." --filter "@xihan-ui/designer-kit..." --filter "@xihan-ui/styles..." build
+pnpm --filter "@xihan-ui/web-components..." --filter "@xihan-ui/designer-kit..." --filter "@xihan-ui/designer-shell..." --filter "@xihan-ui/styles..." build
 # XiHan.FlowDesigner/flow
 pnpm dev
 ```
