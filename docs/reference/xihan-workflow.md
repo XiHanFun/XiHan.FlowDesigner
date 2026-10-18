@@ -330,6 +330,12 @@
 | `xihan-workflow.decision-no-default` | 警告 | 加一条默认分支或无条件分支 |
 | `xihan-workflow.user-task-no-assignee` | 错误 | 配置受理人规则、受理人或受理人表达式 |
 
+下面的文案键不是问题码，是 `legacyAssignees: false` 时同一条问题换用的说明（只提受理人规则）。
+
+| 文案键 | 用于问题码 | 说明 |
+| --- | --- | --- |
+| `xihan-workflow.user-task-no-assignee-rules` | `xihan-workflow.user-task-no-assignee` | 配置受理人规则 |
+
 ## 预设
 
 ### createXihanWorkflow() {#createxihanworkflow}
@@ -347,7 +353,7 @@ createXihanWorkflow 的选项。
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
 | `texts?` | `XihanWorkflowTextsOverride` | 文案，各部分按键覆盖英文缺省；整套换语言直接传对应的语言包，如 xihanWorkflowZhCN、xihanWorkflowJaJP。 |
-| `legacyAssignees?` | `boolean` | 审批节点的属性面板里显示旧的受理人写法（Assignees、AssigneesExpression、CcUserIds），缺省 true。为 false 时不登记这三项属性，已有的值照旧读写、往返不丢，只是属性面板里不再显示。 |
+| `legacyAssignees?` | `boolean` | 审批节点的属性面板里显示旧的受理人写法（Assignees、AssigneesExpression、CcUserIds），缺省 true。为 false 时不登记这三项属性，已有的值照旧读写、往返不丢，只是属性面板里不再显示；缺受理人的问题说明也只提受理人规则。 |
 
 ### XihanWorkflowTexts {#xihanworkflowtexts}
 
@@ -360,7 +366,7 @@ createXihanWorkflow 的选项。
 | `groups` | `Readonly<Record<XihanWorkflowGroup, string>>` | 交给设计器的 propertyGroupLabels。 |
 | `properties` | `Readonly<Record<XihanWorkflowPropertyKey, string>>` | 属性的标签。 |
 | `options` | `Readonly<Record<XihanWorkflowOptionKey, string>>` | 下拉选项的文字。 |
-| `issues` | `Readonly<Record<XihanWorkflowIssueCode, string>>` | 规则问题的说明。 |
+| `issues` | `Readonly<Record<XihanWorkflowIssueTextKey, string>>` | 规则问题的说明，键见 XihanWorkflowIssueTextKey。 |
 
 ## 与引擎定义互转
 
@@ -539,6 +545,7 @@ fromWorkflowDefinition 的选项。
 | `XihanWorkflowCategory` | 类型 | 物料面板的分类，节点类型的 category 取这些值。 |
 | `XihanWorkflowGroup` | 类型 | 属性面板的分组，属性描述的 group 取这些值。 |
 | `XihanWorkflowIssueCode` | 类型 | 预设规则的问题码。 |
+| `XihanWorkflowIssueTextKey` | 类型 | 规则问题说明的键：问题码，外加同一条问题随预设选项换用的说明。 |
 | `XihanWorkflowOptionKey` | 类型 | 下拉选项的键：属性键加点加取值，只列需要翻译的。 |
 | `XihanWorkflowPropertyKey` | 类型 | 属性名的键：节点属性用引擎的键名（Title、Url…），节点级字段与连线、流程定义的字段用 JSON 里的字段名，名称（节点名与连线名）为 name。 |
 | `XihanWorkflowTexts` | 接口 | 预设的全部文案。 |

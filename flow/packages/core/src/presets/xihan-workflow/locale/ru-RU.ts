@@ -123,5 +123,6 @@ export const xihanWorkflowRuRU: XihanWorkflowTexts = {
     'xihan-workflow.decision-multiple-defaults': 'У ветвления может быть не больше одной ветви по умолчанию',
     'xihan-workflow.decision-no-default': 'Добавьте ветвь по умолчанию или ветвь без условия',
     'xihan-workflow.user-task-no-assignee': 'Задайте правила назначения, исполнителей или выражение для исполнителей',
+    'xihan-workflow.user-task-no-assignee-rules': 'Задайте правила назначения',
   },
 }

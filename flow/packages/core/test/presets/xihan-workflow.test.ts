@@ -228,6 +228,21 @@ describe('xihanWorkflow 规则', () => {
     expect(codes(document({ AssigneeRules: [{ type: 'Starter', values: [] }] }))).toEqual([])
   })
 
+  it('legacyAssignees 为 false 时缺受理人的说明只提受理人规则，问题码不变；缺省时照旧提三种写法', () => {
+    const document: FlowDocument = {
+      version: 1,
+      data: named,
+      nodes: [node('s', 'Start', 0), node('u', 'UserTask', 200), node('e', 'End', 400)],
+      edges: [edge('su', 's', 'u'), edge('ue', 'u', 'e')],
+    }
+    const missing = (extension: typeof xihanWorkflow): string | undefined => {
+      const issue = validateDocument(document, { extensions: [extension] }).find(item => item.code === 'xihan-workflow.user-task-no-assignee')!
+      return createFlowModel([extension]).issueText(issue)
+    }
+    expect(missing(createXihanWorkflow({ texts: xihanWorkflowZhCN, legacyAssignees: false }))).toBe('配置受理人规则')
+    expect(missing(createXihanWorkflow({ texts: xihanWorkflowZhCN }))).toBe('配置受理人规则、受理人或受理人表达式')
+    expect(missing(createXihanWorkflow({ legacyAssignees: false }))).toBe('Set assignee rules')
+  })
   it('受理人规则的取值与兜底规则的必填', () => {
     const document = (properties: Record<string, unknown>): FlowDocument => ({
       version: 1,

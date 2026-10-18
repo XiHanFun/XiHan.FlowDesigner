@@ -787,6 +787,9 @@ function xihanWorkflowPage() {
   const preset = createXihanWorkflow({ texts: xihanWorkflowZhCN })
   const { categories, groups, issues } = xihanWorkflowZhCN
   const severities = workflowRuleSeverities(join(root, 'rules.ts'))
+  // 文案的键里，规则给出严重程度的是问题码，其余是同一条问题随预设选项换用的说明
+  const issueCodes = Object.keys(issues).filter(key => severities.has(key))
+  const variants = Object.keys(issues).filter(key => !severities.has(key))
   const sections = [
     '## 节点类型',
     `下表与各节点类型的属性取自中文文案的预设（${code('createXihanWorkflow({ texts: xihanWorkflowZhCN })')}）。类型名就是引擎的活动类型。`,
@@ -813,11 +816,21 @@ function xihanWorkflowPage() {
     descriptorTable(preset.documentProperties, groups),
     '## 规则',
     `规则检查引擎发布定义时把关、通用校验覆盖不到的约束。说明取自中文文案，严重程度可以经 ${code('validateOptions.severity')} 改写。`,
-    table(['问题码', '严重程度', '说明'], Object.keys(issues).map(issueCode => [
+    table(['问题码', '严重程度', '说明'], issueCodes.map(issueCode => [
       code(issueCode, true),
       SEVERITY_NAMES[severities.get(issueCode)] ?? '—',
       prose(issues[issueCode], true),
     ])),
+    ...(variants.length === 0
+      ? []
+      : [
+          `下面的文案键不是问题码，是 ${code('legacyAssignees: false')} 时同一条问题换用的说明（只提受理人规则）。`,
+          table(['文案键', '用于问题码', '说明'], variants.map(key => [
+            code(key, true),
+            code(issueCodes.find(issueCode => key.startsWith(`${issueCode}-`)) ?? '—', true),
+            prose(issues[key], true),
+          ])),
+        ]),
     '## 预设',
     functionSection(join(root, 'index.ts'), 'createXihanWorkflow'),
     interfaceSection(join(root, 'index.ts'), 'CreateXihanWorkflowOptions'),

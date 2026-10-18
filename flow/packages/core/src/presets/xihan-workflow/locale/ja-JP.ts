@@ -123,5 +123,6 @@ export const xihanWorkflowJaJP: XihanWorkflowTexts = {
     'xihan-workflow.decision-multiple-defaults': '条件分岐の既定の分岐は 1 本までです',
     'xihan-workflow.decision-no-default': '既定の分岐か条件のない分岐を追加してください',
     'xihan-workflow.user-task-no-assignee': '担当者ルール、担当者、または担当者の式を設定してください',
+    'xihan-workflow.user-task-no-assignee-rules': '担当者ルールを設定してください',
   },
 }

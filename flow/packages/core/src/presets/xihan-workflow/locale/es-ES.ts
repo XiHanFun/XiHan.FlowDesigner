@@ -123,5 +123,6 @@ export const xihanWorkflowEsES: XihanWorkflowTexts = {
     'xihan-workflow.decision-multiple-defaults': 'Una decisión puede tener como máximo una rama predeterminada',
     'xihan-workflow.decision-no-default': 'Añade una rama predeterminada o una rama sin condición',
     'xihan-workflow.user-task-no-assignee': 'Configura reglas de responsables, responsables o una expresión de responsables',
+    'xihan-workflow.user-task-no-assignee-rules': 'Configura reglas de responsables',
   },
 }

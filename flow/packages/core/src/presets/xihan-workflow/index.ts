@@ -31,6 +31,7 @@ export type {
   XihanWorkflowCategory,
   XihanWorkflowGroup,
   XihanWorkflowIssueCode,
+  XihanWorkflowIssueTextKey,
   XihanWorkflowOptionKey,
   XihanWorkflowPropertyKey,
   XihanWorkflowTexts,
@@ -46,7 +47,7 @@ export interface CreateXihanWorkflowOptions {
   readonly texts?: XihanWorkflowTextsOverride
   /**
    * 审批节点的属性面板里显示旧的受理人写法（Assignees、AssigneesExpression、CcUserIds），缺省 true。
-   * 为 false 时不登记这三项属性，已有的值照旧读写、往返不丢，只是属性面板里不再显示。
+   * 为 false 时不登记这三项属性，已有的值照旧读写、往返不丢，只是属性面板里不再显示；缺受理人的问题说明也只提受理人规则。
    */
   readonly legacyAssignees?: boolean
 }
@@ -74,13 +75,18 @@ function mergeTexts(override: XihanWorkflowTextsOverride | undefined): XihanWork
 export function createXihanWorkflow(options: CreateXihanWorkflowOptions = {}): FlowCoreExtension {
   const texts = mergeTexts(options.texts)
   const messages: Readonly<Record<string, string>> = texts.issues
+  const legacy = options.legacyAssignees ?? true
   return {
     id: XIHAN_WORKFLOW_ID,
     nodeTypes: xihanWorkflowNodeTypes(texts, { legacyAssignees: options.legacyAssignees }),
     documentProperties: xihanWorkflowDocumentProperties(texts),
     controls: { [XIHAN_WORKFLOW_ASSIGNEE_RULES]: ASSIGNEE_RULES_CONTROL, [XIHAN_WORKFLOW_START_VARIABLES]: START_VARIABLES_CONTROL },
     rules: XIHAN_WORKFLOW_RULES,
-    issueText: issue => (Object.hasOwn(messages, issue.code) ? messages[issue.code] : undefined),
+    issueText: (issue) => {
+      // 不登记旧的受理人写法时，缺受理人的说明只提受理人规则
+      const key = !legacy && issue.code === 'xihan-workflow.user-task-no-assignee' ? 'xihan-workflow.user-task-no-assignee-rules' : issue.code
+      return Object.hasOwn(messages, key) ? messages[key] : undefined
+    },
   }
 }
 

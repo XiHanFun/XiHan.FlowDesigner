@@ -123,5 +123,6 @@ export const xihanWorkflowDeDE: XihanWorkflowTexts = {
     'xihan-workflow.decision-multiple-defaults': 'Eine Entscheidung kann höchstens einen Standardzweig haben',
     'xihan-workflow.decision-no-default': 'Fügen Sie einen Standardzweig oder einen Zweig ohne Bedingung hinzu',
     'xihan-workflow.user-task-no-assignee': 'Legen Sie Bearbeiterregeln, Bearbeiter oder einen Bearbeiter-Ausdruck fest',
+    'xihan-workflow.user-task-no-assignee-rules': 'Legen Sie Bearbeiterregeln fest',
   },
 }

@@ -123,5 +123,6 @@ export const xihanWorkflowFrFR: XihanWorkflowTexts = {
     'xihan-workflow.decision-multiple-defaults': 'Une décision ne peut avoir qu’une seule branche par défaut',
     'xihan-workflow.decision-no-default': 'Ajoutez une branche par défaut ou une branche sans condition',
     'xihan-workflow.user-task-no-assignee': 'Définissez des règles d’attribution, des responsables ou une expression des responsables',
+    'xihan-workflow.user-task-no-assignee-rules': 'Définissez des règles d’attribution',
   },
 }
