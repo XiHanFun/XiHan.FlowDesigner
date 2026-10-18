@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-// <xh-flow-designer>：流程设计器。顶部工具栏、左侧物料面板、中间画布（右下角小地图）、右侧属性面板与底部问题列表；
+// <xh-flow-designer>：流程设计器。顶部工具栏、左侧物料面板、中间画布（右下角浮着小地图）、右侧属性面板与底部问题列表；
 // 画布上点选、Shift 点选追加、
 // 拖动节点（吸附网格与对齐线，一次拖动记一步撤销）、Shift 拖空白框选、拖空白平移、从端口拖出连线，
 // 选中一条连线后拖端点改连、拖拐点挪动、拖线段中点加拐点、双击拐点删掉它，
@@ -815,7 +815,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     })
     const menu = new ContextMenuPanel(doc, root, id => runCommand(this.#model.commands, id, this.#context()))
     menu.trigger.addEventListener('keydown', this.#onKeyDown)
-    canvas.append(menu.element, minimap.element)
+    canvas.append(menu.element)
     const commandBar = createCommandToolbar<FlowDesignerContext>(doc)
     const toolbar = createGeneratedElement(doc, 'div')
     toolbar.dataset.part = 'toolbar'
@@ -862,7 +862,8 @@ export class XhFlowDesigner extends XhReactiveElement {
     // 问题列表带计数的严重程度开关放进它所在卡片的面板头
     const issueSummary = issues.element.summary
     issueSummary.slot = 'issues-actions'
-    frame.append(toolbar, palette.element, canvas, properties.element, issues.element, issueSummary)
+    minimap.element.slot = 'canvas-bottom-end'
+    frame.append(toolbar, palette.element, canvas, properties.element, issues.element, issueSummary, minimap.element)
     const panels = createPanelHost<FlowDesignerContext>(frame)
     this.append(frame)
     root.addEventListener('pointerdown', this.#onPointerDown)

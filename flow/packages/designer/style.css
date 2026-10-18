@@ -283,12 +283,6 @@ xh-flow-designer [data-part='viewport'][data-gesture='drop'] {
   cursor: copy;
 }
 
-xh-flow-designer [data-part='minimap'] {
-  position: absolute;
-  inset-block-end: var(--xh-space-3);
-  inset-inline-end: var(--xh-space-3);
-}
-
 xh-flow-designer [data-part='edge-handle'],
 xh-flow-designer [data-part='vertex-handle'],
 xh-flow-designer [data-part='segment-handle'] {
