@@ -34,7 +34,7 @@
 | --- | --- | --- |
 | `id` | `string` | 全局唯一，用包名加功能名：@xihan-flow-pro/simulation。也是模板里扩展数据的键。 |
 | `controls?` | `Readonly<Record<string, ControlKind>>` | 新的编辑方式，键是 control.kind，不能与内建的重名。 |
-| `rules?` | `readonly SchemaRule<Doc, RuleCtx>[]` |  |
+| `rules?` | `readonly SchemaRule<Doc, RuleCtx>[]` | 校验规则，问题与内置校验的一起进问题列表；问题码以 id 的末段加点开头。 |
 
 ### SchemaRule {#schemarule}
 
@@ -194,7 +194,7 @@ type FlowPropertyControl = PropertyControl | { readonly kind: string }
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
 | `path` | `JsonPath` | 值相对被编辑对象（节点、元素、字段本身）的路径。 |
-| `control` | `C` |  |
+| `control` | `C` | 编辑方式：kind 定用哪种编辑器、按什么校验，其余字段是这种方式的选项（选项表、数值约束等）。 |
 | `group?` | `string` | 分组 id；分组的先后与文案由产品决定。 |
 | `label?` | `string` | 标签；不给时由产品按 formatJsonPath(path) 去语言包里查。 |
 | `required?` | `boolean` | 显示时必须填写，按 isFilled 判空。 |
@@ -231,7 +231,7 @@ type PropertyCondition = { readonly path: JsonPath, readonly equals: JsonValue }
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
 | `editors?` | `PropertyEditorLayer<Editor>` | 属性编辑器，按扩展顺序压在设计器内建的之上。 |
-| `commands?` | `readonly DesignerCommand<Ctx>[]` |  |
+| `commands?` | `readonly DesignerCommand<Ctx>[]` | 命令：工具栏按钮、右键菜单项与快捷键共用；命令 id 与快捷键不能与内置或别的扩展的重名。 |
 
 | 方法 | 说明 |
 | --- | --- |
@@ -249,7 +249,7 @@ type PropertyCondition = { readonly path: JsonPath, readonly equals: JsonValue }
 
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
-| `panels?` | `readonly DesignerPanel<Ctx>[]` |  |
+| `panels?` | `readonly DesignerPanel<Ctx>[]` | 面板：各占外框的一个命名区，同一位置按扩展顺序上下排。 |
 
 ### FlowDesignerContext {#flowdesignercontext}
 
@@ -299,7 +299,7 @@ type FlowDesignerCommand = DesignerCommand<FlowDesignerContext>
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
 | `id` | `string` | 全局唯一；扩展的命令用扩展 id 加点加名字，如 @xihan-flow-pro/simulation.run。 |
-| `label` | `string \| ((context: Ctx) => string)` |  |
+| `label` | `string \| ((context: Ctx) => string)` | 按钮与菜单项上的文字；给函数时每次刷新现取，随语言变。 |
 | `placement?` | `readonly DesignerCommandPlacement[]` | 缺省排列里出现在哪些位置；不给即只经快捷键或 commandLayout 出现。 |
 | `shortcut?` | `readonly string[]` | 快捷键，写法同 xh-kbd 的 keys：['Mod', 'Shift', 'P']，Mod 在 macOS 上是 ⌘，其余平台是 Ctrl。 |
 | `tone?` | `Tone` | 语气：按钮与菜单项按这族色显示，破坏性命令写 danger。不给即不带语气。 |
@@ -308,7 +308,7 @@ type FlowDesignerCommand = DesignerCommand<FlowDesignerContext>
 | --- | --- |
 | `enabled(context: Ctx): boolean` | 不给即总是可用。 |
 | `checked(context: Ctx): boolean` | 给了就是开关式命令，按钮与菜单项显示选中状态。 |
-| `run(context: Ctx): void` |  |
+| `run(context: Ctx): void` | 执行命令；按钮、菜单项与快捷键都只在命令此刻可用时调用它。 |
 
 ### DesignerCommandPlacement {#designercommandplacement}
 
@@ -328,11 +328,11 @@ type DesignerCommandPlacement = 'toolbar' | `menu:${string}`
 
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
-| `region` | `DesignerFrameRegion` |  |
+| `region` | `DesignerFrameRegion` | 外框的命名区：名字、位置、缺省与最小大小、分隔条上的区名；追加在内置区之后。 |
 
 | 方法 | 说明 |
 | --- | --- |
-| `create(context: Ctx): DesignerPanelInstance<Ctx>` |  |
+| `create(context: Ctx): DesignerPanelInstance<Ctx>` | 面板装上时调用，建出面板实例；同一个面板对象只建一次。 |
 
 ### DesignerPanelInstance {#designerpanelinstance}
 
@@ -342,12 +342,12 @@ type DesignerCommandPlacement = 'toolbar' | `menu:${string}`
 
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
-| `element` | `HTMLElement` |  |
+| `element` | `HTMLElement` | 面板的根元素，以 slot 交给外框，放进登记的那个区。 |
 
 | 方法 | 说明 |
 | --- | --- |
-| `update(context: Ctx): void` |  |
-| `destroy(): void` |  |
+| `update(context: Ctx): void` | 设计器状态变化后调用，面板按新状态刷新。 |
+| `destroy(): void` | 面板被撤掉前调用。 |
 
 ### DesignerFrameRegion {#designerframeregion}
 
@@ -355,8 +355,8 @@ type DesignerCommandPlacement = 'toolbar' | `menu:${string}`
 
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
-| `name` | `string` |  |
-| `position` | `DesignerFramePosition` |  |
+| `name` | `string` | 区名：写 slot="&lt;区名&gt;" 的子元素放进这个区，panels 也按它开关。 |
+| `position` | `DesignerFramePosition` | 区在外框里的位置。 |
 | `size?` | `number` | 所在位置的缺省大小（百分比）：start、end 占中间一行的宽度，bottom 占中间一列的高度；取该位置第一个区的值。 |
 | `minSize?` | `number` | 拖动时所在位置的下限（百分比），缺省 10；取该位置第一个区的值。 |
 | `label?` | `string` | 分隔条无障碍名称里的区名，缺省用 name。 |
@@ -424,9 +424,9 @@ type FlowPropertyTarget = DesignerPropertyTarget
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
 | `value` | `JsonValue \| undefined` | 属性的当前值，未设置时为 undefined。 |
-| `descriptor` | `D` |  |
-| `target` | `T` |  |
-| `readonly` | `boolean` |  |
+| `descriptor` | `D` | 正在编辑的这个属性的描述。 |
+| `target` | `T` | 被编辑的对象。 |
+| `readonly` | `boolean` | 只读：编辑器只显示，不写值。 |
 
 | 方法 | 说明 |
 | --- | --- |
@@ -441,12 +441,12 @@ type FlowPropertyTarget = DesignerPropertyTarget
 
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
-| `element` | `HTMLElement` |  |
+| `element` | `HTMLElement` | 编辑器的根元素，设计器把它放进属性面板。 |
 
 | 方法 | 说明 |
 | --- | --- |
-| `update(context: PropertyEditorContext<D, T>): void` |  |
-| `destroy(): void` |  |
+| `update(context: PropertyEditorContext<D, T>): void` | 值、只读状态或被编辑的对象变了时调用。 |
+| `destroy(): void` | 从属性面板撤掉前调用。 |
 
 ### DesignerPropertyTarget {#designerpropertytarget}
 
@@ -454,7 +454,7 @@ type FlowPropertyTarget = DesignerPropertyTarget
 
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
-| `kind` | `string` |  |
-| `id` | `string` |  |
-| `value` | `JsonValue` |  |
-| `descriptors` | `readonly DesignerPropertyDescriptor[]` |  |
+| `kind` | `string` | 对象种类，如 node、edge、element；按它查 byTarget 的编辑器。 |
+| `id` | `string` | 对象 id，与种类一起认出对象。 |
+| `value` | `JsonValue` | 对象本身，属性按描述的 path 从它里面读值。 |
+| `descriptors` | `readonly DesignerPropertyDescriptor[]` | 这个对象的属性描述。 |
