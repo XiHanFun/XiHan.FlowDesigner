@@ -22,6 +22,8 @@ export interface StartVariablesHost {
 const COLUMNS: readonly FlowStartVariableColumn[] = ['name', 'required', 'defaultValue', 'description']
 /** 文字列的最小宽度（px）：窄面板里不再压窄到它以下，放不下时表格区横向滚动。必填列按表头与勾选框里最宽的那个排。 */
 const TEXT_COLUMN_MIN_WIDTH = 120
+/** 一行里各格控件的尺寸档：文本框与勾选框取同一档，勾选框的方框是这一档的指示符大小。 */
+const CELL_SIZE = 'sm'
 
 /** 库内字段元素上受控的值。 */
 interface ControlElement extends HTMLElement {
@@ -59,7 +61,7 @@ function textOf(value: JsonValue | undefined): string {
 }
 
 function textField(doc: Document): ControlElement {
-  return createAuthoredElement(doc, 'xh-text-field', { size: 'sm' }, [
+  return createAuthoredElement(doc, 'xh-text-field', { size: CELL_SIZE }, [
     createAuthoredElement(doc, 'div', { 'data-xh-part': 'root' }, [
       createAuthoredElement(doc, 'div', { 'data-xh-part': 'control' }, [createAuthoredElement(doc, 'input', { 'data-xh-part': 'input', 'spellcheck': 'false' })]),
     ]),
@@ -67,7 +69,7 @@ function textField(doc: Document): ControlElement {
 }
 
 function checkbox(doc: Document): ControlElement {
-  return createAuthoredElement(doc, 'xh-checkbox', { size: 'sm' }, [
+  return createAuthoredElement(doc, 'xh-checkbox', { size: CELL_SIZE }, [
     createAuthoredElement(doc, 'button', { 'data-xh-part': 'root', 'type': 'button' }, [createAuthoredElement(doc, 'span', { 'data-xh-part': 'indicator' })]),
   ])
 }
