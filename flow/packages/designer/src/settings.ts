@@ -7,9 +7,8 @@
 // 设计器与扩展从上下文的 settings 读。
 
 import type { FlowDesignerTranslations } from '@xihan-flow/runtime'
-import type { DesignerSettingItem, DesignerSettings, DesignerSettingsSection } from '@xihan-ui/designer-shell'
+import type { DesignerSettingsSection } from '@xihan-ui/designer-shell'
 import type { LayeredDirection } from '@xihan-ui/viz/graph'
-import { settingKey, settingValue } from '@xihan-ui/designer-shell'
 
 /** 设计器自己那个设置分区的 id，扩展不能再用。宿主给缺省或读设置时用它与 FLOW_SETTING_KEYS，不手写字符串。 */
 export const FLOW_SETTINGS_SECTION = 'flow'
@@ -45,17 +44,4 @@ export function flowSettingsSection(t: FlowDesignerTranslations): DesignerSettin
       { path: ['snap'], label: t.settingsSnap, control: { kind: 'boolean' }, default: true, meta: { description: t.settingsSnapHint } },
     ],
   }
-}
-
-/** 此刻生效的设置：写了的键原样保留，各分区里没写的条目取缺省值。 */
-export function resolveSettings(sections: readonly DesignerSettingsSection[], settings: DesignerSettings | undefined): DesignerSettings {
-  const resolved: Record<string, DesignerSettings[string]> = { ...settings }
-  for (const section of sections) {
-    for (const item of section.items as readonly DesignerSettingItem[]) {
-      const value = settingValue(settings, section, item)
-      if (value !== undefined)
-        resolved[settingKey(section, item)] = value
-    }
-  }
-  return resolved
 }

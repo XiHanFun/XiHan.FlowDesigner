@@ -92,6 +92,7 @@ import {
   parseDesignerPanels,
   registerDropTarget,
   renderCommandMenu,
+  resolveSettings,
   runCommand,
   toolbarDisplayOf,
   XhDesignerFrameElement,
@@ -123,7 +124,7 @@ import { IssuesPanel } from './panels/issues'
 import { MinimapPanel } from './panels/minimap'
 import { paletteNodeType, PalettePanel } from './panels/palette'
 import { PropertiesPanel } from './panels/properties'
-import { FLOW_SETTING_KEYS, flowSettingsSection, resolveSettings } from './settings'
+import { FLOW_SETTING_KEYS, flowSettingsSection } from './settings'
 import { startVariablesEditor } from './start-variables'
 
 /** 设计器的标签名。 */
