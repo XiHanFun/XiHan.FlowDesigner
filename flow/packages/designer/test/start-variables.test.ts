@@ -20,7 +20,7 @@ afterEach(() => {
   setXhConfig({})
 })
 
-type Control = HTMLElement & { value?: unknown, checked?: boolean, columns?: readonly { id: string, label?: string }[] }
+type Control = HTMLElement & { value?: unknown, checked?: boolean, columns?: readonly { id: string, label?: string, width?: string | number, minWidth?: string | number }[] }
 
 function schema() {
   return fromWorkflowDefinition({
@@ -79,7 +79,7 @@ function variables(designer: XhFlowDesigner): unknown {
 }
 
 describe('启动变量的内建编辑器', () => {
-  it('流程定义的启动变量排成表格：变量名、必填、缺省值与说明各一列，每格有可访问名', async () => {
+  it('流程定义的启动变量排成表格：变量名、必填、缺省值与说明各一列，三个文字列有最小宽度，每格有可访问名', async () => {
     const designer = await mountPreset()
     const list = table(designer)
     expect([list.getAttribute('layout'), list.getAttribute('aria-label')]).toEqual(['table', 'Start variables'])
@@ -88,6 +88,12 @@ describe('启动变量的内建编辑器', () => {
       ['required', 'Required'],
       ['defaultValue', 'Default value'],
       ['description', 'Description'],
+    ])
+    expect(list.columns!.map(column => [column.id, column.width, column.minWidth])).toEqual([
+      ['name', undefined, 120],
+      ['required', 'max-content', undefined],
+      ['defaultValue', undefined, 120],
+      ['description', undefined, 120],
     ])
     const [first] = items(designer)
     expect([cell(first!, 'name').value, cell(first!, 'required').checked, cell(first!, 'defaultValue').value, cell(first!, 'description').value])

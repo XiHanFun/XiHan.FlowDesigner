@@ -20,6 +20,8 @@ export interface StartVariablesHost {
 }
 
 const COLUMNS: readonly FlowStartVariableColumn[] = ['name', 'required', 'defaultValue', 'description']
+/** 文字列的最小宽度（px）：窄面板里不再压窄到它以下，放不下时表格区横向滚动。必填列按表头与勾选框里最宽的那个排。 */
+const TEXT_COLUMN_MIN_WIDTH = 120
 
 /** 库内字段元素上受控的值。 */
 interface ControlElement extends HTMLElement {
@@ -31,7 +33,7 @@ interface ControlElement extends HTMLElement {
 interface FieldArrayElement extends HTMLElement {
   value?: unknown[]
   createItem?: () => unknown
-  columns?: readonly { readonly id: string, readonly label?: string, readonly width?: string | number }[]
+  columns?: readonly { readonly id: string, readonly label?: string, readonly width?: string | number, readonly minWidth?: string | number }[]
 }
 
 type Parsed = { readonly ok: true, readonly value: JsonValue | undefined } | { readonly ok: false }
@@ -220,7 +222,7 @@ export function startVariablesEditor(host: StartVariablesHost): FlowPropertyEdit
       const label = next.descriptor.label ?? ''
       if (list.getAttribute('aria-label') !== label)
         list.setAttribute('aria-label', label)
-      const columns = COLUMNS.map(column => ({ id: column, label: t.startVariableColumns[column], ...(column === 'required' ? { width: 'auto' } : {}) }))
+      const columns = COLUMNS.map(column => ({ id: column, label: t.startVariableColumns[column], ...(column === 'required' ? { width: 'max-content' } : { minWidth: TEXT_COLUMN_MIN_WIDTH }) }))
       if (!jsonEquals((list.columns ?? null) as JsonValue, columns as unknown as JsonValue))
         list.columns = columns
       setText(add, t.startVariableAdd)
