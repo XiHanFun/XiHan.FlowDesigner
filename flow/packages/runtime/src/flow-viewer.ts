@@ -25,7 +25,9 @@ import {
   XhConfigController,
   XhReactiveElement,
 } from '@xihan-ui/web-components/authoring'
+import { defineXhElement, XhIconElement } from '@xihan-ui/web-components/define'
 import { createFlowRuntimeModel } from './extensions'
+import { defaultNodeRenderer } from './node-renderer'
 import { createOrthogonalRouter } from './router'
 import { buildScene } from './scene'
 
@@ -46,7 +48,7 @@ export interface FlowNodeRenderContext {
   readonly highlighted: boolean
 }
 
-/** 自定义节点内容：每次绘制都会调用，把内容写进 container；不给时显示标签文字。 */
+/** 自定义节点内容：每次绘制都会调用，把内容写进 container；不给时用 defaultNodeRenderer。 */
 export type FlowNodeRenderer = (container: HTMLElement, context: FlowNodeRenderContext) => void
 
 /** 查看器派发的事件；x / y 为浏览器视口坐标。 */
@@ -336,11 +338,8 @@ export class XhFlowViewer extends XhReactiveElement {
     element.style.top = `${rect.y}px`
     element.style.width = `${rect.width}px`
     element.style.height = `${rect.height}px`
-    const render = this.#model().renderers.get(node.type)
-    if (render)
-      render(element, { node, nodeType: sceneNode.nodeType, label: sceneNode.label, status, highlighted })
-    else if (element.textContent !== sceneNode.label)
-      element.textContent = sceneNode.label
+    const render = this.#model().renderers.get(node.type) ?? defaultNodeRenderer
+    render(element, { node, nodeType: sceneNode.nodeType, label: sceneNode.label, status, highlighted })
   }
 
   #model(): FlowRuntimeModel {
@@ -522,8 +521,9 @@ export class XhFlowViewer extends XhReactiveElement {
   }
 }
 
-/** 注册 <xh-flow-viewer>；重复调用不报错。 */
+/** 注册 <xh-flow-viewer> 与内置节点渲染用到的 <xh-icon>；重复调用不报错。 */
 export function defineFlowViewer(): void {
+  defineXhElement('xh-icon', XhIconElement)
   registerElement(FLOW_VIEWER_TAG, XhFlowViewer)
 }
 

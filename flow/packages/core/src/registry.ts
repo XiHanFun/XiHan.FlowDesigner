@@ -3,6 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
+import type { IconRecord } from '@xihan-ui/core'
 import type { JsonObject } from '@xihan-ui/core/json'
 import type { PropertyControl, PropertyDescriptor } from '@xihan-ui/designer-kit/properties'
 import type { FlowEdgeEnd } from './issues'
@@ -23,11 +24,13 @@ export type FlowPortPreset = 'in' | 'out' | 'both' | 'none'
 export interface FlowPortDefinition {
   /** 端口 id，连线端点的 port 写它；同一节点类型里不能重复。 */
   readonly id: string
+  /** 方向：in 只能连入，out 只能连出，both 两样都行。 */
   readonly direction: FlowPortDirection
+  /** 端口在节点的哪条边上。 */
   readonly side: FlowPortSide
   /** 沿所在边从左到右或从上到下的相对位置，取值 0 到 1，缺省 0.5。 */
   readonly offset?: number
-  /** 端口的显示名；内核与内置渲染不解释。 */
+  /** 端口的显示名：设计器把它写在端口外侧，随端口一起显出；内核不解释。 */
   readonly label?: string
   /** 该端口最多连接的连线数。 */
   readonly maxConnections?: number
@@ -74,8 +77,8 @@ export interface FlowNodeTypeDefinition {
   readonly label?: string
   /** 物料面板里的类别，按它分组。 */
   readonly category?: string
-  /** 图标名；内核与内置渲染不解释，自定义的节点渲染可以从节点类型上读它。 */
-  readonly icon?: string
+  /** 图标：内置的节点渲染画在文字前面，物料面板的条目也显示它；自定义的节点渲染可以从节点类型上读它。 */
+  readonly icon?: IconRecord
   /** 新建节点的尺寸。 */
   readonly size: FlowSize
   /** 端口：预设，或具名端口的列表。 */

@@ -3,13 +3,17 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
+import type { IconRecord } from '@xihan-ui/core'
 import type { JsonObject, JsonValue } from '@xihan-ui/core/json'
 import type { FlowCoreExtension, FlowDocument, FlowEdge, FlowNode, FlowNodeTypeDefinition, FlowNodeTypeRegistry } from '../../src'
 import { createNodeTypeRegistry } from '../../src'
 
+const PLAY: IconRecord = { name: 'play', viewBox: '0 0 24 24', nodes: [{ tag: 'path', attrs: { d: 'M8 5v14l11-7z' } }] }
+const USER_CHECK: IconRecord = { name: 'user-check', viewBox: '0 0 24 24', attrs: { 'fill': 'none', 'stroke': 'currentColor', 'stroke-width': '2' }, nodes: [{ tag: 'circle', attrs: { cx: '9', cy: '7', r: '4' } }, { tag: 'path', attrs: { d: 'm16 11 2 2 4-4' } }] }
+
 /** 工作流活动节点类型：节点 type 即活动类型，活动属性位于 data.properties；属性路径相对节点。 */
 export const workflowNodeTypes: readonly FlowNodeTypeDefinition[] = [
-  { type: 'Start', category: 'control', icon: 'lucide:play', size: { width: 160, height: 48 }, ports: 'out', entry: true, minCount: 1, maxCount: 1 },
+  { type: 'Start', category: 'control', icon: PLAY, size: { width: 160, height: 48 }, ports: 'out', entry: true, minCount: 1, maxCount: 1 },
   {
     type: 'End',
     category: 'control',
@@ -36,7 +40,7 @@ export const workflowNodeTypes: readonly FlowNodeTypeDefinition[] = [
   {
     type: 'UserTask',
     category: 'human',
-    icon: 'lucide:user-check',
+    icon: USER_CHECK,
     size: { width: 200, height: 64 },
     ports: 'both',
     defaults: { data: { properties: { CompletionPolicy: 'Any' } } },

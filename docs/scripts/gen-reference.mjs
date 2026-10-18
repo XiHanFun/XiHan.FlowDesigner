@@ -520,6 +520,7 @@ function viewerPage() {
     '## 节点渲染',
     typeSection(viewer, 'FlowNodeRenderer'),
     interfaceSection(viewer, 'FlowNodeRenderContext'),
+    functionSection(join(root, 'node-renderer.ts'), 'defaultNodeRenderer'),
     interfaceSection(extensions, 'FlowRuntimeExtension'),
     functionSection(extensions, 'createFlowRuntimeModel'),
     '## 连线路由',
