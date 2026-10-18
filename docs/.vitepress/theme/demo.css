@@ -35,16 +35,16 @@
   color: var(--xh-fg-danger);
 }
 
-/* 示例里的查看器给定高度与边框 */
+/* 示例里的查看器给边框；高度由舞台按流程图算好写在元素上，算出之前先占 20rem */
 .flow-demo xh-flow-viewer {
   block-size: 20rem;
   border: var(--xh-stroke-thin) solid var(--xh-border-subtle);
   border-radius: var(--xh-radius-md);
 }
 
-/* 示例里的设计器给定高度 */
+/* 示例里的设计器：高度随视口，留出顶栏与上下留白，介于 640px 与 860px 之间 */
 .flow-demo xh-flow-designer {
-  block-size: 36rem;
+  block-size: clamp(640px, calc(100vh - 160px), 860px);
 }
 
 /* 示例里扩展登记的统计面板 */
