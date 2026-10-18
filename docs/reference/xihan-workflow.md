@@ -346,7 +346,7 @@ createXihanWorkflow 的选项。
 
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
-| `texts?` | `XihanWorkflowTextsOverride` | 文案，各部分按键覆盖英文缺省；中文直接传 xihanWorkflowZhCN。 |
+| `texts?` | `XihanWorkflowTextsOverride` | 文案，各部分按键覆盖英文缺省；整套换语言直接传对应的语言包，如 xihanWorkflowZhCN、xihanWorkflowJaJP。 |
 | `legacyAssignees?` | `boolean` | 审批节点的属性面板里显示旧的受理人写法（Assignees、AssigneesExpression、CcUserIds），缺省 true。为 false 时不登记这三项属性，已有的值照旧读写、往返不丢，只是属性面板里不再显示。 |
 
 ### XihanWorkflowTexts {#xihanworkflowtexts}
@@ -468,6 +468,66 @@ fromWorkflowDefinition 的选项。
 | `XIHAN_WORKFLOW_ID` | 常量 | 预设的扩展 id；规则的问题码以 xihan-workflow. 开头。 |
 | `xihanWorkflow` | 常量 | 英文文案的预设扩展。 |
 
+### locale/de-DE
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `xihanWorkflowDeDE` | 常量 | 德语文案。 |
+
+### locale/en-US
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `xihanWorkflowEnUS` | 常量 | 英文文案。 |
+
+### locale/es-ES
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `xihanWorkflowEsES` | 常量 | 西班牙语文案。 |
+
+### locale/fr-FR
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `xihanWorkflowFrFR` | 常量 | 法语文案。 |
+
+### locale/ja-JP
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `xihanWorkflowJaJP` | 常量 | 日语文案。 |
+
+### locale/ko-KR
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `xihanWorkflowKoKR` | 常量 | 韩语文案。 |
+
+### locale/pt-BR
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `xihanWorkflowPtBR` | 常量 | 巴西葡萄牙语文案。 |
+
+### locale/ru-RU
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `xihanWorkflowRuRU` | 常量 | 俄语文案。 |
+
+### locale/zh-CN
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `xihanWorkflowZhCN` | 常量 | 简体中文文案。 |
+
+### locale/zh-TW
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `xihanWorkflowZhTW` | 常量 | 繁体中文文案。 |
+
 ### texts
 
 | 名称 | 种类 | 说明 |
@@ -482,4 +542,3 @@ fromWorkflowDefinition 的选项。
 | `XihanWorkflowPropertyKey` | 类型 | 属性名的键：节点属性用引擎的键名（Title、Url…），节点级字段与连线、流程定义的字段用 JSON 里的字段名，名称（节点名与连线名）为 name。 |
 | `XihanWorkflowTexts` | 接口 | 预设的全部文案。 |
 | `XihanWorkflowTextsOverride` | 类型 | 覆盖部分文案：各部分分别按键覆盖英文缺省。 |
-| `xihanWorkflowZhCN` | 常量 | 中文文案。 |

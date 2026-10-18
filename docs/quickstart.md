@@ -54,7 +54,7 @@ pnpm add @xihan-flow/core @xihan-flow/runtime @xihan-ui/styles
 
 <<< @/examples/snippets/locale.ts#example
 
-节点类型的名称与属性文案写在扩展里，换语言就换一个扩展：上面的预设传了 `xihanWorkflowZhCN`，所以节点类型是中文。
+节点类型的名称与属性文案写在扩展里，换语言就换一个扩展：上面的预设传了 `xihanWorkflowZhCN`，所以节点类型是中文。预设的文案同样有这十种语言，名字是 `xihanWorkflow` 加语言，如 `xihanWorkflowJaJP`。
 
 ## 下一步
 
