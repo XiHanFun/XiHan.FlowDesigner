@@ -1,0 +1,87 @@
+/*
+ * Copyright (c) 2021-Present XiHanFun and contributors.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ */
+
+// 流程的韩语语言包。
+
+import type { XhConfig } from '@xihan-ui/web-components'
+import { designerShellKoKR } from '@xihan-ui/designer-shell/locale'
+import { flowLocale } from './types'
+
+/** 流程的韩语文案：查看器、设计器与 designer-shell 零件。 */
+export const flowKoKR: XhConfig = /* @__PURE__ */ flowLocale(designerShellKoKR, {
+  viewer: { label: '흐름도' },
+  designer: {
+    label: '플로 디자이너',
+    toolbar: '디자이너 작업',
+    openFile: '파일 열기',
+    undo: '실행 취소',
+    redo: '다시 실행',
+    delete: '삭제',
+    duplicate: '복제',
+    copy: '복사',
+    cut: '잘라내기',
+    paste: '붙여넣기',
+    selectAll: '모두 선택',
+    alignLeft: '왼쪽 맞춤',
+    alignCenter: '가로 가운데 맞춤',
+    alignRight: '오른쪽 맞춤',
+    alignTop: '위쪽 맞춤',
+    alignMiddle: '세로 가운데 맞춤',
+    alignBottom: '아래쪽 맞춤',
+    distributeHorizontal: '가로 간격 균등 분배',
+    distributeVertical: '세로 간격 균등 분배',
+    autoLayout: '자동 배치',
+    clearVertices: '꺾임점 지우기',
+    zoomIn: '확대',
+    zoomOut: '축소',
+    zoomToFit: '창에 맞추기',
+    zoomToActual: '100%',
+    exportPng: 'PNG로 내보내기',
+    exportSvg: 'SVG로 내보내기',
+    exportImage: '흐름도 이미지',
+    palette: '노드',
+    paletteUncategorized: '기타',
+    propertiesEmpty: '노드나 연결선을 선택하면 여기서 속성을 편집할 수 있습니다',
+    propertiesMultiple: count => `${count}개 항목 선택됨`,
+    edge: '연결선',
+    propertyIssue: (property, message) => `${property}: ${message}`,
+    issuesEmpty: '문제가 없습니다',
+    flow: '흐름',
+    propertyLabels: { 'label': '이름', 'style.dashed': '점선' },
+    issues: {
+      'document.unsupported-version': text => `버전 ${text('version')}의 흐름 정의는 지원되지 않습니다`,
+      'node.duplicate-id': text => `노드 ID "${text('id')}"이(가) 중복되었습니다`,
+      'node.unknown-type': text => `노드 유형 "${text('type')}"이(가) 등록되지 않았습니다`,
+      'edge.duplicate-id': text => `연결선 ID "${text('id')}"이(가) 중복되었습니다`,
+      'edge.dangling': text => `연결선이 존재하지 않는 노드 "${text('node')}"을(를) 가리킵니다`,
+      'edge.unknown-port': text => `포트 "${text('port')}"이(가) 없습니다`,
+      'edge.invalid-direction': () => '포트 방향상 이 연결을 만들 수 없습니다',
+      'edge.self-loop': () => '노드를 자기 자신에 연결할 수 없습니다',
+      'edge.target-not-allowed': (_, type) => `"${type('sourceType')}"에서 "${type('targetType')}"(으)로 연결할 수 없습니다`,
+      'edge.source-not-allowed': (_, type) => `"${type('targetType')}"은(는) "${type('sourceType')}"에서 오는 연결을 받지 않습니다`,
+      'node.max-incoming': text => `들어오는 연결은 최대 ${text('max')}개인데 ${text('count')}개가 있습니다`,
+      'node.max-outgoing': text => `나가는 연결은 최대 ${text('max')}개인데 ${text('count')}개가 있습니다`,
+      'port.max-connections': text => `포트 "${text('port')}"의 연결은 최대 ${text('max')}개인데 ${text('count')}개가 있습니다`,
+      'type.min-count': (text, type) => `"${type('type')}"이(가) ${text('min')}개 이상 필요한데 ${text('count')}개입니다`,
+      'type.max-count': (text, type) => `"${type('type')}"은(는) 최대 ${text('max')}개인데 ${text('count')}개가 있습니다`,
+      'node.isolated': () => '연결이 없습니다',
+      'node.missing-incoming': () => '들어오는 연결이 없습니다',
+      'node.missing-outgoing': () => '나가는 연결이 없습니다',
+      'node.unreachable': () => '시작 노드에서 도달할 수 없습니다',
+      'required': () => '필수 항목입니다',
+      'invalid-type': () => '값의 유형이 올바르지 않습니다',
+      'invalid-value': () => '올바르지 않은 값입니다',
+      'out-of-range': () => '허용 범위를 벗어났습니다',
+      'not-integer': () => '정수여야 합니다',
+      'invalid-option': () => '선택 항목에 없습니다',
+      'invalid-color': () => '올바른 색이 아닙니다',
+      'empty': () => '비워 둘 수 없습니다',
+      'unknown-key': () => '알 수 없는 필드가 있습니다',
+      'duplicate-key': () => '중복된 키가 있습니다',
+      'duplicate-id': () => '중복된 ID가 있습니다',
+      'unknown-control': () => '알 수 없는 편집 방식입니다',
+    },
+  },
+})

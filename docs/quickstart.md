@@ -50,7 +50,7 @@ pnpm add @xihan-flow/core @xihan-flow/runtime @xihan-ui/styles
 
 ## 中文界面
 
-查看器与设计器的界面文字缺省是英文。把 XiHan.UI 的中文语言包与流程的中文语言包合并后全局设置，所有实例都跟着换。这一步要另外安装 `@xihan-ui/web-components`：
+查看器与设计器的界面文字缺省是英文。流程的语言包与 XiHan.UI 的一一对应：`flowZhCN`、`flowZhTW`、`flowJaJP`、`flowKoKR`、`flowDeDE`、`flowFrFR`、`flowEsES`、`flowPtBR`、`flowRuRU` 与 `flowEnUS`，每份都含设计器零件的文案。把 XiHan.UI 同一语言的语言包与它合并后全局设置，所有实例都跟着换。下面以中文为例。这一步要另外安装 `@xihan-ui/web-components`：
 
 <<< @/examples/snippets/locale.ts#example
 

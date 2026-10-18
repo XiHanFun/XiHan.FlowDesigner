@@ -13,6 +13,9 @@ export interface FlowViewerTranslations {
   readonly label: string
 }
 
+/** 查看器的英文文案，也是不配语言包时的缺省。 */
+export const DEFAULT_FLOW_VIEWER_TRANSLATIONS: FlowViewerTranslations = { label: 'Flow diagram' }
+
 /** 设计器的文案。 */
 export interface FlowDesignerTranslations {
   /** 画布区域的可访问名。 */

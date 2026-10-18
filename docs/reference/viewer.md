@@ -186,7 +186,86 @@ declare function createOrthogonalRouter(options?: OrthogonalRouterOptions): Flow
 | --- | --- | --- |
 | `label` | `string` | 视口区域的可访问名。 |
 
+## 语言包
+
+### locale/de-DE
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `flowDeDE` | 常量 | 流程的德语文案：查看器、设计器与 designer-shell 零件。 |
+
+### locale/en-US
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `flowEnUS` | 常量 | 流程的英文文案：查看器、设计器与 designer-shell 零件。 |
+
+### locale/es-ES
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `flowEsES` | 常量 | 流程的西班牙语文案：查看器、设计器与 designer-shell 零件。 |
+
+### locale/fr-FR
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `flowFrFR` | 常量 | 流程的法语文案：查看器、设计器与 designer-shell 零件。 |
+
+### locale/ja-JP
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `flowJaJP` | 常量 | 流程的日语文案：查看器、设计器与 designer-shell 零件。 |
+
+### locale/ko-KR
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `flowKoKR` | 常量 | 流程的韩语文案：查看器、设计器与 designer-shell 零件。 |
+
+### locale/pt-BR
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `flowPtBR` | 常量 | 流程的巴西葡萄牙语文案：查看器、设计器与 designer-shell 零件。 |
+
+### locale/ru-RU
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `flowRuRU` | 常量 | 流程的俄语文案：查看器、设计器与 designer-shell 零件。 |
+
+### locale/types
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `FlowLocale` | 接口 | 流程一种语言的全部文案。 |
+
+### locale/zh-CN
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `flowZhCN` | 常量 | 流程的简体中文文案：查看器、设计器与 designer-shell 零件。 |
+
+### locale/zh-TW
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `flowZhTW` | 常量 | 流程的繁体中文文案：查看器、设计器与 designer-shell 零件。 |
+
 ## 全部导出
+
+### designer-locale
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `DEFAULT_FLOW_DESIGNER_TRANSLATIONS` | 常量 | 设计器不配语言包时的缺省文案。 |
+| `FLOW_DESIGNER_EN_US` | 常量 | 设计器的英文文案，也是不配语言包时的缺省。 |
+| `FlowBuiltinPropertyKey` | 类型 | 设计器内建的属性路径，formatJsonPath 的写法。 |
+| `FlowDesignerLocale` | 接口 | 一种语言的设计器文案：问题说明与内建属性名写成表，其余与 FlowDesignerTranslations 相同。 |
+| `flowDesignerTranslations` | 函数 | 把一种语言的设计器文案换成设计器读的形状：问题按码查表，表里没有的（扩展的问题码）显示问题码。 |
+| `FlowIssueMessage` | 类型 | 一条问题说明：text 取参数的文字，type 取参数里那个节点类型的显示名。 |
 
 ### extensions
 
@@ -245,6 +324,7 @@ declare function createOrthogonalRouter(options?: OrthogonalRouterOptions): Flow
 
 | 名称 | 种类 | 说明 |
 | --- | --- | --- |
+| `DEFAULT_FLOW_VIEWER_TRANSLATIONS` | 常量 | 查看器的英文文案，也是不配语言包时的缺省。 |
 | `FlowDesignerTranslations` | 接口 | 设计器的文案。 |
 | `FlowIssueNames` | 接口 | 拼问题说明时用到的名称。 |
 | `FlowViewerTranslations` | 接口 | 查看器的文案。 |

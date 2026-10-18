@@ -1,0 +1,87 @@
+/*
+ * Copyright (c) 2021-Present XiHanFun and contributors.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ */
+
+// 流程的法语语言包。
+
+import type { XhConfig } from '@xihan-ui/web-components'
+import { designerShellFrFR } from '@xihan-ui/designer-shell/locale'
+import { flowLocale } from './types'
+
+/** 流程的法语文案：查看器、设计器与 designer-shell 零件。 */
+export const flowFrFR: XhConfig = /* @__PURE__ */ flowLocale(designerShellFrFR, {
+  viewer: { label: 'Diagramme de flux' },
+  designer: {
+    label: 'Concepteur de flux',
+    toolbar: 'Actions du concepteur',
+    openFile: 'Ouvrir un fichier',
+    undo: 'Annuler',
+    redo: 'Rétablir',
+    delete: 'Supprimer',
+    duplicate: 'Dupliquer',
+    copy: 'Copier',
+    cut: 'Couper',
+    paste: 'Coller',
+    selectAll: 'Tout sélectionner',
+    alignLeft: 'Aligner à gauche',
+    alignCenter: 'Centrer horizontalement',
+    alignRight: 'Aligner à droite',
+    alignTop: 'Aligner en haut',
+    alignMiddle: 'Centrer verticalement',
+    alignBottom: 'Aligner en bas',
+    distributeHorizontal: 'Répartir horizontalement',
+    distributeVertical: 'Répartir verticalement',
+    autoLayout: 'Disposition automatique',
+    clearVertices: 'Supprimer les points de passage',
+    zoomIn: 'Zoom avant',
+    zoomOut: 'Zoom arrière',
+    zoomToFit: 'Ajuster à la fenêtre',
+    zoomToActual: '100 %',
+    exportPng: 'Exporter en PNG',
+    exportSvg: 'Exporter en SVG',
+    exportImage: 'Image du flux',
+    palette: 'Nœuds',
+    paletteUncategorized: 'Autres',
+    propertiesEmpty: 'Sélectionnez des nœuds ou des connexions pour modifier leurs propriétés',
+    propertiesMultiple: count => `${count} éléments sélectionnés`,
+    edge: 'Connexion',
+    propertyIssue: (property, message) => `${property} : ${message}`,
+    issuesEmpty: 'Aucun problème',
+    flow: 'Flux',
+    propertyLabels: { 'label': 'Nom', 'style.dashed': 'Pointillés' },
+    issues: {
+      'document.unsupported-version': text => `La version ${text('version')} de la définition de flux n’est pas prise en charge`,
+      'node.duplicate-id': text => `L’identifiant de nœud « ${text('id')} » est utilisé plusieurs fois`,
+      'node.unknown-type': text => `Le type de nœud « ${text('type')} » n’est pas enregistré`,
+      'edge.duplicate-id': text => `L’identifiant de connexion « ${text('id')} » est utilisé plusieurs fois`,
+      'edge.dangling': text => `La connexion pointe vers le nœud inexistant « ${text('node')} »`,
+      'edge.unknown-port': text => `Le port « ${text('port')} » n’existe pas`,
+      'edge.invalid-direction': () => 'Le sens du port n’autorise pas cette connexion',
+      'edge.self-loop': () => 'Un nœud ne peut pas se connecter à lui-même',
+      'edge.target-not-allowed': (_, type) => `« ${type('sourceType')} » ne peut pas se connecter à « ${type('targetType')} »`,
+      'edge.source-not-allowed': (_, type) => `« ${type('targetType')} » n’accepte pas les connexions provenant de « ${type('sourceType')} »`,
+      'node.max-incoming': text => `${text('max')} connexions entrantes au maximum, ${text('count')} trouvées`,
+      'node.max-outgoing': text => `${text('max')} connexions sortantes au maximum, ${text('count')} trouvées`,
+      'port.max-connections': text => `Le port « ${text('port')} » accepte au maximum ${text('max')} connexions, ${text('count')} trouvées`,
+      'type.min-count': (text, type) => `Au moins ${text('min')} « ${type('type')} » requis, ${text('count')} trouvé(s)`,
+      'type.max-count': (text, type) => `Au maximum ${text('max')} « ${type('type')} » autorisé(s), ${text('count')} trouvé(s)`,
+      'node.isolated': () => 'Aucune connexion',
+      'node.missing-incoming': () => 'Aucune connexion entrante',
+      'node.missing-outgoing': () => 'Aucune connexion sortante',
+      'node.unreachable': () => 'Inaccessible depuis un nœud de départ',
+      'required': () => 'Obligatoire',
+      'invalid-type': () => 'Type de valeur incorrect',
+      'invalid-value': () => 'Valeur non valide',
+      'out-of-range': () => 'Hors de la plage autorisée',
+      'not-integer': () => 'Doit être un nombre entier',
+      'invalid-option': () => 'Ne fait pas partie des options',
+      'invalid-color': () => 'Couleur non valide',
+      'empty': () => 'Ne peut pas être vide',
+      'unknown-key': () => 'Contient un champ inconnu',
+      'duplicate-key': () => 'Contient une clé en double',
+      'duplicate-id': () => 'Contient un identifiant en double',
+      'unknown-control': () => 'Type d’éditeur inconnu',
+    },
+  },
+})

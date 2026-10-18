@@ -1,0 +1,87 @@
+/*
+ * Copyright (c) 2021-Present XiHanFun and contributors.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ */
+
+// 流程的德语语言包。
+
+import type { XhConfig } from '@xihan-ui/web-components'
+import { designerShellDeDE } from '@xihan-ui/designer-shell/locale'
+import { flowLocale } from './types'
+
+/** 流程的德语文案：查看器、设计器与 designer-shell 零件。 */
+export const flowDeDE: XhConfig = /* @__PURE__ */ flowLocale(designerShellDeDE, {
+  viewer: { label: 'Ablaufdiagramm' },
+  designer: {
+    label: 'Ablauf-Designer',
+    toolbar: 'Designer-Aktionen',
+    openFile: 'Datei öffnen',
+    undo: 'Rückgängig',
+    redo: 'Wiederholen',
+    delete: 'Löschen',
+    duplicate: 'Duplizieren',
+    copy: 'Kopieren',
+    cut: 'Ausschneiden',
+    paste: 'Einfügen',
+    selectAll: 'Alle auswählen',
+    alignLeft: 'Linksbündig ausrichten',
+    alignCenter: 'Horizontal zentrieren',
+    alignRight: 'Rechtsbündig ausrichten',
+    alignTop: 'Oben ausrichten',
+    alignMiddle: 'Vertikal zentrieren',
+    alignBottom: 'Unten ausrichten',
+    distributeHorizontal: 'Horizontal gleichmäßig verteilen',
+    distributeVertical: 'Vertikal gleichmäßig verteilen',
+    autoLayout: 'Automatisch anordnen',
+    clearVertices: 'Knickpunkte entfernen',
+    zoomIn: 'Vergrößern',
+    zoomOut: 'Verkleinern',
+    zoomToFit: 'An Fenster anpassen',
+    zoomToActual: '100 %',
+    exportPng: 'Als PNG exportieren',
+    exportSvg: 'Als SVG exportieren',
+    exportImage: 'Ablaufdiagramm als Bild',
+    palette: 'Knoten',
+    paletteUncategorized: 'Sonstige',
+    propertiesEmpty: 'Wählen Sie Knoten oder Verbindungen aus, um ihre Eigenschaften zu bearbeiten',
+    propertiesMultiple: count => `${count} Objekte ausgewählt`,
+    edge: 'Verbindung',
+    propertyIssue: (property, message) => `${property}: ${message}`,
+    issuesEmpty: 'Keine Probleme',
+    flow: 'Ablauf',
+    propertyLabels: { 'label': 'Bezeichnung', 'style.dashed': 'Gestrichelt' },
+    issues: {
+      'document.unsupported-version': text => `Ablaufdefinitionen der Version ${text('version')} werden nicht unterstützt`,
+      'node.duplicate-id': text => `Die Knoten-ID „${text('id')}“ ist mehrfach vergeben`,
+      'node.unknown-type': text => `Der Knotentyp „${text('type')}“ ist nicht registriert`,
+      'edge.duplicate-id': text => `Die Verbindungs-ID „${text('id')}“ ist mehrfach vergeben`,
+      'edge.dangling': text => `Die Verbindung zeigt auf den nicht vorhandenen Knoten „${text('node')}“`,
+      'edge.unknown-port': text => `Der Anschluss „${text('port')}“ existiert nicht`,
+      'edge.invalid-direction': () => 'Die Richtung des Anschlusses erlaubt diese Verbindung nicht',
+      'edge.self-loop': () => 'Ein Knoten kann nicht mit sich selbst verbunden werden',
+      'edge.target-not-allowed': (_, type) => `„${type('sourceType')}“ kann nicht mit „${type('targetType')}“ verbunden werden`,
+      'edge.source-not-allowed': (_, type) => `„${type('targetType')}“ akzeptiert keine Verbindungen von „${type('sourceType')}“`,
+      'node.max-incoming': text => `Höchstens ${text('max')} eingehende Verbindungen, vorhanden: ${text('count')}`,
+      'node.max-outgoing': text => `Höchstens ${text('max')} ausgehende Verbindungen, vorhanden: ${text('count')}`,
+      'port.max-connections': text => `Der Anschluss „${text('port')}“ erlaubt höchstens ${text('max')} Verbindungen, vorhanden: ${text('count')}`,
+      'type.min-count': (text, type) => `Mindestens ${text('min')} × „${type('type')}“ erforderlich, vorhanden: ${text('count')}`,
+      'type.max-count': (text, type) => `Höchstens ${text('max')} × „${type('type')}“ erlaubt, vorhanden: ${text('count')}`,
+      'node.isolated': () => 'Ohne Verbindung',
+      'node.missing-incoming': () => 'Keine eingehende Verbindung',
+      'node.missing-outgoing': () => 'Keine ausgehende Verbindung',
+      'node.unreachable': () => 'Vom Startknoten aus nicht erreichbar',
+      'required': () => 'Pflichtfeld',
+      'invalid-type': () => 'Falscher Werttyp',
+      'invalid-value': () => 'Ungültiger Wert',
+      'out-of-range': () => 'Außerhalb des zulässigen Bereichs',
+      'not-integer': () => 'Muss eine ganze Zahl sein',
+      'invalid-option': () => 'Keine der Auswahlmöglichkeiten',
+      'invalid-color': () => 'Keine gültige Farbe',
+      'empty': () => 'Darf nicht leer sein',
+      'unknown-key': () => 'Enthält ein unbekanntes Feld',
+      'duplicate-key': () => 'Enthält einen doppelten Schlüssel',
+      'duplicate-id': () => 'Enthält eine doppelte ID',
+      'unknown-control': () => 'Unbekannte Bearbeitungsart',
+    },
+  },
+})

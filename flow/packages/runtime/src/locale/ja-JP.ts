@@ -1,0 +1,87 @@
+/*
+ * Copyright (c) 2021-Present XiHanFun and contributors.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ */
+
+// 流程的日语语言包。
+
+import type { XhConfig } from '@xihan-ui/web-components'
+import { designerShellJaJP } from '@xihan-ui/designer-shell/locale'
+import { flowLocale } from './types'
+
+/** 流程的日语文案：查看器、设计器与 designer-shell 零件。 */
+export const flowJaJP: XhConfig = /* @__PURE__ */ flowLocale(designerShellJaJP, {
+  viewer: { label: 'フロー図' },
+  designer: {
+    label: 'フローデザイナー',
+    toolbar: 'デザイナーの操作',
+    openFile: 'ファイルを開く',
+    undo: '元に戻す',
+    redo: 'やり直す',
+    delete: '削除',
+    duplicate: '複製',
+    copy: 'コピー',
+    cut: '切り取り',
+    paste: '貼り付け',
+    selectAll: 'すべて選択',
+    alignLeft: '左揃え',
+    alignCenter: '左右中央揃え',
+    alignRight: '右揃え',
+    alignTop: '上揃え',
+    alignMiddle: '上下中央揃え',
+    alignBottom: '下揃え',
+    distributeHorizontal: '左右に整列',
+    distributeVertical: '上下に整列',
+    autoLayout: '自動レイアウト',
+    clearVertices: '折れ点を削除',
+    zoomIn: '拡大',
+    zoomOut: '縮小',
+    zoomToFit: 'ウィンドウに合わせる',
+    zoomToActual: '100%',
+    exportPng: 'PNG でエクスポート',
+    exportSvg: 'SVG でエクスポート',
+    exportImage: 'フロー図の画像',
+    palette: 'ノード',
+    paletteUncategorized: 'その他',
+    propertiesEmpty: 'ノードまたは接続線を選択すると、ここでプロパティを編集できます',
+    propertiesMultiple: count => `${count} 個の項目を選択中`,
+    edge: '接続線',
+    propertyIssue: (property, message) => `${property}：${message}`,
+    issuesEmpty: '問題はありません',
+    flow: 'フロー',
+    propertyLabels: { 'label': '名前', 'style.dashed': '破線' },
+    issues: {
+      'document.unsupported-version': text => `バージョン ${text('version')} のフロー定義には対応していません`,
+      'node.duplicate-id': text => `ノード ID「${text('id')}」が重複しています`,
+      'node.unknown-type': text => `ノードタイプ「${text('type')}」は登録されていません`,
+      'edge.duplicate-id': text => `接続線 ID「${text('id')}」が重複しています`,
+      'edge.dangling': text => `接続線が存在しないノード「${text('node')}」を指しています`,
+      'edge.unknown-port': text => `ポート「${text('port')}」は存在しません`,
+      'edge.invalid-direction': () => 'ポートの向きがこの接続を許可していません',
+      'edge.self-loop': () => 'ノードを自分自身に接続することはできません',
+      'edge.target-not-allowed': (_, type) => `「${type('sourceType')}」から「${type('targetType')}」へは接続できません`,
+      'edge.source-not-allowed': (_, type) => `「${type('targetType')}」は「${type('sourceType')}」からの接続を受け付けません`,
+      'node.max-incoming': text => `入力接続は最大 ${text('max')} 本ですが、${text('count')} 本あります`,
+      'node.max-outgoing': text => `出力接続は最大 ${text('max')} 本ですが、${text('count')} 本あります`,
+      'port.max-connections': text => `ポート「${text('port')}」の接続は最大 ${text('max')} 本ですが、${text('count')} 本あります`,
+      'type.min-count': (text, type) => `「${type('type')}」が ${text('min')} 個以上必要ですが、${text('count')} 個です`,
+      'type.max-count': (text, type) => `「${type('type')}」は最大 ${text('max')} 個ですが、${text('count')} 個あります`,
+      'node.isolated': () => '接続がありません',
+      'node.missing-incoming': () => '入力接続がありません',
+      'node.missing-outgoing': () => '出力接続がありません',
+      'node.unreachable': () => '開始ノードから到達できません',
+      'required': () => '必須です',
+      'invalid-type': () => '値の型が正しくありません',
+      'invalid-value': () => '無効な値です',
+      'out-of-range': () => '許容範囲外です',
+      'not-integer': () => '整数を入力してください',
+      'invalid-option': () => '選択肢にありません',
+      'invalid-color': () => '有効な色ではありません',
+      'empty': () => '空にはできません',
+      'unknown-key': () => '不明なフィールドが含まれています',
+      'duplicate-key': () => '重複したキーが含まれています',
+      'duplicate-id': () => '重複した ID が含まれています',
+      'unknown-control': () => '不明な編集方式です',
+    },
+  },
+})

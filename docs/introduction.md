@@ -27,7 +27,7 @@
 | `@xihan-flow/core` | 流程定义的类型、读入检查、校验、编辑操作、连线几何、节点类型登记与扩展合并。纯 TypeScript，不依赖 DOM，浏览器与 Node.js 里都能用 |
 | `@xihan-flow/core/presets/xihan-workflow` | XiHan 工作流引擎的节点预设，以及流程定义与引擎定义的互转 |
 | `@xihan-flow/runtime` | 业务页面用的 `<xh-flow-viewer>` 与直角连线路由，样式在 `@xihan-flow/runtime/style.css` |
-| `@xihan-flow/runtime/locale` | 中文语言包 `flowZhCN`，查看器与设计器共用 |
+| `@xihan-flow/runtime/locale` | 语言包 `flowZhCN`、`flowJaJP` 等，与 XiHan.UI 的语言包一一对应，查看器与设计器共用 |
 | `@xihan-flow/designer` | `<xh-flow-designer>`，样式在 `@xihan-flow/designer/style.css` |
 
 依赖方向固定为 `designer → runtime → core`。业务页面只需要 runtime，设计器只在需要编辑流程的地方加载。

@@ -1,0 +1,87 @@
+/*
+ * Copyright (c) 2021-Present XiHanFun and contributors.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ */
+
+// 流程的西班牙语语言包。
+
+import type { XhConfig } from '@xihan-ui/web-components'
+import { designerShellEsES } from '@xihan-ui/designer-shell/locale'
+import { flowLocale } from './types'
+
+/** 流程的西班牙语文案：查看器、设计器与 designer-shell 零件。 */
+export const flowEsES: XhConfig = /* @__PURE__ */ flowLocale(designerShellEsES, {
+  viewer: { label: 'Diagrama de flujo' },
+  designer: {
+    label: 'Diseñador de flujos',
+    toolbar: 'Acciones del diseñador',
+    openFile: 'Abrir archivo',
+    undo: 'Deshacer',
+    redo: 'Rehacer',
+    delete: 'Eliminar',
+    duplicate: 'Duplicar',
+    copy: 'Copiar',
+    cut: 'Cortar',
+    paste: 'Pegar',
+    selectAll: 'Seleccionar todo',
+    alignLeft: 'Alinear a la izquierda',
+    alignCenter: 'Centrar horizontalmente',
+    alignRight: 'Alinear a la derecha',
+    alignTop: 'Alinear arriba',
+    alignMiddle: 'Centrar verticalmente',
+    alignBottom: 'Alinear abajo',
+    distributeHorizontal: 'Distribuir horizontalmente',
+    distributeVertical: 'Distribuir verticalmente',
+    autoLayout: 'Organizar automáticamente',
+    clearVertices: 'Quitar vértices',
+    zoomIn: 'Acercar',
+    zoomOut: 'Alejar',
+    zoomToFit: 'Ajustar a la ventana',
+    zoomToActual: '100 %',
+    exportPng: 'Exportar PNG',
+    exportSvg: 'Exportar SVG',
+    exportImage: 'Imagen del flujo',
+    palette: 'Nodos',
+    paletteUncategorized: 'Otros',
+    propertiesEmpty: 'Selecciona nodos o conexiones para editar sus propiedades',
+    propertiesMultiple: count => `${count} elementos seleccionados`,
+    edge: 'Conexión',
+    propertyIssue: (property, message) => `${property}: ${message}`,
+    issuesEmpty: 'No hay problemas',
+    flow: 'Flujo',
+    propertyLabels: { 'label': 'Nombre', 'style.dashed': 'Discontinua' },
+    issues: {
+      'document.unsupported-version': text => `No se admite la versión ${text('version')} de la definición del flujo`,
+      'node.duplicate-id': text => `El id de nodo «${text('id')}» está repetido`,
+      'node.unknown-type': text => `El tipo de nodo «${text('type')}» no está registrado`,
+      'edge.duplicate-id': text => `El id de conexión «${text('id')}» está repetido`,
+      'edge.dangling': text => `La conexión apunta al nodo inexistente «${text('node')}»`,
+      'edge.unknown-port': text => `El puerto «${text('port')}» no existe`,
+      'edge.invalid-direction': () => 'La dirección del puerto no permite esta conexión',
+      'edge.self-loop': () => 'Un nodo no puede conectarse consigo mismo',
+      'edge.target-not-allowed': (_, type) => `«${type('sourceType')}» no puede conectarse con «${type('targetType')}»`,
+      'edge.source-not-allowed': (_, type) => `«${type('targetType')}» no acepta conexiones de «${type('sourceType')}»`,
+      'node.max-incoming': text => `Como máximo ${text('max')} conexiones de entrada; hay ${text('count')}`,
+      'node.max-outgoing': text => `Como máximo ${text('max')} conexiones de salida; hay ${text('count')}`,
+      'port.max-connections': text => `El puerto «${text('port')}» admite como máximo ${text('max')} conexiones; hay ${text('count')}`,
+      'type.min-count': (text, type) => `Se necesitan al menos ${text('min')} «${type('type')}»; hay ${text('count')}`,
+      'type.max-count': (text, type) => `Se permiten como máximo ${text('max')} «${type('type')}»; hay ${text('count')}`,
+      'node.isolated': () => 'Sin conexiones',
+      'node.missing-incoming': () => 'Falta la conexión de entrada',
+      'node.missing-outgoing': () => 'Falta la conexión de salida',
+      'node.unreachable': () => 'No se puede llegar desde el nodo de inicio',
+      'required': () => 'Obligatorio',
+      'invalid-type': () => 'Tipo de valor incorrecto',
+      'invalid-value': () => 'Valor no válido',
+      'out-of-range': () => 'Fuera del intervalo permitido',
+      'not-integer': () => 'Debe ser un número entero',
+      'invalid-option': () => 'No es una de las opciones',
+      'invalid-color': () => 'No es un color válido',
+      'empty': () => 'No puede estar vacío',
+      'unknown-key': () => 'Contiene un campo desconocido',
+      'duplicate-key': () => 'Contiene una clave repetida',
+      'duplicate-id': () => 'Contiene un id repetido',
+      'unknown-control': () => 'Tipo de editor desconocido',
+    },
+  },
+})
