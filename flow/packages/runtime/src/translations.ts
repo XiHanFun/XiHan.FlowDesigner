@@ -6,6 +6,7 @@
 // 流程产品各元素的文案键：查看器与设计器的文案类型集中在这里，并补进 UI 的 XhTranslationOverrides。
 
 import type { FlowIssue } from '@xihan-flow/core'
+import type { LayeredDirection } from '@xihan-ui/viz/graph'
 
 /** 查看器的文案。 */
 export interface FlowViewerTranslations {
@@ -79,6 +80,30 @@ export interface FlowDesignerTranslations {
   readonly propertiesHelp: string
   /** 问题列表面板头的帮助。 */
   readonly issuesHelp: string
+  /** 设置里设计器自己那一页（画布）的名字。 */
+  readonly settingsCanvas: string
+  /** 设置：自动布局方向的标签。 */
+  readonly settingsLayoutDirection: string
+  /** 设置：自动布局方向的说明。 */
+  readonly settingsLayoutDirectionHint: string
+  /** 设置：自动布局各个方向的名字。 */
+  readonly settingsLayoutDirections: Readonly<Record<LayeredDirection, string>>
+  /** 设置：同层节点间距的标签。 */
+  readonly settingsNodeGap: string
+  /** 设置：同层节点间距的说明。 */
+  readonly settingsNodeGapHint: string
+  /** 设置：层间距的标签。 */
+  readonly settingsLayerGap: string
+  /** 设置：层间距的说明。 */
+  readonly settingsLayerGapHint: string
+  /** 设置：小地图开关的标签。 */
+  readonly settingsMinimap: string
+  /** 设置：小地图开关的说明。 */
+  readonly settingsMinimapHint: string
+  /** 设置：吸附对齐开关的标签。 */
+  readonly settingsSnap: string
+  /** 设置：吸附对齐开关的说明。 */
+  readonly settingsSnapHint: string
   /** 不落在节点或连线上的问题（如节点个数）所属的对象名。 */
   readonly flow: string
   /** 启动变量表的列名。 */

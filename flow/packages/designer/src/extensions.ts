@@ -9,11 +9,13 @@ import type { FlowDocument, FlowEdge, FlowNode, FlowRuleContext } from '@xihan-f
 import type { FlowDesignerTranslations, FlowImageExportOptions, FlowImageFormat, FlowRuntimeExtension, FlowRuntimeModel } from '@xihan-flow/runtime'
 import type { DesignerCommand, DesignerExporter, DesignerImporter } from '@xihan-ui/designer-kit'
 import type { PropertyEditorLayer, PropertyEditorTable } from '@xihan-ui/designer-kit/properties'
-import type { DesignerCommandTable, DesignerShellExtension } from '@xihan-ui/designer-shell'
+import type { DesignerCommandTable, DesignerSettings, DesignerSettingsSection, DesignerShellExtension } from '@xihan-ui/designer-shell'
 import type { XhFlowDesigner } from './flow-designer'
 import type { FlowPropertyEditor } from './panels/properties'
 import { createFlowRuntimeModel } from '@xihan-flow/runtime'
 import { extensionCommands, extensionEditors } from '@xihan-ui/designer-kit'
+import { collectSettingsSections } from '@xihan-ui/designer-shell'
+import { FLOW_SETTINGS_SECTION } from './settings'
 
 /** 命令、面板与扩展装上时拿到的上下文。 */
 export interface FlowDesignerContext {
@@ -21,6 +23,11 @@ export interface FlowDesignerContext {
   readonly designer: XhFlowDesigner
   /** 此刻生效的设计器文案。 */
   readonly translations: FlowDesignerTranslations
+  /**
+   * 此刻生效的设置，键是「分区 id.条目 id」：设计器自己的「画布」与各扩展分区里的条目写了用写的、没写取缺省值，
+   * 基础分区（general.*）只有宿主或用户写了的键。
+   */
+  readonly settings: DesignerSettings
 }
 
 /** 设计器的命令。 */
@@ -212,6 +219,8 @@ export interface FlowDesignerModel {
   readonly importers: readonly FlowDesignerImporter[]
   /** 各扩展的导出器，按扩展顺序。 */
   readonly exporters: readonly FlowDesignerExporter[]
+  /** 各扩展登记的设置分区，按扩展顺序。 */
+  readonly settings: readonly DesignerSettingsSection[]
 }
 
 /** 合出设计器用的模型；editors 是垫在各扩展之下的内建编辑器。任何一处重名都抛 DesignerExtensionError。 */
@@ -227,5 +236,7 @@ export function createFlowDesignerModel(extensions: readonly FlowDesignerExtensi
     editors: extensionEditors<FlowPropertyEditor>(editors, all),
     importers: all.flatMap(extension => extension.importers ?? []),
     exporters: all.flatMap(extension => extension.exporters ?? []),
+    // 设计器自己的「画布」分区占着 flow，扩展的分区与它、与内建的 general 或彼此重名都抛错
+    settings: collectSettingsSections([{ id: FLOW_DESIGNER_EXTENSION.id, settings: [{ id: FLOW_SETTINGS_SECTION, label: FLOW_SETTINGS_SECTION, items: [] }] }, ...all]).slice(1),
   }
 }

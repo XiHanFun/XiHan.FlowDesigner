@@ -163,7 +163,7 @@ describe('<xh-flow-designer>', () => {
   })
 
   it('拖动节点记为一步撤销，位置吸附网格，只派发一次 schema-change', async () => {
-    const designer = await mount(element => element.snap = false)
+    const designer = await mount(element => element.settings = { 'flow.snap': false })
     const changes: { kind: string, operations: unknown[] }[] = []
     designer.addEventListener('schema-change', event => changes.push((event as CustomEvent).detail))
     press(nodeElement(designer, 't'), 210, 10)
@@ -195,7 +195,7 @@ describe('<xh-flow-designer>', () => {
   it('按住 Alt 拖动节点松手时复制一份到落点，原节点不动，记为一步', async () => {
     const designer = await mount((element) => {
       element.grid = false
-      element.snap = false
+      element.settings = { 'flow.snap': false }
     })
     press(nodeElement(designer, 't'), 210, 10)
     move(250, 70, { altKey: true })
