@@ -93,12 +93,13 @@ describe('工具栏', () => {
     expect(menu.checkboxValue).toEqual(['item:palette', 'item:properties', 'item:issues'])
     const seen: string[] = []
     designer.addEventListener('panels-change', event => seen.push((event as CustomEvent<{ panels: string }>).detail.panels))
-    menu.dispatchEvent(new CustomEvent('select', { detail: { value: 'item:palette' } }))
+    // 复选条目点了只派发 checkbox-value-change，用真实的点击走一遍
+    document.querySelector<HTMLElement>('[data-scope="menu"][data-part="item"][data-value="item:palette"]')!.click()
     await settleFrame(designer)
     expect(seen).toEqual([designer.panels])
     expect(designer.panels!.split(' ')).not.toContain('palette')
     expect(menu.checkboxValue).toEqual(['item:properties', 'item:issues'])
-    menu.dispatchEvent(new CustomEvent('select', { detail: { value: 'item:palette' } }))
+    document.querySelector<HTMLElement>('[data-scope="menu"][data-part="item"][data-value="item:palette"]')!.click()
     await settleFrame(designer)
     expect(designer.panels!.split(' ')).toContain('palette')
   })
