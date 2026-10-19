@@ -129,7 +129,7 @@ describe('帮助、快捷键与关于', () => {
     ])
     expect(source.groups.find(group => group.id === 'edit')!.rows.find(row => row.label === 'Redo')!.keys).toEqual([['Mod', 'Shift', 'Z'], ['Ctrl', 'Y']])
     expect(source.commonKeys!.map(key => [key.id, key.label])).toEqual([
-      ['nudge', 'Move the selected nodes; pan the canvas when nothing is selected'],
+      ['nudge', 'Move the selected nodes; pan the canvas when no node is selected'],
       ['nudgeLarge', undefined],
       ['selectionToolbar', undefined],
       ['cancel', 'Cancel the drag in progress'],
