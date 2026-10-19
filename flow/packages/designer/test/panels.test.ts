@@ -25,6 +25,11 @@ async function settleFrame(designer: XhFlowDesigner): Promise<void> {
   await designer.querySelector<HTMLElement & { updateComplete: Promise<unknown> }>('xh-designer-frame')!.updateComplete
 }
 
+/** 设计器的外框：面板都在它里面，JSON 编辑框的问题列表不在。 */
+function frameOf(designer: Element): HTMLElement {
+  return designer.querySelector<HTMLElement>('xh-designer-frame')!
+}
+
 function toolbarItem(designer: Element, command: string): HTMLButtonElement {
   return designer.querySelector<HTMLButtonElement>(`[data-part="command-bar"] button[value="${command}"]`)!
 }
@@ -134,11 +139,11 @@ describe('工具栏', () => {
   it('defaultLayout 藏掉的面板不显示，设置里存了布局时按存的；通用命令的文案跟着全局配置里 xh-designer-commands 那一桶变', async () => {
     const designer = await mount(element => element.defaultLayout = { version: 1, hidden: ['issues'] })
     await settleFrame(designer)
-    expect([part(designer, 'command-bar'), part(designer, 'palette'), part(designer, 'issues')].map(list => list.length)).toEqual([1, 1, 0])
+    expect([part(designer, 'command-bar'), part(designer, 'palette'), part(frameOf(designer), 'issues')].map(list => list.length)).toEqual([1, 1, 0])
     designer.settings = { 'layout.panels': { version: 1, hidden: ['palette'] } }
     setXhConfig({ translations: { 'xh-designer-commands': { undo: '撤销' } } })
     await settleFrame(designer)
-    expect([part(designer, 'palette'), part(designer, 'issues')].map(list => list.length)).toEqual([0, 1])
+    expect([part(designer, 'palette'), part(frameOf(designer), 'issues')].map(list => list.length)).toEqual([0, 1])
     expect(toolbarItem(designer, 'undo').textContent).toBe('撤销')
   })
 })
@@ -194,7 +199,7 @@ describe('外框卡片', () => {
     await settleFrame(designer)
     const frame = designer.querySelector<FrameElement>('xh-designer-frame')!
     expect(frame.panelEntries().map(entry => entry.name)).toEqual(['palette', 'properties', 'minimap'])
-    expect(part(designer, 'issues')).toHaveLength(0)
+    expect(part(frameOf(designer), 'issues')).toHaveLength(0)
     designer.settingsPolicy = { 'layout.panels': 'locked' }
     await settleFrame(designer)
     expect(frame.panelEntries().every(entry => entry.locked)).toBe(true)
@@ -508,7 +513,7 @@ describe('问题列表', () => {
     expect(rows(designer)).toHaveLength(0)
     const empty = list(designer).querySelector<HTMLElement>('[data-part="empty"]')!
     expect([empty.hidden, empty.textContent]).toEqual([false, 'No problems'])
-    const panels = ['command-bar', 'palette', 'properties', 'issues'].map(name => part(designer, name)[0]!)
+    const panels = ['command-bar', 'palette', 'properties', 'issues'].map(name => part(frameOf(designer), name)[0]!)
     designer.settings = { 'layout.panels': { version: 1, hidden: ['palette', 'properties', 'issues', 'minimap'] } }
     await settleFrame(designer)
     expect(panels.map(element => element.isConnected)).toEqual([true, false, false, false])
@@ -619,7 +624,7 @@ describe('右键菜单', () => {
     expect(items()).toEqual(['delete', 'clear-vertices(x)'])
 
     rightClick(part(designer, 'viewport')[0]!, 600, 600)
-    expect(items()).toEqual(['paste(x)', 'select-all', 'auto-layout', 'zoom-to-fit'])
+    expect(items()).toEqual(['paste(x)', 'select-all', 'auto-layout', 'zoom-to-fit', 'edit-json'])
   })
 
   it('选中条目执行命令，禁用的条目不执行', async () => {

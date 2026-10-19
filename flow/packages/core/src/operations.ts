@@ -50,6 +50,7 @@ export type FlowOperation
     | { readonly type: 'reconnectEdge', readonly id: string, readonly source?: FlowEndpoint, readonly target?: FlowEndpoint }
     | { readonly type: 'updateEdge', readonly id: string, readonly patch: FlowEdgePatch }
     | { readonly type: 'updateDocument', readonly patch: FlowDocumentPatch }
+    | { readonly type: 'replaceDocument', readonly document: FlowDocument }
 
 /** 操作类型名。 */
 export type FlowOperationType = FlowOperation['type']
@@ -90,7 +91,7 @@ const DOCUMENT_PATCH_KEYS: readonly string[] = ['data', 'extensions']
  * 应用一个编辑操作，返回新文档与逆操作，不修改输入文档；未改动的节点与连线沿用原引用。
  * 操作没有带来变化时返回传入文档的同一引用，逆操作为空数组。
  * 操作只保证 id 唯一与被操作对象存在，引用完整性与端口约束由 validateDocument 与 checkConnection 负责。
- * 删除节点时级联删除与它相连的连线，逆操作会把它们放回原位置。
+ * 删除节点时级联删除与它相连的连线，逆操作会把它们放回原位置。整份替换（replaceDocument）的逆操作换回原文档。
  */
 export function applyOperation(document: FlowDocument, operation: FlowOperation): FlowOperationResult {
   switch (operation.type) {
@@ -114,6 +115,8 @@ export function applyOperation(document: FlowDocument, operation: FlowOperation)
       return updateEdge(document, operation)
     case 'updateDocument':
       return updateDocument(document, operation)
+    case 'replaceDocument':
+      return replaceDocument(document, operation)
     default:
       throw new FlowOperationError('invalid-operation', operation, `unknown operation type "${String((operation as { type: unknown }).type)}"`)
   }
@@ -286,6 +289,31 @@ function updateDocument(document: FlowDocument, operation: Op<'updateDocument'>)
     document: value,
     inverse: [{ type: 'updateDocument', patch: inverse }],
   }
+}
+
+/** 整份换掉：节点或连线的 id 有重复时抛 duplicate-id（节点与连线各算各的）；与当前文档按值相同时不变。 */
+function replaceDocument(document: FlowDocument, operation: Op<'replaceDocument'>): FlowOperationResult {
+  const next = operation.document
+  const duplicate = firstDuplicate(next.nodes.map(node => node.id)) ?? firstDuplicate(next.edges.map(edge => edge.id))
+  if (duplicate !== undefined)
+    throw new FlowOperationError('duplicate-id', operation, `id "${duplicate}" is used more than once`)
+  if (sameValue(document, next))
+    return unchanged(document)
+  return {
+    document: next,
+    inverse: [{ type: 'replaceDocument', document }],
+  }
+}
+
+/** 第一个重复出现的 id。 */
+function firstDuplicate(ids: readonly string[]): string | undefined {
+  const seen = new Set<string>()
+  for (const id of ids) {
+    if (seen.has(id))
+      return id
+    seen.add(id)
+  }
+  return undefined
 }
 
 /**

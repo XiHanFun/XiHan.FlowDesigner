@@ -21,7 +21,7 @@
 | `commandLayout` | — | `DesignerCommandLayout \| undefined` | 工具栏与各右键菜单的命令排列：toolbar、menu:node、menu:edge、menu:blank → 若干组命令 id。写了某个位置就只显示列出的命令；没写的位置用内置排列，再把 placement 含它的扩展命令追加成一组。 |
 | `validateOptions` | — | `Omit<FlowValidateOptions, 'extensions'> \| undefined` | 校验选项：按问题码覆盖严重程度，扩展规则的问题码也认。 |
 | `router` | — | `FlowEdgeRouter \| undefined` | 连线路由器，缺省为直角路由。 |
-| `settings` | — | `DesignerSettings \| undefined` | 设置的值：扁平的键值，键是「分区 id.条目 id」，如 general.theme、flow.minimap；没写的键取条目的缺省值。赋值即生效；用户在设置对话框里改了以后设计器换成新的一份并派发 settings-change。 |
+| `settings` | — | `DesignerSettings \| undefined` | 设置的值：扁平的键值，键是「分区 id.条目 id」，如 general.theme、flow.snap；没写的键取条目的缺省值。赋值即生效；用户在设置对话框里改了以后设计器换成新的一份并派发 settings-change。 |
 | `settingsPolicy` | — | `DesignerSettingsPolicy \| undefined` | 宿主对设置条目的管控：键是条目键或分区 id，hidden 不显示，locked 只读、说明换成「由所在系统管理」。 |
 | `settingsStorageKey` | `settings-storage-key` | `string \| undefined` | 设置存在根所在窗口 localStorage 的哪个键下：给了，连上文档时若没赋 settings 就从这里读，用户改了设置就写回去，标了 secret 的条目不存；读写失败派发 settings-storage-error。不给就不读写。同名 attribute settings-storage-key。 |
 | `brands` | — | `readonly PropertySwatchOption[] \| undefined` | 设置里主题色的预设：value 是品牌 id（写成设计器根上的 data-brand），color 是色板格子的颜色。不给且没给 registerBrand 时没有主题色这一项。 |
@@ -63,6 +63,7 @@
 | `autoLayout(options?: FlowAutoLayoutOptions): void` | 按连线方向分层排布全部节点，左上角保持在原处，并清除连线的手动拐点；记为一步，只读时什么都不做。没给的方向与间距取设置里「画布」分区的值。 |
 | `openSettings(section?: string): void` | 打开设置对话框，给了分区 id 就显示那一页：基础是 general，设计器自己的「画布」是 flow。 |
 | `startTour(): boolean` | 从头开始新手引导：通用步骤加流程与扩展的步骤；没有能走的步骤时返回 false。 |
+| `openJsonEditor(): void` | 打开编辑整份流程定义 JSON 的对话框：写出当前定义，边改边按读入检查与校验报问题；没有错误时「应用」整份换上，记一步撤销。只读时只能看、不能应用。 |
 | `validate(): FlowIssue[]` | 按当前扩展与校验选项校验定义。 |
 | `getViewport(): Viewport` | 当前视口。 |
 | `setViewport(viewport: Viewport): void` | 设置视口；此后尺寸变化不再自动适配。 |
@@ -142,6 +143,7 @@ declare function defineFlowDesigner(): void
 | `panels-restore` | 还原面板显隐 | — | `Ctrl / ⌘ + Shift + \` | 可用 |
 | `layout-reset` | 恢复默认布局 | — | — | 可用 |
 | `settings` | 设置 | `SettingsIcon` | — | 可用 |
+| `edit-json` | 编辑 JSON | `FileCodeIcon` | `Ctrl / ⌘ + Shift + J` | 可用 |
 | `help` | 帮助 | `CircleHelpIcon` | — | 可用 |
 | `start-tour` | 开始引导 | — | — | 可用 |
 | `panel:palette` | 节点 | — | — | 可用 |
@@ -176,7 +178,7 @@ declare function flowToolbarLayout(hasImporters: boolean): (readonly string[])[]
 declare function flowMenuLayout(subject: FlowMenuSubject, selectedNodes: number): string[][]
 ```
 
-右键菜单的缺省排列：节点菜单在选中两个以上时加对齐，三个以上时加分布。
+右键菜单的缺省排列：节点菜单在选中两个以上时加对齐，三个以上时加分布；空白处的末尾是编辑 JSON。
 
 ### FlowMenuSubject {#flowmenusubject}
 
@@ -355,7 +357,7 @@ type FlowBuiltinPropertyKey = 'label' | 'style.dashed'
 | `FlowImportDocument` | 接口 | 导入的整份流程定义：换掉当前定义并记一步撤销，视口随后适配。 |
 | `FlowImportFragment` | 接口 | 导入的片段：一组节点与连线，整体挪到落点后按粘贴的规则换新 id 放进流程定义，选中它们并记一步撤销。 |
 | `FlowImportResult` | 类型 | 导入的结果：一个片段，或一整份流程定义。 |
-| `flowMenuLayout` | 函数 | 右键菜单的缺省排列：节点菜单在选中两个以上时加对齐，三个以上时加分布。 |
+| `flowMenuLayout` | 函数 | 右键菜单的缺省排列：节点菜单在选中两个以上时加对齐，三个以上时加分布；空白处的末尾是编辑 JSON。 |
 | `FlowMenuSubject` | 类型 | 右键菜单落在哪类对象上。 |
 | `flowToolbarLayout` | 函数 | 工具栏此刻的缺省排列：有导入器时在 FLOW_TOOLBAR_LAYOUT 前面多一组打开文件。 |
 
