@@ -66,6 +66,7 @@ export const flowPtBR: XhConfig = /* @__PURE__ */ flowLocale(designerShellPtBR, 
     shortcutNudge: 'Mover os nós selecionados; sem seleção, mover a tela',
     shortcutCancel: 'Cancelar o arraste em andamento',
     shortcutContextMenu: 'Abrir o menu de contexto',
+    outline: { title: 'Estrutura do fluxo', help: 'Os nós do fluxo, cada um com as conexões que saem dele (recolhidas no início). Escolha um item para selecioná-lo e mostrá-lo na tela; aponte para ele para destacá-lo ali.', search: 'Pesquisar na estrutura do fluxo', empty: 'Ainda não há nós' },
     history: {
       node: (kind, name) => `${kind} ${name}`,
       addNode: label => `Adicionar ${label}`,

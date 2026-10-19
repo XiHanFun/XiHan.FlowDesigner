@@ -117,6 +117,7 @@ xh-flow-designer [data-part='edge-arrow'] {
 }
 
 xh-flow-designer [data-part='edge']:hover [data-part='edge-line'],
+xh-flow-designer [data-part='edge'][data-highlighted] [data-part='edge-line'],
 xh-flow-designer [data-part='edge'][data-selected] [data-part='edge-line'] {
   stroke: var(--xh-fg-brand);
 }
@@ -126,6 +127,7 @@ xh-flow-designer [data-part='edge'][data-selected] [data-part='edge-line'] {
 }
 
 xh-flow-designer [data-part='edge']:hover [data-part='edge-arrow'],
+xh-flow-designer [data-part='edge'][data-highlighted] [data-part='edge-arrow'],
 xh-flow-designer [data-part='edge'][data-selected] [data-part='edge-arrow'] {
   fill: var(--xh-fg-brand);
 }
@@ -173,6 +175,11 @@ xh-flow-designer [data-part='node']:hover {
 xh-flow-designer [data-part='node'][data-selected] {
   border-color: var(--xh-border-control-focus);
   box-shadow: 0 0 0 var(--xh-stroke-thin) var(--xh-border-control-focus);
+}
+
+/* 流程结构面板悬停的那一行在画布上标出 */
+xh-flow-designer [data-part='node'][data-highlighted] {
+  box-shadow: 0 0 0 var(--xh-ring-width) var(--xh-ring-focus);
 }
 
 xh-flow-designer [data-part='node'][data-issue]::after {

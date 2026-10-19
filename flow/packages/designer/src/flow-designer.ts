@@ -44,6 +44,7 @@ import type {
   DesignerJsonEditorEventMap,
   DesignerLayout,
   DesignerLayoutPolicy,
+  DesignerOutlineNode,
   DesignerPanelHost,
   DesignerSettings,
   DesignerSettingsEventMap,
@@ -60,7 +61,7 @@ import type { PointerSession } from '@xihan-ui/pointer'
 import type { KeyedChildren, PropertyValues } from '@xihan-ui/web-components/authoring'
 import type { DialogService } from '@xihan-ui/web-components/services'
 import type { FlowAutoLayoutOptions, FlowClipboard, FlowEditor, FlowSelection } from './editor'
-import type { FlowDesignerContext, FlowDesignerExtension, FlowDesignerImporter, FlowDesignerModel, FlowImportFragment, FlowMenuSubject } from './extensions'
+import type { FlowDesignerContext, FlowDesignerExtension, FlowDesignerImporter, FlowDesignerModel, FlowImportFragment, FlowMenuSubject, FlowOutlineTarget } from './extensions'
 import type { FlowPropertyEditor } from './panels/properties'
 import { getPortPosition, portAllows, readDocument, validateDocument } from '@xihan-flow/core'
 import { XIHAN_WORKFLOW_START_VARIABLES } from '@xihan-flow/core/presets/xihan-workflow'
@@ -414,6 +415,10 @@ export class XhFlowDesigner extends XhReactiveElement {
   #tourChecked = false
   /** 清空历史前的确认框服务：第一次要弹时建，元素移出文档时释放。 */
   #dialogs: DialogService | undefined
+  /** 流程结构面板悬停的那一行在画布上标出的对象。 */
+  #highlight: FlowOutlineTarget | undefined
+  /** 流程结构的树：定义、文案或模型换了才重排。 */
+  #outlineCache: { readonly document: FlowDocument, readonly t: FlowDesignerTranslations, readonly model: unknown, readonly nodes: readonly DesignerOutlineNode[] } | undefined
 
   constructor() {
     super()
@@ -424,6 +429,13 @@ export class XhFlowDesigner extends XhReactiveElement {
       confirm: (options) => {
         this.#dialogs ??= createDialogService()
         return this.#dialogs.confirm(options)
+      },
+      outline: () => this.#outline(),
+      highlight: (target) => {
+        if (target?.kind === this.#highlight?.kind && target?.id === this.#highlight?.id)
+          return
+        this.#highlight = target
+        this.requestUpdate()
       },
     })
     this.grid = 16
@@ -901,6 +913,60 @@ export class XhFlowDesigner extends XhReactiveElement {
       this.setViewport(next)
   }
 
+  /** 连线没整条落在视口内时把它移进来，已在视口内则不动。 */
+  revealEdge(id: string): void {
+    const points = this.#scene?.edges.find(edge => edge.id === id)?.points ?? []
+    const rect = unionRects(points.map(point => ({ x: point.x, y: point.y, width: 0, height: 0 })))
+    const size = this.#size()
+    if (!rect || !size)
+      return
+    const next = revealRect(this.#viewport, rect, size, FIT_PADDING)
+    if (next !== this.#viewport)
+      this.setViewport(next)
+  }
+
+  /**
+   * 流程结构的树：节点按定义里的先后，各带从它出去的连线（缺省收起）；没有名称的节点与连线写「种类名 · id」，节点的副文本是
+   * 种类名，连线的副文本是「→ 去向」，业务数据里有条件文字（data.condition）时写成「条件 → 去向」。出发节点不在定义里的连线排在最后。
+   */
+  #outline(): readonly DesignerOutlineNode[] {
+    const document = this.#editor.document
+    const t = this.#translations()
+    const model = this.#editor.model
+    const cache = this.#outlineCache
+    if (cache?.document === document && cache.t === t && cache.model === model)
+      return cache.nodes
+    const kind = (type: string): string => model.nodeTypes.get(type)?.label ?? type
+    const nodeName = (node: FlowNode): string => node.label ?? `${kind(node.type)} · ${node.id}`
+    const byId = new Map(document.nodes.map(node => [node.id, node]))
+    const edgeRow = (edge: FlowDocument['edges'][number]): DesignerOutlineNode => {
+      const target = byId.get(edge.target.node)
+      const condition = edge.data?.condition
+      const to = `→ ${target === undefined ? edge.target.node : nodeName(target)}`
+      const description = typeof condition === 'string' && condition.trim() !== '' ? `${condition.trim()} ${to}` : to
+      return { id: `edge:${edge.id}`, label: edge.label ?? `${t.edge} · ${edge.id}`, description, movable: false }
+    }
+    const outgoing = new Map<string, FlowDocument['edges'][number][]>()
+    for (const edge of document.edges)
+      outgoing.set(edge.source.node, [...outgoing.get(edge.source.node) ?? [], edge])
+    const nodes: DesignerOutlineNode[] = document.nodes.map((node) => {
+      const icon = model.nodeTypes.get(node.type)?.icon
+      const edges = outgoing.get(node.id) ?? []
+      return {
+        id: `node:${node.id}`,
+        label: nodeName(node),
+        ...(node.label === undefined ? {} : { description: kind(node.type) }),
+        ...(icon === undefined ? {} : { icon }),
+        movable: false,
+        ...(edges.length === 0 ? {} : { expanded: false, children: edges.map(edgeRow) }),
+      }
+    })
+    const orphans = document.edges.filter(edge => !byId.has(edge.source.node)).map(edgeRow)
+    const tree = [...nodes, ...orphans]
+    this.#outlineCache = { document, t, model, nodes: tree }
+    return tree
+  }
+
   /**
    * 选中问题所在的节点或连线并显露它；问题落在属性上时把焦点交给属性面板里的那个字段。
    * 流程定义级属性的问题不带 target：清空选择，属性面板换成流程定义后聚焦那个字段。
@@ -918,14 +984,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     }
     else if (target?.kind === 'edge') {
       this.#editor.select({ edges: [target.id] })
-      const points = this.#scene?.edges.find(edge => edge.id === target.id)?.points ?? []
-      const rect = unionRects(points.map(point => ({ x: point.x, y: point.y, width: 0, height: 0 })))
-      const size = this.#size()
-      if (rect && size) {
-        const next = revealRect(this.#viewport, rect, size, FIT_PADDING)
-        if (next !== this.#viewport)
-          this.setViewport(next)
-      }
+      this.revealEdge(target.id)
     }
     if (!target || issue.path.length <= 2)
       return
@@ -1161,7 +1220,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     const doc = this.ownerDocument
     reconcile(layers.edges, edges, this.#keys, edge => edge.id, (edge, reuse) => {
       const group = reuse ?? createEdgeGroup(doc)
-      paintEdge(group, edge, selected.has(edge.id))
+      paintEdge(group, edge, selected.has(edge.id), this.#highlight?.kind === 'edge' && this.#highlight.id === edge.id)
       return group
     })
   }
@@ -1196,12 +1255,14 @@ export class XhFlowDesigner extends XhReactiveElement {
     element.dataset.nodeType = node.type
     toggleData(element, 'selected', selected ? '' : undefined)
     toggleData(element, 'issue', this.#issueLevels.get(node.id))
+    const highlighted = this.#highlight?.kind === 'node' && this.#highlight.id === node.id
+    toggleData(element, 'highlighted', highlighted ? '' : undefined)
     element.style.left = `${rect.x}px`
     element.style.top = `${rect.y}px`
     element.style.width = `${rect.width}px`
     element.style.height = `${rect.height}px`
     const render = this.#model.runtime.renderers.get(node.type) ?? defaultNodeRenderer
-    render(element, { node, nodeType: sceneNode.nodeType, label: sceneNode.label, status: undefined, highlighted: false })
+    render(element, { node, nodeType: sceneNode.nodeType, label: sceneNode.label, status: undefined, highlighted })
   }
 
   #renderPorts(layers: Layers): void {
@@ -2273,10 +2334,11 @@ function createEdgeGroup(doc: Document): SVGGElement {
   return group
 }
 
-function paintEdge(group: Element, edge: FlowSceneEdge, selected: boolean): void {
+function paintEdge(group: Element, edge: FlowSceneEdge, selected: boolean, highlighted: boolean): void {
   group.setAttribute('data-edge-id', edge.id)
   toggleAttribute(group, 'data-dashed', edge.dashed)
   toggleAttribute(group, 'data-selected', selected)
+  toggleAttribute(group, 'data-highlighted', highlighted)
   const [hit, line, arrow] = Array.from(group.children)
   hit!.setAttribute('d', edge.path)
   line!.setAttribute('d', edge.path)

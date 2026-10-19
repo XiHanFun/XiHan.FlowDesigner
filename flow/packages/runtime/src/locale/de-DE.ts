@@ -66,6 +66,7 @@ export const flowDeDE: XhConfig = /* @__PURE__ */ flowLocale(designerShellDeDE, 
     shortcutNudge: 'Ausgewählte Knoten verschieben; ohne Auswahl die Arbeitsfläche verschieben',
     shortcutCancel: 'Laufendes Ziehen abbrechen',
     shortcutContextMenu: 'Kontextmenü öffnen',
+    outline: { title: 'Ablaufstruktur', help: 'Die Knoten des Ablaufs, jeweils mit den von ihnen ausgehenden Verbindungen (anfangs zugeklappt). Wählen Sie einen Eintrag, um ihn auf der Arbeitsfläche auszuwählen und anzuzeigen; zeigen Sie darauf, um ihn dort zu markieren.', search: 'Ablaufstruktur durchsuchen', empty: 'Noch keine Knoten' },
     history: {
       node: (kind, name) => `${kind} ${name}`,
       addNode: label => `${label} hinzufügen`,

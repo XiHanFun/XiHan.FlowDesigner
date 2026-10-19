@@ -50,6 +50,15 @@ aside: false
 
 `validate()` 按同样的扩展与选项立即校验一次，宿主保存前可以用它拦下有错误的定义。
 
+## 流程结构
+
+流程结构面板按定义里的先后列出节点，每个节点下面是从它出去的连线，缺省收起。没有名称的节点写「种类名 · id」，有名称时副文本是种类名；连线没有名称时写「连线 · id」，副文本是「→ 去向」，连线的业务数据里有条件文字（`data.condition`，XiHan 工作流预设就这样写条件）时写成「条件 → 去向」。
+
+- 点一行就在画布上选中它，不在视口里时移过来（节点用 `revealNode`，连线用 `revealEdge`）；画布上选中的对象在面板里跟着选中，选中一条连线时展开它的出发节点。
+- 指针悬停或键盘落在一行时，画布上标出那个节点或连线，离开时撤掉。
+- 删除钮与 Delete 走设计器的删除；只读时不删。行不能拖动，先后跟着流程定义。
+- 面板上方有搜索框，按名称与副文本过滤。标题与帮助是流程自己的说法，在设计器文案的 `outline` 里。
+
 ## 命令
 
 工具栏、右键菜单与快捷键执行的都是命令。每条内置命令都带图标，工具栏缺省只显示图标，悬停或聚焦时提示命令的名字与快捷键；撤销、复制、对齐、缩放这些四款设计器都有的命令，文案用 designer-shell 语言包里 `xh-designer-commands` 那一桶，与其它设计器一致，要改它们的文字时改那一桶；撤销、重做与清空历史本身就是 designer-shell 的共用命令，见[撤销与保存](#撤销与保存)。工具栏末组是 designer-shell 内置的「面板」「设置」与「帮助」：面板点开一张菜单，列出物料、属性、问题这些能开关的面板，勾选的显示，收起的面板从这里再打开；设置打开设置对话框（同 `openSettings()`），帮助在新窗口打开本站的设计器一页（地址是导出的 `FLOW_DESIGNER_HELP_URL`）；宿主不要哪一条，用 `commandLayout` 排掉。另有「开始引导」（`start-tour`）与「编辑 JSON」（`edit-json`，Ctrl / ⌘ + Shift + J，见[编辑 JSON](#编辑-json)），不上工具栏：开始引导在设置的帮助页里，编辑 JSON 在空白处的右键菜单末尾，也都能排进 `commandLayout`。内置命令的 id、名称与快捷键见[内置命令](../reference/designer#内置命令)；只读时会修改流程定义的命令不可用，复制、全选与缩放仍可用。命令都有对应的方法，宿主的按钮直接调用方法即可，比如 `undo()`、`duplicate()`、`align('left')`、`autoLayout({ direction: 'LR' })`。
@@ -60,7 +69,7 @@ aside: false
 
 <<< @/examples/snippets/designer-layout.ts#command-layout
 
-面板是物料（`palette`）、属性（`properties`）、问题（`issues`）、历史记录（`history`）四张卡片与画布右下角的小地图（`minimap`），id 在包入口导出的 `FLOW_PANELS` 里。历史记录缺省隐藏，打开后停在右栏属性下面。`defaultLayout` 是宿主给的缺省布局：用户没存过布局时用它，「恢复默认布局」也回到它；不给时全部显示、各在缺省的位置。形状是 `@xihan-ui/designer-shell` 的 `DesignerLayout`，写了的字段整项覆盖缺省，常用的是 `hidden`（收起哪些面板）与 `docks`（各栏放哪些面板、谁先谁后）。
+面板是物料（`palette`）、流程结构（`outline`）、属性（`properties`）、问题（`issues`）、历史记录（`history`）五张卡片与画布右下角的小地图（`minimap`），id 在包入口导出的 `FLOW_PANELS` 里。流程结构停在左栏物料下面；历史记录缺省隐藏，打开后停在右栏属性下面。`defaultLayout` 是宿主给的缺省布局：用户没存过布局时用它，「恢复默认布局」也回到它；不给时全部显示、各在缺省的位置。形状是 `@xihan-ui/designer-shell` 的 `DesignerLayout`，写了的字段整项覆盖缺省，常用的是 `hidden`（收起哪些面板）与 `docks`（各栏放哪些面板、谁先谁后）。
 
 <<< @/examples/snippets/designer-layout.ts#default-layout
 

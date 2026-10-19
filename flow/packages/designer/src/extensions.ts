@@ -9,12 +9,12 @@ import type { FlowDocument, FlowEdge, FlowNode, FlowNodeType, FlowOperation, Flo
 import type { FlowDesignerTranslations, FlowImageExportOptions, FlowImageFormat, FlowRuntimeExtension, FlowRuntimeModel, FlowTourStepKey } from '@xihan-flow/runtime'
 import type { DesignerCommand, DesignerExporter, DesignerImporter, History } from '@xihan-ui/designer-kit'
 import type { PropertyEditorLayer, PropertyEditorTable } from '@xihan-ui/designer-kit/properties'
-import type { DesignerCommandsTranslations, DesignerCommandTable, DesignerHistoryConfirm, DesignerHistoryTranslations, DesignerSettings, DesignerSettingsSection, DesignerShellExtension, DesignerTourStep, DesignerTourTarget, XhDesignerFrameElement } from '@xihan-ui/designer-shell'
+import type { DesignerCommandsTranslations, DesignerCommandTable, DesignerHistoryConfirm, DesignerHistoryTranslations, DesignerOutlineNode, DesignerSettings, DesignerSettingsSection, DesignerShellExtension, DesignerTourStep, DesignerTourTarget, XhDesignerFrameElement } from '@xihan-ui/designer-shell'
 import type { XhFlowDesigner } from './flow-designer'
 import type { FlowPropertyEditor } from './panels/properties'
-import { createFlowRuntimeModel } from '@xihan-flow/runtime'
+import { createFlowRuntimeModel, DEFAULT_FLOW_DESIGNER_TRANSLATIONS } from '@xihan-flow/runtime'
 import { DesignerExtensionError, extensionCommands, extensionEditors, snapshotHistory } from '@xihan-ui/designer-kit'
-import { collectSettingsSections, collectTourSteps, createHistoryPanel, designerHistoryCommands, designerPanelCommands, designerShellCommands } from '@xihan-ui/designer-shell'
+import { collectSettingsSections, collectTourSteps, createHistoryPanel, createOutlinePanel, designerHistoryCommands, designerPanelCommands, designerShellCommands } from '@xihan-ui/designer-shell'
 import {
   AlignObjectsBottomIcon,
   AlignObjectsCenterIcon,
@@ -33,6 +33,7 @@ import {
   FileImageIcon,
   FolderOpenIcon,
   HistoryIcon,
+  ListTreeIcon,
   MaximizeIcon,
   PanelLeftIcon,
   RedoIcon,
@@ -46,6 +47,7 @@ import {
   ZoomOutIcon,
   ZoomResetIcon,
 } from '@xihan-ui/icons'
+import { resolveXhConfig } from '@xihan-ui/web-components'
 import { FLOW_SETTINGS_SECTION } from './settings'
 
 /** 命令、面板与扩展装上时拿到的上下文。 */
@@ -124,6 +126,28 @@ export interface FlowDesignerInternals {
   readonly history: () => History<FlowDocument, FlowOperation>
   readonly historyTranslations: () => DesignerHistoryTranslations
   readonly confirm: (options: DesignerHistoryConfirm) => Promise<boolean>
+  /** 流程结构面板的树：节点为行，从它出去的连线列在下面。 */
+  readonly outline: () => readonly DesignerOutlineNode[]
+  /** 在画布上标出一个节点或一条连线，undefined 撤掉。 */
+  readonly highlight: (target: FlowOutlineTarget | undefined) => void
+}
+
+/** 流程结构里一行对应的对象。 */
+export interface FlowOutlineTarget {
+  readonly kind: 'node' | 'edge'
+  readonly id: string
+}
+
+/** 流程结构里一行的 id：节点与连线的 id 各成一套，前面带上种类。 */
+export function flowOutlineRowId(target: FlowOutlineTarget): string {
+  return `${target.kind}:${target.id}`
+}
+
+/** 行 id 换回对象；不是这样写的 id 为 undefined。 */
+export function flowOutlineTarget(row: string): FlowOutlineTarget | undefined {
+  const at = row.indexOf(':')
+  const kind = row.slice(0, at)
+  return at > 0 && (kind === 'node' || kind === 'edge') ? { kind, id: row.slice(at + 1) } : undefined
 }
 
 /** 设计器 → 它不公开的能力；设计器建出时登记，内置的历史命令与历史面板经它取。 */
@@ -174,9 +198,9 @@ export const FLOW_DESIGNER_HELP_URL = 'https://flow.docs.xihanfun.com/guide/desi
  * 设计器登记的面板与画布浮动件的 id：宿主写 defaultLayout、settingsPolicy（layout.panels.<面板 id>）时用它，不手写字符串。
  * 各有一条开关命令 panel:<面板 id>。
  */
-export const FLOW_PANELS = { palette: 'palette', properties: 'properties', issues: 'issues', minimap: 'minimap', history: 'history' } as const
+export const FLOW_PANELS = { palette: 'palette', outline: 'outline', properties: 'properties', issues: 'issues', minimap: 'minimap', history: 'history' } as const
 
-/** 外框上直接登记的面板与画布浮动件；历史这类内置扩展的面板，开关命令随扩展面板一起生成。 */
+/** 外框上直接登记的面板与画布浮动件；流程结构、历史这类内置扩展的面板，开关命令随扩展面板一起生成。 */
 const FRAME_PANELS = [FLOW_PANELS.palette, FLOW_PANELS.properties, FLOW_PANELS.issues, FLOW_PANELS.minimap]
 
 /**
@@ -256,6 +280,44 @@ const BUILTIN_COMMANDS: readonly FlowDesignerCommand[] = [
   ...designerPanelCommands<FlowDesignerContext>({ panels: FRAME_PANELS, frame: context => context.frame }),
 ]
 
+/** 一组行 id 换成设计器的选择。 */
+function selectionOf(rows: readonly string[]): { nodes: string[], edges: string[] } {
+  const targets = rows.flatMap(row => flowOutlineTarget(row) ?? [])
+  return { nodes: targets.filter(target => target.kind === 'node').map(target => target.id), edges: targets.filter(target => target.kind === 'edge').map(target => target.id) }
+}
+
+/**
+ * 流程结构面板：节点为行，从它出去的连线列在下面、缺省收起，没有名称的写「种类名 · id」；选中一行就在画布上选中并显露它，
+ * 悬停时在画布上标出，删除走设计器的删除。缺省停在左栏物料下面，标题与帮助换成流程的说法。行不能挪。
+ */
+const OUTLINE_PANEL = createOutlinePanel<FlowDesignerContext>({
+  nodes: ({ designer }) => internalsOf(designer).outline(),
+  selection: ({ designer }) => {
+    const { nodes, edges } = designer.getSelection()
+    return [...nodes.map(id => flowOutlineRowId({ kind: 'node', id })), ...edges.map(id => flowOutlineRowId({ kind: 'edge', id }))]
+  },
+  select: ({ designer }, rows) => {
+    const selection = selectionOf(rows)
+    designer.select(selection)
+    const first = flowOutlineTarget(rows[0] ?? '')
+    if (first?.kind === 'node')
+      designer.revealNode(first.id)
+    else if (first?.kind === 'edge')
+      designer.revealEdge(first.id)
+  },
+  highlight: ({ designer }, row) => internalsOf(designer).highlight(row === null ? undefined : flowOutlineTarget(row)),
+  remove: ({ designer }, rows) => {
+    if (designer.readonly === true)
+      return
+    designer.select(selectionOf(rows))
+    designer.deleteSelection()
+  },
+}, {
+  region: { icon: ListTreeIcon },
+  readonly: ({ designer }) => designer.readonly === true,
+  translations: () => (resolveXhConfig(null).translations?.['xh-flow-designer']?.outline ?? DEFAULT_FLOW_DESIGNER_TRANSLATIONS.outline),
+})
+
 /** 历史记录面板：列出撤销历史，选一步就跳过去；缺省停在右栏属性下面、缺省隐藏，面板头是清空历史。 */
 const HISTORY_PANEL = createHistoryPanel<FlowDesignerContext>({
   snapshot: ({ designer }) => snapshotHistory(internalsOf(designer).history()),
@@ -283,12 +345,12 @@ export const FLOW_TOUR_STEPS: readonly DesignerTourStep<FlowDesignerContext>[] =
   tourStep('autoLayout', { command: 'auto-layout' }, 120),
 ]
 
-/** 设计器的内置扩展：内置命令、图片导出器、历史记录面板与引导步骤。节点类型、连线属性等 core 层的内置部分在 FLOW_CORE_EXTENSION 里。 */
+/** 设计器的内置扩展：内置命令、图片导出器、流程结构与历史记录两块面板、引导步骤。节点类型、连线属性等 core 层的内置部分在 FLOW_CORE_EXTENSION 里。 */
 export const FLOW_DESIGNER_EXTENSION: FlowDesignerExtension = {
   id: '@xihan-flow/designer',
   commands: BUILTIN_COMMANDS,
   exporters: [IMAGE_EXPORTER],
-  panels: [HISTORY_PANEL],
+  panels: [OUTLINE_PANEL, HISTORY_PANEL],
   tourSteps: FLOW_TOUR_STEPS,
 }
 

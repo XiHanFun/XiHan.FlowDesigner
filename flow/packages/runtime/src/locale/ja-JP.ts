@@ -66,6 +66,7 @@ export const flowJaJP: XhConfig = /* @__PURE__ */ flowLocale(designerShellJaJP, 
     shortcutNudge: '選択したノードを移動。選択がないときはキャンバスを移動',
     shortcutCancel: 'ドラッグ中の操作を取り消す',
     shortcutContextMenu: 'コンテキストメニューを開く',
+    outline: { title: 'フロー構造', help: 'フローのノードと、各ノードから出る接続線（最初は折りたたみ）を一覧します。項目を選ぶとキャンバスで選択して表示し、ポイントするとキャンバス上で示します。', search: 'フロー構造を検索', empty: 'まだノードがありません' },
     history: {
       node: (kind, name) => `${kind} ${name}`,
       addNode: label => `${label}を追加`,

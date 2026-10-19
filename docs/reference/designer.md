@@ -73,6 +73,7 @@
 | `zoomToActual(): void` | 缩放到 100% 并把整张图居中。 |
 | `scrollToNode(id: string): void` | 把节点居中显示。 |
 | `revealNode(id: string): void` | 节点没整个落在视口内时把它居中，已在视口内则不动。 |
+| `revealEdge(id: string): void` | 连线没整条落在视口内时把它移进来，已在视口内则不动。 |
 | `clientToWorld(clientX: number, clientY: number): FlowPoint` | 浏览器视口坐标换成画布的世界坐标。 |
 
 ### 事件
@@ -148,6 +149,7 @@ declare function defineFlowDesigner(): void
 | `help` | 帮助 | `CircleHelpIcon` | — | 可用 |
 | `start-tour` | 开始引导 | — | — | 可用 |
 | `panel:palette` | 节点 | — | — | 可用 |
+| `panel:outline` | 流程结构 | — | — | 可用 |
 | `panel:properties` | 属性 | — | — | 可用 |
 | `panel:issues` | 问题 | — | — | 可用 |
 | `panel:minimap` | 小地图 | — | — | 可用 |
@@ -203,7 +205,7 @@ schema-change 的种类：执行操作、撤销、重做，或宿主装载了新
 ### FLOW_PANELS {#flow_panels}
 
 ```ts
-const FLOW_PANELS = { palette: 'palette', properties: 'properties', issues: 'issues', minimap: 'minimap', history: 'history' } as const
+const FLOW_PANELS = { palette: 'palette', outline: 'outline', properties: 'properties', issues: 'issues', minimap: 'minimap', history: 'history' } as const
 ```
 
 设计器登记的面板与画布浮动件的 id：宿主写 defaultLayout、settingsPolicy（layout.panels.&lt;面板 id&gt;）时用它，不手写字符串。各有一条开关命令 panel:&lt;面板 id&gt;。
@@ -282,6 +284,7 @@ const FLOW_PANELS = { palette: 'palette', properties: 'properties', issues: 'iss
 | `shortcutNudge` | `string` | 快捷键页：方向键一行按流程的做法改写的说明。 |
 | `shortcutCancel` | `string` | 快捷键页：Esc 一行按流程的做法改写的说明。 |
 | `shortcutContextMenu` | `string` | 快捷键页：Shift + F10 与菜单键一行的说明。 |
+| `outline` | `FlowOutlineTranslations` | 流程结构面板（页面结构零件）的标题、帮助、搜索框与空状态，压在零件文案之上。 |
 | `history` | `FlowHistoryTranslations` | 撤销历史里一步的说明。 |
 
 | 方法 | 说明 |
@@ -345,7 +348,7 @@ type FlowBuiltinPropertyKey = 'label' | 'style.dashed'
 | 名称 | 种类 | 说明 |
 | --- | --- | --- |
 | `createFlowDesignerModel` | 函数 | 合出设计器用的模型；editors 是垫在各扩展之下的内建编辑器。 |
-| `FLOW_DESIGNER_EXTENSION` | 常量 | 设计器的内置扩展：内置命令、图片导出器、历史记录面板与引导步骤。 |
+| `FLOW_DESIGNER_EXTENSION` | 常量 | 设计器的内置扩展：内置命令、图片导出器、流程结构与历史记录两块面板、引导步骤。 |
 | `FLOW_DESIGNER_HELP_URL` | 常量 | 内置命令 help 打开的帮助页：流程文档站的设计器一页。 |
 | `FLOW_PANELS` | 常量 | 设计器登记的面板与画布浮动件的 id：宿主写 defaultLayout、settingsPolicy（layout.panels.&lt;面板 id&gt;）时用它，不手写字符串。 |
 | `FLOW_TOOLBAR_LAYOUT` | 常量 | 工具栏的缺省排列；commandLayout 没写 toolbar 时用它，再把 placement 含 toolbar 的扩展命令追加成一组。 |

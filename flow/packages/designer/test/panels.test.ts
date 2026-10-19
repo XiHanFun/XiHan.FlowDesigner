@@ -96,7 +96,7 @@ describe('工具栏', () => {
     const menu = designer.querySelector<MenuHost>('[data-part="command-bar"] xh-menu')!
     expect([menu.open, menu.anchor]).toEqual([true, button])
     expect(menu.collection!.slice(0, 4).map(item => item.value)).toEqual(['item:palette', 'item:properties', 'item:issues', 'item:minimap'])
-    expect(menu.checkboxValue).toEqual(['item:palette', 'item:properties', 'item:issues', 'item:minimap'])
+    expect(menu.checkboxValue).toEqual(['item:palette', 'item:properties', 'item:issues', 'item:minimap', 'item:outline'])
     const seen: string[] = []
     designer.addEventListener('settings-change', event => seen.push((event as CustomEvent<{ key: string }>).detail.key))
     // 复选条目点了只派发 checkbox-value-change，用真实的点击走一遍
@@ -104,7 +104,7 @@ describe('工具栏', () => {
     await settleFrame(designer)
     expect(seen).toEqual(['layout.panels'])
     expect(designer.settings!['layout.panels']).toMatchObject({ version: 1, hidden: ['history', 'palette'] })
-    expect(menu.checkboxValue).toEqual(['item:properties', 'item:issues', 'item:minimap'])
+    expect(menu.checkboxValue).toEqual(['item:properties', 'item:issues', 'item:minimap', 'item:outline'])
     document.querySelector<HTMLElement>('[data-scope="menu"][data-part="item"][data-value="item:palette"]')!.click()
     await settleFrame(designer)
     expect(designer.settings!['layout.panels']).toMatchObject({ hidden: ['history'] })
@@ -184,7 +184,7 @@ describe('外框卡片', () => {
     frame.querySelector<HTMLButtonElement>('[data-region="palette"] [data-part="panel-close"]')!.click()
     await settleFrame(designer)
     expect(seen.map(change => change.key)).toEqual(['layout.panels'])
-    expect(seen[0]!.value).toMatchObject({ version: 1, hidden: ['history', 'palette'], docks: { start: ['palette'], end: ['properties', 'history'], bottom: ['issues'] } })
+    expect(seen[0]!.value).toMatchObject({ version: 1, hidden: ['history', 'palette'], docks: { start: ['palette', 'outline'], end: ['properties', 'history'], bottom: ['issues'] } })
     expect([seen[0]!.settings, designer.settings]).toEqual([{ 'layout.panels': seen[0]!.value }, { 'layout.panels': seen[0]!.value }])
     expect([frame.showsPanel('palette'), frame.showsPanel('properties')]).toEqual([false, true])
 
@@ -198,7 +198,7 @@ describe('外框卡片', () => {
     const designer = await mount(element => element.settingsPolicy = { 'layout.panels.issues': 'hidden' })
     await settleFrame(designer)
     const frame = designer.querySelector<FrameElement>('xh-designer-frame')!
-    expect(frame.panelEntries().map(entry => entry.name)).toEqual(['palette', 'properties', 'minimap', 'history'])
+    expect(frame.panelEntries().map(entry => entry.name)).toEqual(['palette', 'properties', 'minimap', 'outline', 'history'])
     expect(part(frameOf(designer), 'issues')).toHaveLength(0)
     designer.settingsPolicy = { 'layout.panels': 'locked' }
     await settleFrame(designer)
