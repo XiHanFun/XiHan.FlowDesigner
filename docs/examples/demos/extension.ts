@@ -58,7 +58,7 @@ const commands: FlowDesignerExtension['commands'] = [
 // #region panel
 const panels: FlowDesignerExtension['panels'] = [
   {
-    region: { name: 'leave-summary', position: 'end', label: '统计' },
+    region: { name: 'leave-summary', position: 'end', title: '统计' },
     create: (context) => {
       const element = document.createElement('p')
       const update = ({ designer }: typeof context): void => {
