@@ -70,6 +70,9 @@ describe('扩展', () => {
       .toEqual({ space: 'node-type', key: 'start', extensions: ['test', 'acme'] })
     expect(conflict(() => (designer.extensions = [nodes, { id: 'acme', panels: [{ region: { name: 'toolbar', position: 'top' }, create }] }])))
       .toEqual({ space: 'panel', key: 'toolbar', extensions: ['builtin', 'acme'] })
+    const source = { id: 'mine', groups: () => [], insert: () => {} }
+    expect(conflict(() => (designer.extensions = [nodes, { id: 'acme', paletteSources: [source] }, { id: 'beta', paletteSources: [source] }])))
+      .toEqual({ space: 'palette-source', key: 'mine', extensions: ['acme', 'beta'] })
     expect(conflict(() => (designer.extensions = [nodes, { id: '@xihan-flow/core' }])).space).toBe('extension')
     expect(create).not.toHaveBeenCalled()
     expect(designer.extensions).toBe(before)

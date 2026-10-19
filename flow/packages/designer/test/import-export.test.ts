@@ -75,16 +75,18 @@ function record(asked: string[], id: string, source: DesignerImportSource, accep
 
 const flush = (): Promise<void> => new Promise(resolve => setTimeout(resolve, 0))
 
-/** 挂上 openFile() 弹出的文件框，选中给定的文件。 */
-function chooseFile(file: File | undefined): { opened: () => number } {
+/** 挂上 openFile() 弹出的文件框，选中给定的文件；accept 是最近一次弹出时文件框的 accept。 */
+function chooseFile(file: File | undefined): { opened: () => number, accept: () => string | undefined } {
   let opened = 0
+  let accept: string | undefined
   vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(function (this: HTMLInputElement) {
     opened++
+    accept = this.accept
     expect(this.type).toBe('file')
     Object.defineProperty(this, 'files', { value: file ? [file] : [] })
     this.dispatchEvent(new Event('change'))
   })
-  return { opened: () => opened }
+  return { opened: () => opened, accept: () => accept }
 }
 
 describe('导入', () => {
@@ -227,6 +229,18 @@ describe('打开文件', () => {
     expect(seen).toEqual([{ kind: 'file', mime: 'application/json', name: 'leave.json', file }])
     await flush()
     expect(designer.schema.nodes.slice(3).map(node => [node.x, node.y])).toEqual([[256, 288], [456, 288]])
+  })
+
+  it('文件框的 accept 是各导入器 fileTypes 按先后去重连起来的；都没写时不限类型', async () => {
+    const json = { ...importer('json', () => false, () => undefined), fileTypes: ['.json', 'application/json'] }
+    const bpmn = { ...importer('bpmn', () => false, () => undefined), fileTypes: ['.bpmn', '.json'] }
+    const designer = await mount(d => d.extensions = [nodes, withImporters(json, importer('any', () => false, () => undefined), bpmn)])
+    const picker = chooseFile(undefined)
+    designer.openFile()
+    expect(picker.accept()).toBe('.json,application/json,.bpmn')
+    designer.extensions = [nodes, withImporters(importer('any', () => false, () => undefined))]
+    designer.openFile()
+    expect([picker.opened(), picker.accept()]).toEqual([2, ''])
   })
 
   it('没有导入器接下选中的文件时派发不带 importer 的 import-error', async () => {

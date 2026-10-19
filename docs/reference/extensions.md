@@ -225,9 +225,9 @@ type PropertyCondition = { readonly path: JsonPath, readonly equals: JsonValue }
 
 ### FlowDesignerExtension {#flowdesignerextension}
 
-流程设计器层的扩展：运行时层的全部字段，加上属性编辑器、命令、面板、导入器、导出器与 setup。
+流程设计器层的扩展：运行时层的全部字段，加上属性编辑器、命令、面板、物料来源、导入器、导出器与 setup。
 
-继承 `FlowRuntimeExtension`、`Omit<DesignerShellExtension<FlowDesignerContext, FlowPropertyEditor, FlowDocument, FlowRuleContext>, 'importers' | 'exporters'>`。
+继承 `FlowRuntimeExtension`、`Omit<DesignerShellExtension<FlowDesignerContext, FlowPropertyEditor, FlowDocument, FlowRuleContext, FlowPoint>, 'importers' | 'exporters'>`。
 
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
@@ -290,7 +290,7 @@ type PropertyCondition = { readonly path: JsonPath, readonly equals: JsonValue }
 declare function createFlowDesignerModel(extensions: readonly FlowDesignerExtension[], editors?: PropertyEditorLayer<FlowPropertyEditor>): FlowDesignerModel
 ```
 
-合出设计器用的模型；editors 是垫在各扩展之下的内建编辑器。任何一处重名（含引导步骤 id 重名或用了 shell. 前缀）都抛 DesignerExtensionError。
+合出设计器用的模型；editors 是垫在各扩展之下的内建编辑器。任何一处重名（含引导步骤 id 重名或用了 shell. 前缀、物料来源 id 重名）都抛 DesignerExtensionError。
 
 ### FlowDesignerModel {#flowdesignermodel}
 
@@ -307,6 +307,7 @@ declare function createFlowDesignerModel(extensions: readonly FlowDesignerExtens
 | `exporters` | `readonly FlowDesignerExporter[]` | 各扩展的导出器，按扩展顺序。 |
 | `settings` | `readonly DesignerSettingsSection[]` | 各扩展登记的设置分区，按扩展顺序。 |
 | `tourSteps` | `readonly DesignerTourStep<FlowDesignerContext>[]` | 新手引导里设计器与各扩展的步骤，按登记顺序；designer-shell 的通用步骤由零件自带。 |
+| `paletteSources` | `readonly FlowPaletteSource[]` | 各扩展的物料来源，按 order 排。 |
 
 ## 命令
 

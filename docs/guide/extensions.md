@@ -101,6 +101,16 @@ core 层只管取值对不对；属性面板里用什么控件编辑它，由设
 - `create` 在给 `extensions` 赋值、装上这个扩展时调用一次；之后设计器每次更新都调用 `update`，扩展被换下前调用 `destroy`。
 - 扩展面板与内置面板一样进布局：能换栏、浮出、收起与隐藏，记在设置的 `layout.panels` 里；每块各有一条开关命令 `panel:<区名>`。
 
+### 物料来源
+
+`paletteSources` 往物料面板里加几组条目，接在节点类型的分组后面，适合放常用片段、行业模板这类「一点就放下一段」的物料：
+
+<<< @/examples/snippets/palette-sources.ts#palette-sources
+
+- `groups` 在设计器每次更新时现取，返回几组物料；条目的写法同 designer-shell 的物料面板（`label`、`icon`、`description`、`disabled`、`children` 等），内容与上一次一样时面板不重排。组 id 与条目 id（含下级）在整个物料面板里不能重名，节点类型的条目 id 就是类型名；重名时抛 TypeError。
+- 条目被点按或回车时调用 `insert`，不带落点；拖进画布松手时带上松手处的世界坐标。放什么、放在哪由来源自己定，常用的是 `designer.paste(片段, { at })`：片段整体的中心放到 `at`，左上角吸附网格；点按时没有落点，取 `getViewportCenter()` 放在视口中央。
+- `order` 排各来源的先后，不写按 100。只读时物料面板的条目一概不能用。
+
 ### 导入与导出
 
 `importers` 把粘贴、拖进画布的外部内容与打开的文件换成流程内容，`exporters` 把当前流程定义换成文件：
@@ -111,6 +121,7 @@ core 层只管取值对不对；属性面板里用什么控件编辑它，由设
 - `import` 可以是异步的，返回 `{ nodes, edges }` 片段或 `{ document }` 整份流程定义，返回 `undefined` 时什么都不放。片段整体挪到落点（粘贴与打开文件时是视口中央，拖放时是指针处），左上角吸附网格，按粘贴的规则换新 id、选中并记一步撤销；整份定义换掉当前定义，同样记一步撤销，视口随后适配。
 - `import` 抛错，或结果的结构不合法、id 重复、用了没登记的节点类型时，派发 `import-error`，`detail` 里是导入器的 id、来源与错误，什么都不放；打开的文件没有导入器接下时也派发，此时没有导入器的 id。
 - 装了导入器后，工具栏最前面多出「打开文件」；宿主也可以自己调 `openFile()`。只读时导入一概不接。
+- `fileTypes` 写这个导入器认的文件类型（`.json` 这样的扩展名或 MIME），「打开文件」的文件框按各导入器写的合起来筛选；都没写时不限类型。它只管文件框里列哪些文件，接不接仍由 `accepts` 定。
 - `export(format, options)` 交给登记了这种格式的第一个导出器，`options` 原样放进上下文；得到的文件内容或文本存到哪里由宿主定。没有导出器认这种格式时返回被拒的 Promise（`RangeError`）。设计器自带一个图片导出器，认 `svg` 与 `png`，排在扩展的导出器之前（见[设计器的导出图片](./designer#导出图片)）。
 
 <<< @/examples/snippets/import-export.ts#export
@@ -137,6 +148,6 @@ core 层只管取值对不对；属性面板里用什么控件编辑它，由设
 
 ## 冲突
 
-节点类型、属性路径、编辑方式、命令 id、快捷键、面板的区名、导入器或导出器的 id、设置分区 id、引导步骤 id、扩展 id 在两个扩展里重复时，给 `extensions` 赋值当场抛 `DesignerExtensionError`（从 `@xihan-ui/designer-kit` 导入），元素保持原来的扩展。错误上带冲突的名字空间、名字与两个扩展的 id：
+节点类型、属性路径、编辑方式、命令 id、快捷键、面板的区名、物料来源 id、导入器或导出器的 id、设置分区 id、引导步骤 id、扩展 id 在两个扩展里重复时，给 `extensions` 赋值当场抛 `DesignerExtensionError`（从 `@xihan-ui/designer-kit` 导入），元素保持原来的扩展。错误上带冲突的名字空间、名字与两个扩展的 id：
 
 <<< @/examples/snippets/conflict.ts#conflict

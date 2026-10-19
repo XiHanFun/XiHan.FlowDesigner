@@ -5,16 +5,16 @@
 
 // 设计器层的扩展：在运行时层之上加属性编辑器、命令、面板、导入器、导出器与装上时的回调；内置命令也写成一个扩展。
 
-import type { FlowDocument, FlowEdge, FlowNode, FlowNodeType, FlowOperation, FlowRuleContext } from '@xihan-flow/core'
+import type { FlowDocument, FlowEdge, FlowNode, FlowNodeType, FlowOperation, FlowPoint, FlowRuleContext } from '@xihan-flow/core'
 import type { FlowDesignerTranslations, FlowImageExportOptions, FlowImageFormat, FlowRuntimeExtension, FlowRuntimeModel, FlowTourStepKey } from '@xihan-flow/runtime'
 import type { DesignerCommand, DesignerExporter, DesignerImporter, History } from '@xihan-ui/designer-kit'
 import type { PropertyEditorLayer, PropertyEditorTable } from '@xihan-ui/designer-kit/properties'
-import type { DesignerCommandsTranslations, DesignerCommandTable, DesignerHistoryConfirm, DesignerHistoryTranslations, DesignerOutlineNode, DesignerSettings, DesignerSettingsSection, DesignerShellExtension, DesignerTourStep, DesignerTourTarget, XhDesignerFrameElement } from '@xihan-ui/designer-shell'
+import type { DesignerCommandsTranslations, DesignerCommandTable, DesignerHistoryConfirm, DesignerHistoryTranslations, DesignerOutlineNode, DesignerPaletteSource, DesignerSettings, DesignerSettingsSection, DesignerShellExtension, DesignerTourStep, DesignerTourTarget, XhDesignerFrameElement } from '@xihan-ui/designer-shell'
 import type { XhFlowDesigner } from './flow-designer'
 import type { FlowPropertyEditor } from './panels/properties'
 import { createFlowRuntimeModel, DEFAULT_FLOW_DESIGNER_TRANSLATIONS } from '@xihan-flow/runtime'
 import { DesignerExtensionError, extensionCommands, extensionEditors, snapshotHistory } from '@xihan-ui/designer-kit'
-import { collectSettingsSections, collectTourSteps, createHistoryPanel, createOutlinePanel, designerHistoryCommands, designerPanelCommands, designerShellCommands } from '@xihan-ui/designer-shell'
+import { collectPaletteSources, collectSettingsSections, collectTourSteps, createHistoryPanel, createOutlinePanel, designerHistoryCommands, designerPanelCommands, designerShellCommands } from '@xihan-ui/designer-shell'
 import {
   AlignObjectsBottomIcon,
   AlignObjectsCenterIcon,
@@ -96,8 +96,11 @@ export interface FlowExportContext extends FlowDesignerContext {
 /** 导出器：把当前流程定义换成文件。 */
 export type FlowDesignerExporter = DesignerExporter<FlowExportContext>
 
-/** 流程设计器层的扩展：运行时层的全部字段，加上属性编辑器、命令、面板、导入器、导出器与 setup。 */
-export interface FlowDesignerExtension extends FlowRuntimeExtension, Omit<DesignerShellExtension<FlowDesignerContext, FlowPropertyEditor, FlowDocument, FlowRuleContext>, 'importers' | 'exporters'> {
+/** 物料来源：往物料面板里加的几组；条目被激活时 at 没有，拖到画布上放下时 at 是松手处的世界坐标。 */
+export type FlowPaletteSource = DesignerPaletteSource<FlowDesignerContext, FlowPoint>
+
+/** 流程设计器层的扩展：运行时层的全部字段，加上属性编辑器、命令、面板、物料来源、导入器、导出器与 setup。 */
+export interface FlowDesignerExtension extends FlowRuntimeExtension, Omit<DesignerShellExtension<FlowDesignerContext, FlowPropertyEditor, FlowDocument, FlowRuleContext, FlowPoint>, 'importers' | 'exporters'> {
   /** 导入器：粘贴、拖放与打开文件共用，按扩展顺序问 accepts，第一个接下的导入；id 不能与别的导入器重名。 */
   readonly importers?: readonly FlowDesignerImporter[]
   /** 导出器：export(format) 交给登记了这种格式的第一个；id 不能与别的导出器重名。 */
@@ -457,6 +460,8 @@ export interface FlowDesignerModel {
   readonly settings: readonly DesignerSettingsSection[]
   /** 新手引导里设计器与各扩展的步骤，按登记顺序；designer-shell 的通用步骤由零件自带。 */
   readonly tourSteps: readonly DesignerTourStep<FlowDesignerContext>[]
+  /** 各扩展的物料来源，按 order 排。 */
+  readonly paletteSources: readonly FlowPaletteSource[]
 }
 
 /**
@@ -481,7 +486,7 @@ function quickInsertCommands(nodeTypes: readonly FlowNodeType[]): FlowDesignerCo
     })
 }
 
-/** 合出设计器用的模型；editors 是垫在各扩展之下的内建编辑器。任何一处重名（含引导步骤 id 重名或用了 shell. 前缀）都抛 DesignerExtensionError。 */
+/** 合出设计器用的模型；editors 是垫在各扩展之下的内建编辑器。任何一处重名（含引导步骤 id 重名或用了 shell. 前缀、物料来源 id 重名）都抛 DesignerExtensionError。 */
 export function createFlowDesignerModel(extensions: readonly FlowDesignerExtension[], editors?: PropertyEditorLayer<FlowPropertyEditor>): FlowDesignerModel {
   const list = [FLOW_DESIGNER_EXTENSION, ...extensions]
   const runtime = createFlowRuntimeModel(list)
@@ -497,5 +502,6 @@ export function createFlowDesignerModel(extensions: readonly FlowDesignerExtensi
     // 设计器自己的「画布」分区占着 flow，扩展的分区与它、与内建的 general 或彼此重名都抛错
     settings: collectSettingsSections([{ id: FLOW_DESIGNER_EXTENSION.id, settings: [{ id: FLOW_SETTINGS_SECTION, label: FLOW_SETTINGS_SECTION, items: [] }] }, ...all]).slice(1),
     tourSteps: collectTourSteps(all),
+    paletteSources: collectPaletteSources(all),
   }
 }

@@ -54,7 +54,8 @@
 | `deleteSelection(): boolean` | 删除选中的节点（连带相连的连线）与连线；只读或没有选中时返回 false。 |
 | `copy(): FlowClipboard \| undefined` | 复制选中的节点与两端都被选中的连线，同时写进系统剪贴板；没有选中节点时返回 undefined。 |
 | `cut(): FlowClipboard \| undefined` | 复制选中内容后删除选中的节点与连线，同时写进系统剪贴板；只读或没有选中节点时返回 undefined。 |
-| `paste(clipboard?: FlowClipboard): FlowSelection` | 粘贴并选中粘贴出的对象，返回它们；每次比上一次多偏移一格网格（不吸附网格时 24）。缺省用设计器剪贴板里的内容，给了 clipboard 时它成为剪贴板内容；只读时什么都不做，返回空选择。 |
+| `paste(clipboard?: FlowClipboard, options?: { readonly at?: FlowPoint }): FlowSelection` | 粘贴并选中粘贴出的对象，返回它们；每次比上一次多偏移一格网格（不吸附网格时 24）。缺省用设计器剪贴板里的内容，给了 clipboard 时它成为剪贴板内容；给了 at（世界坐标）时内容整体的中心放到那里、左上角吸附网格，不累加偏移。只读或剪贴板是空的时什么都不做，返回空选择。 |
+| `runCommand(id: string): boolean` | 执行一条命令（内置的或扩展的）：命令存在、此刻可用才执行，返回是否执行了；给扩展与宿主替用户操作设计器用。 |
 | `openFile(): void` | 弹出选择文件的对话框，选中的文件交给导入器：按扩展顺序问 accepts，第一个接下的导入；导入的片段放在视口中央，整份流程定义换掉当前定义。没有导入器接下时派发 import-error。只读或没有导入器时什么都不做。 |
 | `export(format: string, options?: Readonly<Record<string, unknown>>): Promise<Blob \| string>` | 导出成文件：交给登记了这种格式的第一个导出器，options 原样交给它；没有导出器认这种格式时返回以 RangeError 拒绝的 Promise。 |
 | `duplicate(): FlowSelection` | 复制选中内容并立即粘贴，偏移一格网格，不改动剪贴板；只读时什么都不做，返回空选择。 |
@@ -66,6 +67,7 @@
 | `openJsonEditor(): void` | 打开编辑整份流程定义 JSON 的对话框：写出当前定义，边改边按读入检查与校验报问题；没有错误时「应用」整份换上，记一步撤销。只读时只能看、不能应用。 |
 | `validate(): FlowIssue[]` | 按当前扩展与校验选项校验定义。 |
 | `getViewport(): Viewport` | 当前视口。 |
+| `getViewportCenter(): FlowPoint` | 视口中央的世界坐标；画布还没有尺寸时是原点。 |
 | `setViewport(viewport: Viewport): void` | 设置视口；此后尺寸变化不再自动适配。 |
 | `zoomToFit(): void` | 缩放并平移到让整张图落在视口中央，小图不放大到 100% 以上；此后尺寸变化时重新适配，直到设置视口或在画布上按下指针。 |
 | `zoomIn(): void` | 以视口中心放大一档。 |
@@ -359,7 +361,7 @@ type FlowBuiltinPropertyKey = 'label' | 'style.dashed'
 | `FlowDesignerCommand` | 类型 | 设计器的命令。 |
 | `FlowDesignerContext` | 接口 | 命令、面板与扩展装上时拿到的上下文。 |
 | `FlowDesignerExporter` | 类型 | 导出器：把当前流程定义换成文件。 |
-| `FlowDesignerExtension` | 接口 | 流程设计器层的扩展：运行时层的全部字段，加上属性编辑器、命令、面板、导入器、导出器与 setup。 |
+| `FlowDesignerExtension` | 接口 | 流程设计器层的扩展：运行时层的全部字段，加上属性编辑器、命令、面板、物料来源、导入器、导出器与 setup。 |
 | `FlowDesignerImporter` | 类型 | 导入器：把粘贴、拖放或打开的文件换成片段或整份流程定义；返回 undefined 即什么都不放。 |
 | `FlowDesignerModel` | 接口 | 一组设计器扩展合出的东西：交给 core 函数的列表、运行时模型、命令表、属性编辑器表、导入器与导出器。 |
 | `FlowExportContext` | 接口 | 导出时交给导出器的上下文：设计器的上下文，加上调用 export() 时给的选项。 |
@@ -368,6 +370,7 @@ type FlowBuiltinPropertyKey = 'label' | 'style.dashed'
 | `FlowImportResult` | 类型 | 导入的结果：一个片段，或一整份流程定义。 |
 | `flowMenuLayout` | 函数 | 右键菜单的缺省排列：节点菜单在选中两个以上时加对齐，三个以上时加分布；空白处的末尾是编辑 JSON。 |
 | `FlowMenuSubject` | 类型 | 右键菜单落在哪类对象上。 |
+| `FlowPaletteSource` | 类型 | 物料来源：往物料面板里加的几组；条目被激活时 at 没有，拖到画布上放下时 at 是松手处的世界坐标。 |
 | `flowSelectionLayout` | 函数 | 选中工具条（命令落点 selection:&lt;主体&gt;）的缺省排列：都有创建副本、复制与删除；几个节点时前面多一个对齐与分布菜单（align-menu，单条对齐命令照样能经 commandLayout 排上来）。 |
 | `FlowSelectionSubject` | 类型 | 选中工具条落在哪类选中上：一个节点，或几个节点。 |
 | `flowToolbarLayout` | 函数 | 工具栏此刻的缺省排列：有导入器时在 FLOW_TOOLBAR_LAYOUT 前面多一组打开文件。 |

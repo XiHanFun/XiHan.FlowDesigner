@@ -20,6 +20,7 @@ export type {
   FlowImportFragment,
   FlowImportResult,
   FlowMenuSubject,
+  FlowPaletteSource,
   FlowSelectionSubject,
 } from './extensions'
 export { defineFlowDesigner, FLOW_DESIGNER_TAG, XhFlowDesigner } from './flow-designer'
