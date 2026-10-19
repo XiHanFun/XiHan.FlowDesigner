@@ -38,6 +38,8 @@ import type {
   DesignerCommandsTranslations,
   DesignerFrameEventMap,
   DesignerFrameRegion,
+  DesignerLayout,
+  DesignerLayoutPolicy,
   DesignerPanelHost,
   DesignerSettings,
   DesignerSettingsEventMap,
@@ -88,8 +90,8 @@ import {
   DESIGNER_COMMANDS_EN_US,
   DESIGNER_FRAME_REGIONS,
   DESIGNER_SETTING_KEYS,
+  designerLayoutPolicy,
   importSources,
-  parseDesignerPanels,
   registerDropTarget,
   renderCommandMenu,
   resolveSettings,
@@ -103,6 +105,7 @@ import {
   XhDesignerSettingsElement,
   XhDesignerTransformElement,
 } from '@xihan-ui/designer-shell'
+import { CircleAlertIcon, LayoutGridIcon, MapIcon, SlidersHorizontalIcon } from '@xihan-ui/icons'
 import { createPointerSession, resolveSessionDoc, shouldActivate, wheelPixels } from '@xihan-ui/pointer'
 import {
   BOOLEAN_CONVERTER,
@@ -167,24 +170,17 @@ export interface FlowDesignerEventMap {
   'export': CustomEvent<{ format: FlowImageFormat, blob: Blob }>
   /** 画布有焦点时按了 Ctrl / ⌘ + S；设计器不自己保存。 */
   'save': CustomEvent<Record<string, never>>
-  /** 点了面板头的关闭钮，设计器已收起这块面板：panels 是收起之后要显示的面板（空格分隔），设计器的 panels 已换成它。 */
-  'panels-change': CustomEvent<{ panels: string }>
   /**
-   * 在设置对话框里改了一条设置：设计器已换成新的 settings 并生效（主题、主题色、小地图、吸附与自动布局的选项）；
-   * value 为 undefined 表示删掉这个键、回到缺省值。宿主存起来，下次赋回 settings。
+   * 在设置对话框里改了一条设置，或在外框上挪了面板（键是 layout.panels，值是整份布局）：设计器已换成
+   * 新的 settings 并生效（主题、主题色、吸附与自动布局的选项、面板布局）；value 为 undefined 表示删掉这个键、回到缺省值。
+   * 宿主存起来，下次赋回 settings。
    */
   'settings-change': CustomEvent<{ key: string, value: JsonValue | undefined, settings: DesignerSettings }>
   /** 读写 settingsStorageKey 指的本机存储失败（内容不是对象、无痕窗口、配额满）；设置留在内存里。 */
   'settings-storage-error': CustomEvent<VisualEnvironmentStorageError>
 }
 
-/** 可以开关的面板。 */
-export type FlowDesignerPanel = 'toolbar' | 'palette' | 'properties' | 'issues' | 'minimap' | 'status'
-
 const LAYOUT_DIRECTIONS: readonly unknown[] = ['TB', 'BT', 'LR', 'RL']
-
-/** 不是外框的区、由设计器自己开关的面板。 */
-const OWN_PANELS: readonly FlowDesignerPanel[] = ['minimap']
 
 const EMPTY_SCHEMA: FlowDocument = { version: 1, nodes: [], edges: [] }
 const NO_EXTENSIONS: readonly FlowDesignerExtension[] = []
@@ -253,7 +249,7 @@ export class XhFlowDesigner extends XhReactiveElement {
   static override properties = {
     readonly: { converter: BOOLEAN_CONVERTER },
     grid: { attribute: false },
-    panels: { converter: { fromAttribute: (value: string | null) => value ?? undefined } },
+    defaultLayout: { attribute: false },
     paletteGroupOrder: { attribute: false },
     paletteGroupLabels: { attribute: false },
     propertyGroupOrder: { attribute: false },
@@ -277,10 +273,10 @@ export class XhFlowDesigner extends XhReactiveElement {
   /** 拖动与新建节点时吸附的网格边长，false 不吸附网格；缺省 16。 */
   declare grid: number | false
   /**
-   * 要显示的面板，空格分隔：toolbar palette properties issues minimap status。不写即全部显示，写空串则全部收起；
-   * 同名 attribute。点了面板头的关闭钮时设计器改写它并派发 panels-change。
+   * 面板布局的缺省：设置里还没有 layout.panels 时用它，「恢复默认布局」也回到它；不给按各面板登记的位置，全部显示。
+   * 用户挪了面板、改了显隐或大小，整份布局写进设置的 layout.panels（DESIGNER_SETTING_KEYS.layout）并派发 settings-change。
    */
-  declare panels: string | undefined
+  declare defaultLayout: DesignerLayout | undefined
   /** 物料面板里先列出的类别及其顺序，其余类别按登记顺序排在后面。 */
   declare paletteGroupOrder: readonly string[] | undefined
   /** 物料面板的类别标题，缺省直接显示 category。 */
@@ -321,6 +317,8 @@ export class XhFlowDesigner extends XhReactiveElement {
   #frameRegionsKey = ''
   #frameRegionList: readonly DesignerFrameRegion[] = DESIGNER_FRAME_REGIONS
   #frameRegionsModel: FlowDesignerModel | undefined
+  #layoutPolicyKey = ''
+  #layoutPolicy: DesignerLayoutPolicy | undefined
   readonly #keys: KeyedChildren = new WeakMap()
   #extensions: readonly FlowDesignerExtension[] | undefined
   /** 设计器内建、垫在各扩展之下的属性编辑器。 */
@@ -941,7 +939,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     properties.element.headless = true
     issues.element.headless = true
     const frame = createGeneratedElement(doc, 'xh-designer-frame', { 'data-part': 'frame' })
-    frame.addEventListener('panels-change', this.#onPanelsChange)
+    frame.addEventListener('layout-change', this.#onLayoutChange)
     toolbar.slot = 'toolbar'
     palette.element.slot = 'palette'
     canvas.slot = 'canvas'
@@ -950,7 +948,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     // 问题列表带计数的严重程度开关放进它所在卡片的面板头
     const issueSummary = issues.element.summary
     issueSummary.slot = 'issues-actions'
-    minimap.element.slot = 'canvas-bottom-end'
+    minimap.element.slot = 'minimap'
     frame.append(toolbar, palette.element, canvas, properties.element, issues.element, issueSummary, minimap.element)
     const panels = createPanelHost<FlowDesignerContext>(frame)
     const selectionStatus = createStatusItem(doc, { value: '' })
@@ -1098,23 +1096,14 @@ export class XhFlowDesigner extends XhReactiveElement {
     placeBox(layers.dropPreview, this.#dropPreview)
   }
 
-  /** panels 里列出了这个面板，或没有写 panels。 */
-  #shows(panel: FlowDesignerPanel): boolean {
-    const shown = parseDesignerPanels(this.panels)
-    return shown === undefined || shown.has(panel)
+  /** 外框此刻显示这块面板（布局里没隐藏、宿主没藏掉）。 */
+  #shows(panel: string): boolean {
+    return this.#layers?.frame.showsPanel(panel) ?? false
   }
 
   /** 设置里的状态栏开关，缺省开。 */
   #statusBarOn(): boolean {
     return this.#resolvedSettings[DESIGNER_SETTING_KEYS.statusBar] !== false
-  }
-
-  /** 交给外框的 panels：设置里关了状态栏时去掉 status。 */
-  #framePanels(): string | undefined {
-    if (this.#statusBarOn())
-      return this.panels
-    const names = this.panels === undefined ? this.#frameRegionList.map(region => region.name) : this.panels.split(/\s+/)
-    return names.filter(name => name !== '' && name !== 'status').join(' ')
   }
 
   /** 状态栏：左段写选中对象（没选中时写节点与连线数），右段写缩放。 */
@@ -1139,11 +1128,6 @@ export class XhFlowDesigner extends XhReactiveElement {
       layers.selectionStatus.update({ label: t.flow, value: t.statusDocument(document.nodes.length, document.edges.length) })
     }
     layers.zoomStatus.update({ label: t.statusZoom, value: `${Math.round(this.#viewport.zoom * 100)}%` })
-  }
-
-  /** 小地图：panels 里列着它，设置里也没关掉。 */
-  #showsMinimap(): boolean {
-    return this.#shows('minimap') && this.#resolvedSettings[FLOW_SETTING_KEYS.minimap] !== false
   }
 
   /**
@@ -1190,6 +1174,8 @@ export class XhFlowDesigner extends XhReactiveElement {
     }
     if (dialog.sections !== this.#settingsSectionList)
       dialog.sections = this.#settingsSectionList
+    if (dialog.frame !== layers.frame)
+      dialog.frame = layers.frame
     if (dialog.settings !== this.settings)
       dialog.settings = this.settings
   }
@@ -1198,66 +1184,89 @@ export class XhFlowDesigner extends XhReactiveElement {
   readonly #onSettingsChange = (event: Event): void => {
     event.stopPropagation()
     const detail = (event as DesignerSettingsEventMap['settings-change']).detail
+    this.#commitSettings(detail)
+  }
+
+  /** 换成新的 settings，给了存储键就存起来，再派发 settings-change。 */
+  #commitSettings(detail: DesignerSettingsEventMap['settings-change']['detail']): void {
     this.settings = detail.settings
     this.#settingsHost?.save(detail.settings, this.#settingsSectionList)
     emitEvent(this, 'settings-change', detail)
   }
 
+  /** 外框改了面板布局：整份写进设置的 layout.panels。 */
+  readonly #onLayoutChange = (event: Event): void => {
+    event.stopPropagation()
+    const value = (event as DesignerFrameEventMap['layout-change']).detail.layout as unknown as JsonValue
+    const key = DESIGNER_SETTING_KEYS.layout
+    this.#commitSettings({ key, value, settings: { ...this.settings, [key]: value } })
+  }
+
+  /** 设置里存的面板布局。 */
+  #storedLayout(): DesignerLayout | undefined {
+    const value = this.settings?.[DESIGNER_SETTING_KEYS.layout]
+    return typeof value === 'object' && value !== null && !Array.isArray(value) ? value as unknown as DesignerLayout : undefined
+  }
+
+  /** 宿主对布局的管控，从 settingsPolicy 换算；内容不变时沿用同一个对象。 */
+  #frameLayoutPolicy(): DesignerLayoutPolicy | undefined {
+    const policy = designerLayoutPolicy(this.settingsPolicy)
+    const key = JSON.stringify(policy ?? null)
+    if (key !== this.#layoutPolicyKey) {
+      this.#layoutPolicyKey = key
+      this.#layoutPolicy = policy
+    }
+    return this.#layoutPolicy
+  }
+
   /**
-   * 外框的命名区：工具栏与画布带上本地化的区名（分隔条的无障碍名称要用）；物料、属性与问题画成卡片，面板头写标题与帮助，
-   * 属性面板的副标题是当前编辑的对象。后面接扩展面板的区。
+   * 外框的命名区：工具栏与画布带上本地化的区名（分隔条的无障碍名称要用）；物料、属性与问题画成卡片，面板头写标题、
+   * 图标与帮助，属性面板的副标题是当前编辑的对象；小地图是画布右下角的浮动件。设置里关了状态栏时不登记状态栏。
+   * 后面接扩展面板的区。
    */
   #frameRegions(t: FlowDesignerTranslations, toolbar: string, layers: Layers): readonly DesignerFrameRegion[] {
     const regions: Readonly<Record<string, Partial<DesignerFrameRegion>>> = {
       toolbar: { label: toolbar },
-      palette: { title: t.palette, help: t.paletteHelp },
+      palette: { title: t.palette, icon: LayoutGridIcon, help: t.paletteHelp },
       canvas: { label: t.label },
       properties: {
         title: this.#config.translations<{ title: string }>('xh-designer-properties', { title: 'Properties' }).title,
         subtitle: layers.properties.element.heading,
+        icon: SlidersHorizontalIcon,
         help: t.propertiesHelp,
       },
       issues: {
         title: this.#config.translations<{ title: string }>('xh-designer-issues', { title: 'Problems' }).title,
+        icon: CircleAlertIcon,
         help: t.issuesHelp,
       },
     }
-    const key = JSON.stringify(regions)
+    const statusBar = this.#statusBarOn()
+    const key = JSON.stringify([regions, t.minimap, statusBar])
     if (key !== this.#frameRegionsKey || this.#frameRegionsModel !== this.#model) {
       this.#frameRegionsKey = key
       this.#frameRegionsModel = this.#model
       this.#frameRegionList = [
-        ...DESIGNER_FRAME_REGIONS.map(region => ({ ...region, ...regions[region.name] })),
+        ...DESIGNER_FRAME_REGIONS.filter(region => statusBar || region.name !== 'status').map(region => ({ ...region, ...regions[region.name] })),
+        { name: 'minimap', position: 'overlay', anchor: 'bottom-end', title: t.minimap, icon: MapIcon },
         ...this.#model.extensions.flatMap(extension => (extension.panels ?? []).map(panel => panel.region)),
       ]
     }
     return this.#frameRegionList
   }
 
-  /** 外框收起了一块面板：外框只认自己的区，设计器自己的面板（小地图）照原样留着。 */
-  readonly #onPanelsChange = (event: Event): void => {
-    event.stopPropagation()
-    const frame = (event as DesignerFrameEventMap['panels-change']).detail.panels.split(' ').filter(Boolean)
-    const own = OWN_PANELS.filter(panel => this.#shows(panel))
-    // 状态栏被设置关掉时外框不知道它，照 panels 原样留着
-    if (!this.#statusBarOn() && this.#shows('status'))
-      own.push('status')
-    const panels = [...frame, ...own].join(' ')
-    this.panels = panels
-    emitEvent(this, 'panels-change', { panels })
-  }
-
   #renderPanels(layers: Layers, t: FlowDesignerTranslations): void {
-    layers.frame.panels = this.#framePanels()
-    this.#renderStatus(layers, t)
-    layers.minimap.element.hidden = !this.#showsMinimap()
     const shared = this.#commandTranslations()
+    const frame = layers.frame
+    frame.regions = this.#frameRegions(t, shared.toolbar, layers)
+    frame.layout = this.#storedLayout()
+    frame.defaultLayout = this.defaultLayout
+    frame.layoutPolicy = this.#frameLayoutPolicy()
+    this.#renderStatus(layers, t)
     const context: FlowDesignerContext = { designer: this, translations: t, commandTranslations: shared, settings: this.#resolvedSettings, frame: layers.frame }
     const { commands } = this.#model
-    if (this.#shows('toolbar')) {
-      layers.commandBar.setDisplay(toolbarDisplayOf(this.#resolvedSettings))
-      layers.commandBar.update(arrangeCommands('toolbar', commands, flowToolbarLayout(this.canImport), this.commandLayout), commands, context, shared.toolbar)
-    }
+    layers.commandBar.setDisplay(toolbarDisplayOf(this.#resolvedSettings))
+    layers.commandBar.update(arrangeCommands('toolbar', commands, flowToolbarLayout(this.canImport), this.commandLayout), commands, context, shared.toolbar)
     const header = arrangeCommands('header', commands, [], this.commandLayout)
     if (header.length > 0) {
       layers.headerBar.update(header, commands, context, t.insertToolbar)
@@ -1273,9 +1282,10 @@ export class XhFlowDesigner extends XhReactiveElement {
       layers.properties.update(t)
     if (this.#shows('issues'))
       layers.issues.update(t)
-    if (this.#showsMinimap())
+    if (this.#shows('minimap'))
       layers.minimap.update()
-    layers.frame.regions = this.#frameRegions(t, shared.toolbar, layers)
+    // 属性面板刷新后副标题（当前对象）才是新的，区登记再取一次；没变时是同一份
+    frame.regions = this.#frameRegions(t, shared.toolbar, layers)
     layers.panels.update(context)
   }
 
@@ -1319,7 +1329,7 @@ export class XhFlowDesigner extends XhReactiveElement {
       layers.world.style.setProperty('--xh-flow-designer-zoom', String(zoom))
       layers.transform.viewport = this.#viewport
       layers.zoomStatus.update({ label: this.#translations().statusZoom, value: `${Math.round(zoom * 100)}%` })
-      if (this.#showsMinimap())
+      if (this.#shows('minimap'))
         layers.minimap.update()
     }
     if (notify)

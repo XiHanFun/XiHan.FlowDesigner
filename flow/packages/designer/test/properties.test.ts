@@ -287,7 +287,7 @@ describe('属性面板', () => {
     expect(inPanel(designer, 'heading')[0]!.textContent).toBe('任务 · t')
   })
 
-  it('只读时字段只读、写入无效；panels 里没列属性面板时收起', async () => {
+  it('只读时字段只读、写入无效；布局里隐藏属性面板时收起', async () => {
     const designer = await mountTyped(element => element.readonly = true)
     designer.select({ nodes: ['t'] })
     await settle(designer)
@@ -295,7 +295,7 @@ describe('属性面板', () => {
     emit(row(designer, 'label').querySelector('xh-text-field')!, 'value-change', { value: 'x' })
     expect(task(designer)).not.toHaveProperty('label')
     const element = panel(designer)
-    designer.panels = 'toolbar palette issues'
+    designer.settings = { 'layout.panels': { version: 1, hidden: ['properties'] } }
     await designer.updateComplete
     await designer.querySelector<HTMLElement & { updateComplete: Promise<unknown> }>('xh-designer-frame')!.updateComplete
     expect(element.isConnected).toBe(false)

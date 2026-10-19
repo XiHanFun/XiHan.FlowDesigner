@@ -12,7 +12,7 @@
 | --- | --- | --- | --- |
 | `readonly` | `readonly` | `boolean \| undefined` | 只读：可以选择与浏览，不能修改；缺省 false。同名 attribute 三态：不写为缺省，写 "false" 为 false，其余写法（空串、"true" 等）为 true。 |
 | `grid` | — | `number \| false` | 拖动与新建节点时吸附的网格边长，false 不吸附网格；缺省 16。 |
-| `panels` | `panels` | `string \| undefined` | 要显示的面板，空格分隔：toolbar palette properties issues minimap status。不写即全部显示，写空串则全部收起；同名 attribute。点了面板头的关闭钮时设计器改写它并派发 panels-change。 |
+| `defaultLayout` | — | `DesignerLayout \| undefined` | 面板布局的缺省：设置里还没有 layout.panels 时用它，「恢复默认布局」也回到它；不给按各面板登记的位置，全部显示。用户挪了面板、改了显隐或大小，整份布局写进设置的 layout.panels（DESIGNER_SETTING_KEYS.layout）并派发 settings-change。 |
 | `paletteGroupOrder` | — | `readonly string[] \| undefined` | 物料面板里先列出的类别及其顺序，其余类别按登记顺序排在后面。 |
 | `paletteGroupLabels` | — | `Readonly<Record<string, string>> \| undefined` | 物料面板的类别标题，缺省直接显示 category。 |
 | `propertyGroupOrder` | — | `readonly string[] \| undefined` | 属性面板里先列出的分组及其顺序，其余分组按首次出现的顺序排在后面。 |
@@ -91,8 +91,7 @@
 | `import-error` | `{ importer?: string, source: DesignerImportSource, error: unknown }` | 导入没有成功：导入器抛了错，或给出的节点、连线或流程定义不合法、用了没登记的节点类型，importer 是导入器的 id；openFile() 选的文件没有导入器接下时也派发，此时没有 importer。 |
 | `export` | `{ format: FlowImageFormat, blob: Blob }` | 工具栏的导出命令导出了图片，带格式与文件；可以取消，取消后设计器不自己下载，宿主拿 blob 自己存。没被取消时存成 flow.png 或 flow.svg 下载。 |
 | `save` | `Record<string, never>` | 画布有焦点时按了 Ctrl / ⌘ + S；设计器不自己保存。 |
-| `panels-change` | `{ panels: string }` | 点了面板头的关闭钮，设计器已收起这块面板：panels 是收起之后要显示的面板（空格分隔），设计器的 panels 已换成它。 |
-| `settings-change` | `{ key: string, value: JsonValue \| undefined, settings: DesignerSettings }` | 在设置对话框里改了一条设置：设计器已换成新的 settings 并生效（主题、主题色、小地图、吸附与自动布局的选项）；value 为 undefined 表示删掉这个键、回到缺省值。宿主存起来，下次赋回 settings。 |
+| `settings-change` | `{ key: string, value: JsonValue \| undefined, settings: DesignerSettings }` | 在设置对话框里改了一条设置，或在外框上挪了面板（键是 layout.panels，值是整份布局）：设计器已换成新的 settings 并生效（主题、主题色、吸附与自动布局的选项、面板布局）；value 为 undefined 表示删掉这个键、回到缺省值。宿主存起来，下次赋回 settings。 |
 | `settings-storage-error` | `VisualEnvironmentStorageError` | 读写 settingsStorageKey 指的本机存储失败（内容不是对象、无痕窗口、配额满）；设置留在内存里。 |
 
 ## 注册
@@ -137,8 +136,15 @@ declare function defineFlowDesigner(): void
 | `export-png` | 导出 PNG | `FileImageIcon` | — | 可用 |
 | `export-svg` | 导出 SVG | `FileCodeIcon` | — | 可用 |
 | `panels` | 面板 | `PanelLeftIcon` | — | 可用 |
+| `panels-toggle-all` | 显示或隐藏所有面板 | — | `Ctrl / ⌘ + \` | 可用 |
+| `panels-restore` | 还原面板显隐 | — | `Ctrl / ⌘ + Shift + \` | 可用 |
+| `layout-reset` | 恢复默认布局 | — | — | 可用 |
 | `settings` | 设置 | `SettingsIcon` | — | 可用 |
 | `help` | 帮助 | `CircleHelpIcon` | — | 可用 |
+| `panel:palette` | 节点 | — | — | 可用 |
+| `panel:properties` | 属性 | — | — | 可用 |
+| `panel:issues` | 问题 | — | — | 可用 |
+| `panel:minimap` | 小地图 | — | — | 可用 |
 
 ### FLOW_TOOLBAR_LAYOUT {#flow_toolbar_layout}
 
@@ -187,13 +193,13 @@ type FlowSchemaChangeKind = 'execute' | 'undo' | 'redo' | 'load'
 
 schema-change 的种类：执行操作、撤销、重做，或宿主装载了新定义。
 
-### FlowDesignerPanel {#flowdesignerpanel}
+### FLOW_PANELS {#flow_panels}
 
 ```ts
-type FlowDesignerPanel = 'toolbar' | 'palette' | 'properties' | 'issues' | 'minimap' | 'status'
+const FLOW_PANELS = { palette: 'palette', properties: 'properties', issues: 'issues', minimap: 'minimap' } as const
 ```
 
-可以开关的面板。
+设计器登记的面板与画布浮动件的 id：宿主写 defaultLayout、settingsPolicy（layout.panels.&lt;面板 id&gt;）时用它，不手写字符串。各有一条开关命令 panel:&lt;面板 id&gt;。
 
 ### FlowSelection {#flowselection}
 
@@ -240,6 +246,7 @@ type FlowDesignerPanel = 'toolbar' | 'palette' | 'properties' | 'issues' | 'mini
 | `exportSvg` | `string` | 导出成 SVG 图片。 |
 | `exportImage` | `string` | 内置图片导出器的名称。 |
 | `palette` | `string` | 物料面板的标题。 |
+| `minimap` | `string` | 小地图的名字：面板菜单与设计器的面板命令用。 |
 | `paletteUncategorized` | `string` | 没有类别的节点类型所在分组的标题。 |
 | `propertiesEmpty` | `string` | 没有选中时属性面板里的提示。 |
 | `edge` | `string` | 属性面板里连线的类型名。 |
@@ -255,8 +262,6 @@ type FlowDesignerPanel = 'toolbar' | 'palette' | 'properties' | 'issues' | 'mini
 | `settingsNodeGapHint` | `string` | 设置：同层节点间距的说明。 |
 | `settingsLayerGap` | `string` | 设置：层间距的标签。 |
 | `settingsLayerGapHint` | `string` | 设置：层间距的说明。 |
-| `settingsMinimap` | `string` | 设置：小地图开关的标签。 |
-| `settingsMinimapHint` | `string` | 设置：小地图开关的说明。 |
 | `settingsSnap` | `string` | 设置：吸附对齐开关的标签。 |
 | `settingsSnapHint` | `string` | 设置：吸附对齐开关的说明。 |
 | `statusZoom` | `string` | 状态栏：缩放一项的标签。 |
@@ -328,6 +333,7 @@ type FlowBuiltinPropertyKey = 'label' | 'style.dashed'
 | `createFlowDesignerModel` | 函数 | 合出设计器用的模型；editors 是垫在各扩展之下的内建编辑器。 |
 | `FLOW_DESIGNER_EXTENSION` | 常量 | 设计器的内置扩展：内置命令与图片导出器。 |
 | `FLOW_DESIGNER_HELP_URL` | 常量 | 内置命令 help 打开的帮助页：流程文档站的设计器一页。 |
+| `FLOW_PANELS` | 常量 | 设计器登记的面板与画布浮动件的 id：宿主写 defaultLayout、settingsPolicy（layout.panels.&lt;面板 id&gt;）时用它，不手写字符串。 |
 | `FLOW_TOOLBAR_LAYOUT` | 常量 | 工具栏的缺省排列；commandLayout 没写 toolbar 时用它，再把 placement 含 toolbar 的扩展命令追加成一组。 |
 | `FlowDesignerCommand` | 类型 | 设计器的命令。 |
 | `FlowDesignerContext` | 接口 | 命令、面板与扩展装上时拿到的上下文。 |
@@ -350,7 +356,6 @@ type FlowBuiltinPropertyKey = 'label' | 'style.dashed'
 | `defineFlowDesigner` | 函数 | 注册 &lt;xh-flow-designer&gt; 与它用到的 UI 元素、设计器零件（零件各自带上它们内部用的 UI 元素）；宿主不必再全量注册。 |
 | `FLOW_DESIGNER_TAG` | 常量 | 设计器的标签名。 |
 | `FlowDesignerEventMap` | 接口 | 设计器派发的事件；x / y 为浏览器视口坐标。 |
-| `FlowDesignerPanel` | 类型 | 可以开关的面板。 |
 | `FlowSchemaChangeKind` | 类型 | schema-change 的种类：执行操作、撤销、重做，或宿主装载了新定义。 |
 | `XhFlowDesigner` | 类 | 流程设计器 &lt;xh-flow-designer&gt;：在画布上编辑流程定义。 |
 

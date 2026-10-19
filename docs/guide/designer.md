@@ -60,15 +60,17 @@ aside: false
 
 <<< @/examples/snippets/designer-layout.ts#command-layout
 
-`panels` 决定显示哪些面板，空格分隔 `toolbar`、`palette`、`properties`、`issues`、`minimap`、`status`。不写即全部显示，写空串全部收起；同名 attribute 也认。
+面板是物料（`palette`）、属性（`properties`）、问题（`issues`）三张卡片与画布右下角的小地图（`minimap`），id 在包入口导出的 `FLOW_PANELS` 里。`defaultLayout` 是宿主给的缺省布局：用户没存过布局时用它，「恢复默认布局」也回到它；不给时全部显示、各在缺省的位置。形状是 `@xihan-ui/designer-shell` 的 `DesignerLayout`，写了的字段整项覆盖缺省，常用的是 `hidden`（收起哪些面板）与 `docks`（各栏放哪些面板、谁先谁后）。
 
-<<< @/examples/snippets/designer-layout.ts#panels
+<<< @/examples/snippets/designer-layout.ts#default-layout
 
 节点类型给了 `quickInsert`（一个数）的，顶栏中段各有一颗插入钮：图标在上、显示名在下，按这个数从小到大排，点一下在视口中央新建一个并选中（中央被占时与点物料条目一样往右下错开）；只读时、或这种节点已到 `maxCount` 时不可用。这些钮是 `placement` 为 `header` 的命令，id 是 `insert:<类型>`，宿主不要顶栏时写 `commandLayout = { header: [] }`；没有这类命令时顶栏不出现。
 
 底部的状态栏左边写选中的对象：什么都没选中时是流程里有几个节点、几条连线，选中一个节点时是它的类型、位置与尺寸，选中一条连线时是连线名，选中多个时是选了几个；右边是缩放比例，点一下回到 100%。设置里关掉「状态栏」时整条不显示。
 
-物料、属性与问题列表各是一张卡片：面板头写标题，属性面板的副标题是当前编辑的对象，「?」弹出这块面板的说明，「×」收起它，工具栏的「面板」菜单里勾回来再打开。收起或打开后设计器改写 `panels` 并派发 `panels-change`，`detail.panels` 是之后要显示的面板，宿主存下来、下次赋回即可。
+物料、属性与问题列表各是一张卡片：面板头写标题，属性面板的副标题是当前编辑的对象，「?」弹出这块面板的说明，收起钮把它收成标题条（双击面板头也行），「更多」菜单里换栏、调序、浮出，「×」隐藏它；按住面板头可以拖到左、右、下另一栏，拖到画布上就浮出成小窗。工具栏的「面板」菜单逐块勾选显隐，另有显示或隐藏所有面板（Ctrl / ⌘ + \\）、还原面板显隐（Ctrl / ⌘ + Shift + \\）与恢复默认布局；每块面板还有一条开关命令 `panel:<面板 id>`，可以排进 `commandLayout`。
+
+布局改了，整份写进设置的 `layout.panels`（`DESIGNER_SETTING_KEYS.layout`），和设置对话框里改一条一样派发 `settings-change`，宿主存下来、下次随 `settings` 赋回即可；给了 `settingsStorageKey` 时设计器自己存。宿主要固定布局，用 `settingsPolicy`：`layout.panels` 锁住整份，`layout.panels.<面板 id>` 藏掉或锁定一块面板。
 
 除了命令的快捷键，画布有焦点时还认这些键：Ctrl / ⌘ + Y 重做，Backspace 删除，`=` 放大。Ctrl / ⌘ + C、X、V 走系统剪贴板：复制出的是一段 JSON 文本，能在同一页面、别的页面或别的标签页的设计器里粘贴；读不出流程内容的文本交给扩展的导入器（见[导入与导出](./extensions#导入与导出)），没有导入器接下时不会贴进来。
 
@@ -77,18 +79,19 @@ aside: false
 设置是用户偏好，每人每机一份，不随流程定义保存。`openSettings(section?)` 打开设置对话框，左边一个分区一页：
 
 - 「基础」（`general`）：主题（跟随页面、跟随系统、亮色、暗色）、主题色与工具栏按钮的显示方式（图标、文字、图标和文字，缺省只显示图标）。工具栏的显示方式只走设置，没有单独的属性。
-- 「画布」（`flow`）：自动布局的方向与两种间距、小地图、吸附对齐。
-- 扩展登记的分区，排在后面。分区 id 与 `general`、`flow` 或别的扩展重名时，给 `extensions` 赋值就抛 `DesignerExtensionError`。
+- 「布局」（`layout`）：一张面板表，逐块面板改显隐、位置、先后与收起，表下一颗「恢复默认布局」。
+- 「画布」（`flow`）：自动布局的方向与两种间距、吸附对齐。
+- 扩展登记的分区，排在后面。分区 id 与 `general`、`layout`、`flow` 或别的扩展重名时，给 `extensions` 赋值就抛 `DesignerExtensionError`。
 
 <<< @/examples/snippets/settings.ts#open
 
-值是扁平的键值，键是「分区 id.条目 id」，如 `general.theme`、`flow.minimap`，没写的键取缺省值。宿主给缺省、锁定条目或读值时用常量，不手写键：「画布」分区的 id 与各条目的键是包入口导出的 `FLOW_SETTINGS_SECTION` 与 `FLOW_SETTING_KEYS`，「基础」分区的键是 `@xihan-ui/designer-shell` 的 `DESIGNER_SETTING_KEYS`；以后条目改了 path，常量跟着变，宿主的缺省不会静默失效。`settings` 赋值即生效；用户在对话框里改了一条，设计器换成新的一份并派发 `settings-change`，宿主存起来、下次赋回。`settingsPolicy` 隐藏或锁定条目，键是条目键或分区 id：`hidden` 不显示，一个分区的条目全藏了就没有这一页；`locked` 只读，说明换成「由所在系统管理」。
+值是扁平的键值，键是「分区 id.条目 id」，如 `general.theme`、`flow.snap`，没写的键取缺省值。宿主给缺省、锁定条目或读值时用常量，不手写键：「画布」分区的 id 与各条目的键是包入口导出的 `FLOW_SETTINGS_SECTION` 与 `FLOW_SETTING_KEYS`，「基础」分区的键是 `@xihan-ui/designer-shell` 的 `DESIGNER_SETTING_KEYS`；以后条目改了 path，常量跟着变，宿主的缺省不会静默失效。`settings` 赋值即生效；用户在对话框里改了一条，设计器换成新的一份并派发 `settings-change`，宿主存起来、下次赋回。`settingsPolicy` 隐藏或锁定条目，键是条目键或分区 id：`hidden` 不显示，一个分区的条目全藏了就没有这一页；`locked` 只读，说明换成「由所在系统管理」。
 
 <<< @/examples/snippets/settings.ts#host
 
 - **主题只作用于设计器**：主题与主题色写在 `<xh-flow-designer>` 自己的 `data-theme`、`data-brand` 上，页面其余部分不变；设置对话框、菜单这些浮层跟着设计器变。主题色的预设由宿主给 `brands`（品牌 id 与色板格子的颜色，品牌 id 可以用 `@xihan-ui/tokens` 的 `BRAND_PRESETS`）；给了 `registerBrand`（形状同 `@xihan-ui/tokens` 的 `registerBrand`）才许自定义颜色。两样都不给时没有主题色这一项。
-- **画布的设置**：`autoLayout()` 没给的方向与间距、工具栏的「自动布局」都取「画布」分区的值；小地图关掉时不显示；吸附对齐关掉时拖动只吸附网格。
-- **扩展读设置**：命令、面板与扩展从上下文的 `settings` 读值，各分区没写的条目已经取了缺省值，如 `context.settings['flow.minimap']`。
+- **画布的设置**：`autoLayout()` 没给的方向与间距、工具栏的「自动布局」都取「画布」分区的值；吸附对齐关掉时拖动只吸附网格。小地图是一块面板，显隐跟着布局走。
+- **扩展读设置**：命令、面板与扩展从上下文的 `settings` 读值，各分区没写的条目已经取了缺省值，如 `context.settings['flow.snap']`。
 
 独立使用、没有宿主替你存时，给 `settingsStorageKey`：连上文档时若没赋 `settings` 就从根所在窗口的 localStorage 读，用户改了设置就写回去；标了 `secret` 的文本条目（如密钥）不存。读写失败派发 `settings-storage-error`，设置留在内存里。不给就不读写存储。
 

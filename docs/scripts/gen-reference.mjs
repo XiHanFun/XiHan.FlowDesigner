@@ -546,27 +546,69 @@ function shortcutText(keys) {
   return keys.map(key => (key === 'Mod' ? 'Ctrl / ⌘' : key)).join(' + ')
 }
 
-/** designer-shell 的内置命令：...designerShellCommands({ frame, openSettings, helpUrl, icons }) 给了哪个选项就有哪条，文案在共用一桶里。 */
-function shellCommands(element) {
-  const call = element.expression
-  if (!flat(call).startsWith('designerShellCommands'))
-    throw new Error(`[gen-reference] BUILTIN_COMMANDS 里展开的不是 designerShellCommands：${flat(element)}`)
+/**
+ * designer-shell 的内置命令：...designerShellCommands({ frame, openSettings, helpUrl, icons }) 给了哪个选项就有哪几条，文案在共用一桶里；
+ * 给了 frame 时除「面板」外还有显示或隐藏所有面板、还原面板显隐与恢复默认布局三条（快捷键与 designer-shell 的一致）。
+ */
+const SHELL_COMMANDS = [
+  { id: 'panels', label: 'panels', option: 'frame', shortcut: [] },
+  { id: 'panels-toggle-all', label: 'panelsToggleAll', option: 'frame', shortcut: ['Mod', '\\'] },
+  { id: 'panels-restore', label: 'panelsRestore', option: 'frame', shortcut: ['Mod', 'Shift', '\\'] },
+  { id: 'layout-reset', label: 'layoutReset', option: 'frame', shortcut: [] },
+  { id: 'settings', label: 'settings', option: 'openSettings', shortcut: [] },
+  { id: 'help', label: 'help', option: 'helpUrl', shortcut: [] },
+]
+
+function shellCommands(call) {
   const options = new Map(call.arguments[0].properties.map(property => [nameOf(property), property.initializer]))
   const icons = new Map((options.get('icons')?.properties ?? []).map(property => [nameOf(property), flat(property.initializer)]))
-  return [['panels', 'frame'], ['settings', 'openSettings'], ['help', 'helpUrl']]
-    .filter(([, option]) => options.has(option))
-    .map(([id]) => ({ id, label: id, bucket: 'xh-designer-commands', icon: icons.get(id), shortcut: [], readonly: true }))
+  return SHELL_COMMANDS
+    .filter(command => options.has(command.option))
+    .map(command => ({ id: command.id, label: command.label, bucket: 'xh-designer-commands', icon: icons.get(command.id), shortcut: command.shortcut, readonly: true }))
+}
+
+/** 面板的名字：物料与小地图取设计器文案，属性与问题取那两个零件的标题。 */
+const PANEL_TITLES = {
+  palette: ['xh-flow-designer', 'palette'],
+  minimap: ['xh-flow-designer', 'minimap'],
+  properties: ['xh-designer-properties', 'title'],
+  issues: ['xh-designer-issues', 'title'],
+}
+
+/** ...designerPanelCommands({ panels: Object.values(FLOW_PANELS) })：FLOW_PANELS 里每块面板一条 panel:<面板 id>，名字取面板的标题。 */
+function panelCommands(file) {
+  const { node } = declaration(file, 'FLOW_PANELS')
+  const literal = node.initializer.expression ?? node.initializer
+  return literal.properties.map((property) => {
+    const id = property.initializer.text
+    const title = PANEL_TITLES[id]
+    if (!title)
+      throw new Error(`[gen-reference] FLOW_PANELS 里的 ${id} 没有对应的面板标题`)
+    return { id: `panel:${id}`, label: title[1], bucket: title[0], icon: undefined, shortcut: [], readonly: true }
+  })
+}
+
+/** BUILTIN_COMMANDS 里展开的一项：designerShellCommands 或 designerPanelCommands。 */
+function spreadCommands(element, file) {
+  const call = element.expression
+  const name = flat(call)
+  if (name.startsWith('designerShellCommands'))
+    return shellCommands(call)
+  if (name.startsWith('designerPanelCommands'))
+    return panelCommands(file)
+  throw new Error(`[gen-reference] BUILTIN_COMMANDS 里展开的不是 designerShellCommands 或 designerPanelCommands：${flat(element)}`)
 }
 
 /**
  * 内置命令：从 BUILTIN_COMMANDS 的字面量里取 id、文案键、图标与快捷键；文案写 text(键) 的取设计器文案，写 shared(键) 的
- * 取 designer-shell 的共用命令文案；enabled 由 editable 包着的只读时不可用。展开的 designerShellCommands 按选项列出。
+ * 取 designer-shell 的共用命令文案；enabled 由 editable 包着的只读时不可用。展开的 designerShellCommands 按选项列出，
+ * designerPanelCommands 按 FLOW_PANELS 列出。
  */
 function builtinCommands(file) {
   const { node } = declaration(file, 'BUILTIN_COMMANDS')
   return node.initializer.elements.flatMap((element) => {
     if (element.properties === undefined)
-      return shellCommands(element)
+      return spreadCommands(element, file)
     const fields = new Map(element.properties.map(property => [nameOf(property), property.initializer]))
     const id = fields.get('id').text
     const match = /^(text|shared)\('(\w+)'\)$/.exec(flat(fields.get('label')))
@@ -594,6 +636,12 @@ function commandTable(file) {
     command.shortcut.length === 0 ? '—' : code(shortcutText(command.shortcut), true),
     command.readonly ? '可用' : '不可用',
   ]))
+}
+
+/** 常量写成 TypeScript 代码块，带上它的说明。 */
+function constSection(file, name) {
+  const { node } = declaration(file, name)
+  return [`### ${name} {#${anchorOf(name)}}`, `\`\`\`ts\nconst ${name} = ${flat(node.initializer)}\n\`\`\``, blockDoc(jsdoc(node))].filter(Boolean).join('\n\n')
 }
 
 /** 命令排列常量：每组一行。 */
@@ -628,7 +676,7 @@ function designerPage() {
     typeSection(extensions, 'FlowMenuSubject'),
     '## 类型',
     typeSection(designer, 'FlowSchemaChangeKind'),
-    typeSection(designer, 'FlowDesignerPanel'),
+    constSection(extensions, 'FLOW_PANELS'),
     interfaceSection(editor, 'FlowSelection'),
     interfaceSection(editor, 'FlowClipboard'),
     interfaceSection(editor, 'FlowAutoLayoutOptions'),
