@@ -81,6 +81,37 @@ describe('流程结构面板', () => {
     expect(outline(designer).querySelector<HTMLElement & { expandedValue?: string[] }>('xh-tree')!.expandedValue).toEqual(['node:s'])
   })
 
+  it('多选：整份选中换成画布的选择，节点与连线一起选；只显露新选上的第一行，只取消了几行时不显露；空数组全部取消', async () => {
+    const designer = await mount()
+    await settle(designer)
+    const revealed: string[] = []
+    const revealNode = designer.revealNode.bind(designer)
+    const revealEdge = designer.revealEdge.bind(designer)
+    designer.revealNode = (id) => {
+      revealed.push(`node:${id}`)
+      revealNode(id)
+    }
+    designer.revealEdge = (id) => {
+      revealed.push(`edge:${id}`)
+      revealEdge(id)
+    }
+    const select = (ids: string[]): void => void outline(designer).dispatchEvent(new CustomEvent('node-select', { detail: { ids }, bubbles: true }))
+    select(['node:s'])
+    select(['node:s', 'node:e'])
+    expect(designer.getSelection()).toEqual({ nodes: ['s', 'e'], edges: [] })
+    select(['node:s', 'node:e', 'edge:st'])
+    expect(designer.getSelection()).toEqual({ nodes: ['s', 'e'], edges: ['st'] })
+    select(['node:e', 'edge:st'])
+    expect(designer.getSelection()).toEqual({ nodes: ['e'], edges: ['st'] })
+    expect(revealed).toEqual(['node:s', 'node:e', 'edge:st'])
+    select([])
+    expect(designer.getSelection()).toEqual({ nodes: [], edges: [] })
+    expect(revealed).toHaveLength(3)
+    designer.select({ nodes: ['t', 's'] })
+    await settle(designer)
+    expect(outline(designer).selection).toEqual(['node:t', 'node:s'])
+  })
+
   it('悬停的行在画布上标出，离开时撤掉；删除走设计器的删除，只读时不删', async () => {
     const designer = await mount()
     await settle(designer)
