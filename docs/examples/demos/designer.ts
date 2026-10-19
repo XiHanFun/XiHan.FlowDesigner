@@ -38,6 +38,8 @@ export function mount(host: HTMLElement): () => void {
   designer.propertyGroupLabels = xihanWorkflowZhCN.groups
   designer.schema = schema
   // #endregion setup
+  // 文档页上有几个示例，示例不自动开始新手引导
+  designer.autoTour = false
 
   const status = document.createElement('p')
   status.textContent = '还没有修改'

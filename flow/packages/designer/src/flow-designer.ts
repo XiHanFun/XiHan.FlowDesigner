@@ -603,7 +603,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     this.#checkTour()
   }
 
-  /** 画布第一次有了尺寸（铺好、显示出来）之后，看要不要自动开始新手引导；每个元素只看一次，藏着时不算。 */
+  /** 画布第一次有了尺寸（铺好、显示出来）之后，看要不要自动开始新手引导；每个元素只看一次，藏着时不算，同一页里别的引导开着时不开始。 */
   #checkTour(): void {
     if (this.#tourChecked || this.#size() === undefined)
       return
@@ -834,9 +834,9 @@ export class XhFlowDesigner extends XhReactiveElement {
     this.#ensureLayers().settings.show(section)
   }
 
-  /** 从头开始新手引导：通用步骤加流程与扩展的步骤；没有能走的步骤时返回 false。 */
+  /** 从头开始新手引导：通用步骤加流程与扩展的步骤，同一页里别的引导开着时先收起它；没有能走的步骤时返回 false。 */
   startTour(): boolean {
-    return this.#ensureLayers().tour.start()
+    return this.#ensureLayers().tour.start({ force: true })
   }
 
   /**
