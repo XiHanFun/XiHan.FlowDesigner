@@ -5,9 +5,9 @@
 
 import { defineXiHanTheme } from '@xihanfun/vitepress-theme'
 import FlowDemo from './FlowDemo.vue'
-// 组件皮肤用无层版本：VitePress 自带无层的元素重置，无层声明胜过任何有层声明。
+// 组件皮肤与设计器零件的样式用无层版本：VitePress 自带无层的元素重置，无层声明胜过任何有层声明。
 import '@xihan-ui/styles/index.unlayered.css'
-import '@xihan-ui/designer-shell/style.css'
+import '@xihan-ui/designer-shell/style.unlayered.css'
 import '@xihan-flow/runtime/style.css'
 import '@xihan-flow/designer/style.css'
 import './demo.css'
