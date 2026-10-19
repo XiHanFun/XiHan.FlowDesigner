@@ -79,6 +79,21 @@ export const FLOW_DESIGNER_EN_US: FlowDesignerLocale = {
   startVariableColumns: { name: 'Name', required: 'Required', defaultValue: 'Default value', description: 'Description' },
   startVariableAdd: 'Add variable',
   startVariableCell: (row, column) => `${column} of variable ${row}`,
+  tourSteps: {
+    insert: { title: 'Insert nodes', description: 'These buttons place common nodes in the middle of the view. You can also drag nodes from the Nodes panel on the left onto the canvas.' },
+    connect: { title: 'Connect', description: 'Drag from a port on the edge of a node to another node. With a connection selected, drag its ends to reconnect it or drag its bends to reroute it.' },
+    autoLayout: { title: 'Auto layout', description: 'Arranges the nodes in layers along the connections. Change the direction and spacing on the Canvas page of the settings.' },
+  },
+  helpNotes: [
+    'Drag nodes from the Nodes panel on the left onto the canvas, or use the insert buttons at the top. Edit them in the Properties panel on the right.',
+    'Drag from a port on the edge of a node to another node to connect them. With a connection selected, drag its ends to reconnect it, drag a bend to reroute it, or double-click a bend to remove it.',
+    'Drag empty space to pan the canvas, Shift-drag to select an area, and hold Ctrl / ⌘ while scrolling to zoom.',
+    'Ctrl / ⌘ + S asks the host system to save the flow; the designer does not save on its own.',
+  ],
+  shortcutSave: 'Save',
+  shortcutNudge: 'Move the selected nodes; pan the canvas when nothing is selected',
+  shortcutCancel: 'Cancel the drag in progress',
+  shortcutContextMenu: 'Open the context menu',
   propertyLabels: { 'label': 'Label', 'style.dashed': 'Dashed' },
   issues: {
     'document.unsupported-version': text => `Unsupported flow definition version ${text('version')}`,

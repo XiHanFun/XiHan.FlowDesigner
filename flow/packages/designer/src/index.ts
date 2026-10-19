@@ -7,7 +7,7 @@
 
 export { decodeFlowClipboard, encodeFlowClipboard } from './clipboard'
 export type { FlowAutoLayoutOptions, FlowClipboard, FlowSelection } from './editor'
-export { createFlowDesignerModel, FLOW_DESIGNER_EXTENSION, FLOW_DESIGNER_HELP_URL, FLOW_PANELS, FLOW_TOOLBAR_LAYOUT, flowMenuLayout, flowToolbarLayout } from './extensions'
+export { createFlowDesignerModel, FLOW_DESIGNER_EXTENSION, FLOW_DESIGNER_HELP_URL, FLOW_PANELS, FLOW_TOOLBAR_LAYOUT, FLOW_TOUR_STEPS, flowMenuLayout, flowToolbarLayout } from './extensions'
 export type {
   FlowDesignerCommand,
   FlowDesignerContext,
@@ -25,3 +25,4 @@ export { defineFlowDesigner, FLOW_DESIGNER_TAG, XhFlowDesigner } from './flow-de
 export type { FlowDesignerEventMap, FlowSchemaChangeKind } from './flow-designer'
 export type { FlowPropertyEditor, FlowPropertyEditorContext, FlowPropertyEditorInstance, FlowPropertyTarget } from './panels/properties'
 export { FLOW_SETTING_KEYS, FLOW_SETTINGS_SECTION } from './settings'
+export { FLOW_VERSION } from './version'

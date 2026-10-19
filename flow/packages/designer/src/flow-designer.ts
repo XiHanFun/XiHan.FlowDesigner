@@ -11,7 +11,8 @@
 // 右键节点、连线或空白处弹出内置菜单，宿主取消对应的 *-contextmenu 事件即不弹。
 // 节点类型、节点渲染、属性编辑器、命令、面板、导入器与导出器都从 extensions 来，内置命令也是一个扩展；工具栏与菜单的排列可由 commandLayout 改写。
 // 粘贴、拖进画布的外部内容与 openFile() 选的文件交给扩展的导入器，export() 交给扩展的导出器。
-// 设置对话框（openSettings()）里是基础分区、设计器自己的「画布」与各扩展的分区，值经 settings 与 settings-change 交给宿主。
+// 设置对话框（openSettings()）里是基础、布局、工具栏、设计器自己的「画布」、各扩展的分区与帮助、快捷键、关于三页，值经 settings
+// 与 settings-change 交给宿主。第一次铺好画布后自动开始新手引导（autoTour 关掉，startTour() 随时重新开始）。
 // 面板用 @xihan-ui/web-components 的元素，defineFlowDesigner() 会一并注册它们。
 
 import type {
@@ -81,6 +82,7 @@ import {
   zoomBy,
 } from '@xihan-ui/designer-kit'
 import {
+  applyToolbarCustomization,
   arrangeCommands,
   createCommandToolbar,
   createDesignerSettingsHost,
@@ -88,21 +90,31 @@ import {
   createStatusItem,
   defineDesignerShellElement,
   DESIGNER_COMMANDS_EN_US,
+  DESIGNER_COMMON_KEYS,
   DESIGNER_FRAME_REGIONS,
   DESIGNER_SETTING_KEYS,
+  DESIGNER_SHELL_COMMANDS,
+  DESIGNER_TOUR_DONE_KEY,
   designerLayoutPolicy,
   importSources,
   registerDropTarget,
   renderCommandMenu,
   resolveSettings,
+  resolveTourSteps,
   runCommand,
+  shortcutSettingsSource,
+  toolbarCustomizationOf,
   toolbarDisplayOf,
+  toolbarSettingsSource,
+  toolbarVisibleOf,
+  tourDoneOf,
   XhDesignerFrameElement,
   XhDesignerIssuesElement,
   XhDesignerMinimapElement,
   XhDesignerPaletteElement,
   XhDesignerPropertiesElement,
   XhDesignerSettingsElement,
+  XhDesignerTourElement,
   XhDesignerTransformElement,
 } from '@xihan-ui/designer-shell'
 import { CircleAlertIcon, LayoutGridIcon, MapIcon, SlidersHorizontalIcon } from '@xihan-ui/icons'
@@ -129,6 +141,7 @@ import { paletteNodeType, PalettePanel } from './panels/palette'
 import { PropertiesPanel } from './panels/properties'
 import { FLOW_SETTING_KEYS, flowSettingsSection } from './settings'
 import { startVariablesEditor } from './start-variables'
+import { FLOW_VERSION } from './version'
 
 /** 设计器的标签名。 */
 export const FLOW_DESIGNER_TAG = 'xh-flow-designer'
@@ -226,6 +239,8 @@ interface Layers {
   readonly panels: DesignerPanelHost<FlowDesignerContext>
   /** 设置对话框。 */
   readonly settings: XhDesignerSettingsElement
+  /** 新手引导。 */
+  readonly tour: XhDesignerTourElement
   /** 状态栏左段：选中对象的信息。 */
   readonly selectionStatus: DesignerStatusItem
   /** 状态栏右段：缩放，点了回到 100%。 */
@@ -248,6 +263,7 @@ interface ConnectPreview {
 export class XhFlowDesigner extends XhReactiveElement {
   static override properties = {
     readonly: { converter: BOOLEAN_CONVERTER },
+    autoTour: { converter: BOOLEAN_CONVERTER, attribute: 'auto-tour' },
     grid: { attribute: false },
     defaultLayout: { attribute: false },
     paletteGroupOrder: { attribute: false },
@@ -270,6 +286,11 @@ export class XhFlowDesigner extends XhReactiveElement {
    * 其余写法（空串、"true" 等）为 true。
    */
   declare readonly: boolean | undefined
+  /**
+   * 设计器第一次显示出来、画布铺好之后自动开始新手引导，缺省开；藏着时不开始；设置里记过 help.tourDone（走完、跳过或关上过一次）时不再自动开始。
+   * 写 false 关掉，start-tour 命令、帮助页的「开始引导」与 startTour() 照样能开始。同名 attribute auto-tour，写 "false" 是关。
+   */
+  declare autoTour: boolean | undefined
   /** 拖动与新建节点时吸附的网格边长，false 不吸附网格；缺省 16。 */
   declare grid: number | false
   /**
@@ -361,6 +382,13 @@ export class XhFlowDesigner extends XhReactiveElement {
   #settingsDialogKey = ''
   /** 此刻生效的设置：各分区没写的条目取了缺省值。 */
   #resolvedSettings: DesignerSettings = {}
+  /** 交给设置对话框「工具栏」页的数据，内容没变不重设。 */
+  #toolbarSourceKey = ''
+  /** 交给引导的步骤与设置对话框帮助、快捷键、关于三页的数据，内容没变不重设。 */
+  #tourStepsKey = ''
+  #helpKey = ''
+  /** 看过要不要自动开始引导了（每个元素只看一次）。 */
+  #tourChecked = false
 
   constructor() {
     super()
@@ -516,8 +544,84 @@ export class XhFlowDesigner extends XhReactiveElement {
     this.#renderOverlay(layers)
     this.#syncTransform(layers)
     this.#renderPanels(layers, t)
+    this.#syncHelp(layers, t)
     if (!this.#fitIfPending())
       this.#applyViewport(false)
+    this.#checkTour()
+  }
+
+  /** 画布第一次有了尺寸（铺好、显示出来）之后，看要不要自动开始新手引导；每个元素只看一次，藏着时不算。 */
+  #checkTour(): void {
+    if (this.#tourChecked || this.#size() === undefined)
+      return
+    this.#tourChecked = true
+    if (this.autoTour === false || tourDoneOf(this.settings))
+      return
+    void this.updateComplete.then(() => {
+      if (this.isConnected && this.autoTour !== false && !tourDoneOf(this.settings))
+        this.#layers?.tour.start()
+    })
+  }
+
+  /**
+   * 新手引导的步骤与设置对话框的帮助、快捷键、关于三页，按此刻的语言与命令表现算，内容没变不重设：
+   * 帮助页是几段操作说明与「开始引导」「帮助」两颗钮；快捷键表从命令表生成，另加不是命令的几个键，「通用」里
+   * 去掉流程没有的空格拖画布与选中工具条，方向键与 Esc 两行按流程的做法改写说明；关于页是流程设计器的版本与许可证，
+   * 后面接扩展给的几行。
+   */
+  #syncHelp(layers: Layers, t: FlowDesignerTranslations): void {
+    const context = this.#context()
+    const model = this.#model
+    const steps = resolveTourSteps(model.tourSteps, context)
+    const stepsKey = JSON.stringify(steps)
+    if (stepsKey !== this.#tourStepsKey) {
+      this.#tourStepsKey = stepsKey
+      layers.tour.steps = steps
+    }
+    const shared = context.commandTranslations
+    const help = {
+      notes: t.helpNotes,
+      actions: [{ command: DESIGNER_SHELL_COMMANDS.startTour, label: shared.startTour }, { command: DESIGNER_SHELL_COMMANDS.help, label: shared.help }],
+    }
+    const shortcuts = shortcutSettingsSource(model.commands, context, {
+      extensionCommands: (this.#extensions ?? NO_EXTENSIONS).flatMap(extension => (extension.commands ?? []).map(command => command.id)),
+      commonKeys: DESIGNER_COMMON_KEYS
+        .filter(key => key.id !== 'pan' && key.id !== 'selectionToolbar')
+        .map(key => key.id === 'nudge' ? { ...key, label: t.shortcutNudge } : key.id === 'cancel' ? { ...key, label: t.shortcutCancel } : key),
+      keys: [
+        { label: shared.copy, keys: [['Mod', 'C']] },
+        { label: shared.cut, keys: [['Mod', 'X']] },
+        { label: shared.paste, keys: [['Mod', 'V']] },
+        { label: shared.delete, keys: [['Backspace']] },
+        { label: shared.redo, keys: [['Mod', 'Y']] },
+        { label: t.shortcutContextMenu, keys: [['Shift', 'F10'], ['ContextMenu']] },
+        { label: t.shortcutSave, keys: [['Mod', 'S']] },
+      ],
+    })
+    const about = { product: t.label, version: FLOW_VERSION, license: 'MIT', rows: model.list.flatMap(extension => extension.about ?? []) }
+    const helpKey = JSON.stringify([help, shortcuts, about])
+    if (helpKey !== this.#helpKey) {
+      this.#helpKey = helpKey
+      layers.settings.help = help
+      layers.settings.shortcuts = shortcuts
+      layers.settings.about = about
+    }
+  }
+
+  /** 设置对话框帮助页里的钮：关上对话框，再跑那条命令（开始引导、打开帮助）。 */
+  readonly #onSettingsCommand = (event: Event): void => {
+    event.stopPropagation()
+    const { command } = (event as DesignerSettingsEventMap['settings-command']).detail
+    this.#ensureLayers().settings.open = false
+    runCommand(this.#model.commands, command, this.#context())
+  }
+
+  /** 引导收起了（走完、跳过或关上）：设置里记下 help.tourDone，之后不再自动开始。 */
+  readonly #onTourEnd = (): void => {
+    if (tourDoneOf(this.settings))
+      return
+    const key = DESIGNER_TOUR_DONE_KEY
+    this.#commitSettings({ key, value: true, settings: { ...this.settings, [key]: true } })
   }
 
   /** 执行一组操作并记为一步撤销；返回新的定义。 */
@@ -659,6 +763,11 @@ export class XhFlowDesigner extends XhReactiveElement {
   /** 打开设置对话框，给了分区 id 就显示那一页：基础是 general，设计器自己的「画布」是 flow。 */
   openSettings(section?: string): void {
     this.#ensureLayers().settings.show(section)
+  }
+
+  /** 从头开始新手引导：通用步骤加流程与扩展的步骤；没有能走的步骤时返回 false。 */
+  startTour(): boolean {
+    return this.#ensureLayers().tour.start()
   }
 
   /** 按当前扩展与校验选项校验定义。 */
@@ -958,12 +1067,16 @@ export class XhFlowDesigner extends XhReactiveElement {
     frame.append(selectionStatus.element, zoomStatus.element)
     const settings = createGeneratedElement(doc, 'xh-designer-settings', { 'data-part': 'settings' })
     settings.addEventListener('settings-change', this.#onSettingsChange)
-    this.append(frame, settings)
+    settings.addEventListener('settings-command', this.#onSettingsCommand)
+    const tour = createGeneratedElement(doc, 'xh-designer-tour', { 'data-part': 'tour' })
+    tour.frame = frame
+    tour.addEventListener('tour-end', this.#onTourEnd)
+    this.append(frame, settings, tour)
     root.addEventListener('pointerdown', this.#onPointerDown)
     root.addEventListener('dblclick', this.#onDoubleClick)
     root.addEventListener('contextmenu', this.#onContextMenu)
     root.addEventListener('wheel', this.#onWheel, { passive: false })
-    this.#layers = { frame, canvas, root, world, edges, labels, nodes, ports, handles, overlay, dropPreview, transform, toolbar, commandBar, headerBar, palette, properties, issues, minimap, menu, panels, settings, selectionStatus, zoomStatus }
+    this.#layers = { frame, canvas, root, world, edges, labels, nodes, ports, handles, overlay, dropPreview, transform, toolbar, commandBar, headerBar, palette, properties, issues, minimap, menu, panels, settings, tour, selectionStatus, zoomStatus }
     panels.assign(this.#model.extensions, this.#context())
     this.#prepareMenu(menu, 'blank')
     return this.#layers
@@ -1221,7 +1334,7 @@ export class XhFlowDesigner extends XhReactiveElement {
 
   /**
    * 外框的命名区：工具栏与画布带上本地化的区名（分隔条的无障碍名称要用）；物料、属性与问题画成卡片，面板头写标题、
-   * 图标与帮助，属性面板的副标题是当前编辑的对象；小地图是画布右下角的浮动件。设置里关了状态栏时不登记状态栏。
+   * 图标与帮助，属性面板的副标题是当前编辑的对象；小地图是画布右下角的浮动件。设置里关了状态栏或工具栏时不登记它们。
    * 后面接扩展面板的区。
    */
   #frameRegions(t: FlowDesignerTranslations, toolbar: string, layers: Layers): readonly DesignerFrameRegion[] {
@@ -1242,12 +1355,13 @@ export class XhFlowDesigner extends XhReactiveElement {
       },
     }
     const statusBar = this.#statusBarOn()
-    const key = JSON.stringify([regions, t.minimap, statusBar])
+    const toolbarShown = toolbarVisibleOf(this.#resolvedSettings)
+    const key = JSON.stringify([regions, t.minimap, statusBar, toolbarShown])
     if (key !== this.#frameRegionsKey || this.#frameRegionsModel !== this.#model) {
       this.#frameRegionsKey = key
       this.#frameRegionsModel = this.#model
       this.#frameRegionList = [
-        ...DESIGNER_FRAME_REGIONS.filter(region => statusBar || region.name !== 'status').map(region => ({ ...region, ...regions[region.name] })),
+        ...DESIGNER_FRAME_REGIONS.filter(region => (statusBar || region.name !== 'status') && (toolbarShown || region.name !== 'toolbar')).map(region => ({ ...region, ...regions[region.name] })),
         { name: 'minimap', position: 'overlay', anchor: 'bottom-end', title: t.minimap, icon: MapIcon },
         ...this.#model.extensions.flatMap(extension => (extension.panels ?? []).map(panel => panel.region)),
       ]
@@ -1266,7 +1380,15 @@ export class XhFlowDesigner extends XhReactiveElement {
     const context: FlowDesignerContext = { designer: this, translations: t, commandTranslations: shared, settings: this.#resolvedSettings, frame: layers.frame }
     const { commands } = this.#model
     layers.commandBar.setDisplay(toolbarDisplayOf(this.#resolvedSettings))
-    layers.commandBar.update(arrangeCommands('toolbar', commands, flowToolbarLayout(this.canImport), this.commandLayout), commands, context, shared.toolbar)
+    const arranged = arrangeCommands('toolbar', commands, flowToolbarLayout(this.canImport), this.commandLayout)
+    layers.commandBar.update(applyToolbarCustomization(arranged, toolbarCustomizationOf(this.#resolvedSettings)), commands, context, shared.toolbar)
+    // 设置对话框的「工具栏」页按宿主排好的这一份列出按钮表，用户的定制压在它上面
+    const source = toolbarSettingsSource(arranged, commands, context)
+    const sourceKey = JSON.stringify(source)
+    if (sourceKey !== this.#toolbarSourceKey) {
+      this.#toolbarSourceKey = sourceKey
+      layers.settings.toolbar = source
+    }
     const header = arrangeCommands('header', commands, [], this.commandLayout)
     if (header.length > 0) {
       layers.headerBar.update(header, commands, context, t.insertToolbar)
@@ -2013,6 +2135,7 @@ export function defineFlowDesigner(): void {
   defineXhElement('xh-field-array', XhFieldArrayElement)
   defineXhElement('xh-checkbox', XhCheckboxElement)
   defineDesignerShellElement('xh-designer-frame', XhDesignerFrameElement)
+  defineDesignerShellElement('xh-designer-tour', XhDesignerTourElement)
   defineDesignerShellElement('xh-designer-palette', XhDesignerPaletteElement)
   defineDesignerShellElement('xh-designer-properties', XhDesignerPropertiesElement)
   defineDesignerShellElement('xh-designer-issues', XhDesignerIssuesElement)
