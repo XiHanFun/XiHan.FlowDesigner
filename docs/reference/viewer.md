@@ -328,4 +328,6 @@ declare function createOrthogonalRouter(options?: OrthogonalRouterOptions): Flow
 | `FlowDesignerTranslations` | 接口 | 设计器的文案。 |
 | `FlowIssueNames` | 接口 | 拼问题说明时用到的名称。 |
 | `FlowStartVariableColumn` | 类型 | 启动变量表的列：变量名、必填、缺省值、说明。 |
+| `FlowTourStepKey` | 类型 | 新手引导里流程自己的几步：顶栏的插入钮、连线与自动布局。 |
+| `FlowTourStepTranslations` | 接口 | 新手引导一步的文案。 |
 | `FlowViewerTranslations` | 接口 | 查看器的文案。 |

@@ -248,6 +248,7 @@ type PropertyCondition = { readonly path: JsonPath, readonly equals: JsonValue }
 | --- | --- | --- |
 | `editors?` | `PropertyEditorLayer<Editor>` | 属性编辑器，按扩展顺序压在设计器内建的之上。 |
 | `commands?` | `readonly DesignerCommand<Ctx>[]` | 命令：工具栏按钮、右键菜单项与快捷键共用；命令 id 与快捷键不能与内置或别的扩展的重名。 |
+| `fieldSources?` | `readonly DesignerFieldSource[]` | 字段来源：导入字段的对话框里，排在内置的 JSON 样例与 JSON Schema 两页之后。 |
 
 | 方法 | 说明 |
 | --- | --- |
@@ -259,7 +260,7 @@ type PropertyCondition = { readonly path: JsonPath, readonly equals: JsonValue }
 
 `FlowDesignerExtension` 从 XiHan.UI 继承的字段。
 
-类型参数 `Ctx = unknown`、`Editor = PropertyEditor`、`Doc = unknown`、`RuleCtx = unknown`。
+类型参数 `Ctx = unknown`、`Editor = PropertyEditor`、`Doc = unknown`、`RuleCtx = unknown`、`At = unknown`。
 
 继承 `DesignerExtensionBase<Ctx, Editor, Doc, RuleCtx>`。
 
@@ -267,6 +268,9 @@ type PropertyCondition = { readonly path: JsonPath, readonly equals: JsonValue }
 | --- | --- | --- |
 | `panels?` | `readonly DesignerPanel<Ctx>[]` | 面板：各占外框的一个命名区，同一栏按扩展顺序上下排。 |
 | `settings?` | `readonly DesignerSettingsSection[]` | 设置分区：放进设置对话框，分区 id 不能与内置的 general 或别的扩展的重名，见 collectSettingsSections。 |
+| `tourSteps?` | `readonly DesignerTourStep<Ctx>[]` | 新手引导的步骤：与 designer-shell 的通用步骤、各款的步骤一起按 order 排；id 不能重名，见 collectTourSteps。 |
+| `paletteSources?` | `readonly DesignerPaletteSource<Ctx, At>[]` | 物料来源：往物料面板里加的几组，排在各款内置分组之后；id 不能重名，见 collectPaletteSources。At 是各款的落点信息。 |
+| `about?` | `readonly { readonly label: string, readonly value: string }[]` | 「关于」页里的几行，如附加包的版本与授权；各款把它们接在自己那几行后面。 |
 
 ### FlowDesignerContext {#flowdesignercontext}
 
@@ -286,7 +290,7 @@ type PropertyCondition = { readonly path: JsonPath, readonly equals: JsonValue }
 declare function createFlowDesignerModel(extensions: readonly FlowDesignerExtension[], editors?: PropertyEditorLayer<FlowPropertyEditor>): FlowDesignerModel
 ```
 
-合出设计器用的模型；editors 是垫在各扩展之下的内建编辑器。任何一处重名都抛 DesignerExtensionError。
+合出设计器用的模型；editors 是垫在各扩展之下的内建编辑器。任何一处重名（含引导步骤 id 重名或用了 shell. 前缀）都抛 DesignerExtensionError。
 
 ### FlowDesignerModel {#flowdesignermodel}
 
@@ -302,6 +306,7 @@ declare function createFlowDesignerModel(extensions: readonly FlowDesignerExtens
 | `importers` | `readonly FlowDesignerImporter[]` | 各扩展的导入器，按扩展顺序。 |
 | `exporters` | `readonly FlowDesignerExporter[]` | 各扩展的导出器，按扩展顺序。 |
 | `settings` | `readonly DesignerSettingsSection[]` | 各扩展登记的设置分区，按扩展顺序。 |
+| `tourSteps` | `readonly DesignerTourStep<FlowDesignerContext>[]` | 新手引导里设计器与各扩展的步骤，按登记顺序；designer-shell 的通用步骤由零件自带。 |
 
 ## 命令
 
@@ -391,6 +396,7 @@ type FlowImportResult = FlowImportFragment | FlowImportDocument
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
 | `id` | `string` | 全局唯一，写法同命令 id；不能与内置或别的扩展的导入器重名。 |
+| `fileTypes?` | `readonly string[]` | 打开文件时选择框认的类型：MIME 类型（application/json、image/*）或扩展名（.json）。各款用 importerAccept 拼成 accept。 |
 
 | 方法 | 说明 |
 | --- | --- |

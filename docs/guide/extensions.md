@@ -99,7 +99,7 @@ core 层只管取值对不对；属性面板里用什么控件编辑它，由设
 
 - `region` 是面板占的区：`name` 不能与内置区（`toolbar`、`palette`、`canvas`、`properties`、`issues`）或别的扩展的重名，`position` 是 `top`、`start`、`end`、`bottom` 之一，同一位置的区上下排列。
 - `create` 在给 `extensions` 赋值、装上这个扩展时调用一次；之后设计器每次更新都调用 `update`，扩展被换下前调用 `destroy`。
-- 宿主写了设计器的 `panels` 时，扩展面板的区名也要列进去才显示。
+- 扩展面板与内置面板一样进布局：能换栏、浮出、收起与隐藏，记在设置的 `layout.panels` 里；每块各有一条开关命令 `panel:<区名>`。
 
 ### 导入与导出
 
@@ -115,6 +115,20 @@ core 层只管取值对不对；属性面板里用什么控件编辑它，由设
 
 <<< @/examples/snippets/import-export.ts#export
 
+### 引导步骤
+
+`tourSteps` 往新手引导里加几步，与通用步骤、流程自己的三步一起按 `order` 排：通用步骤是 0–90，流程的是 100 起，扩展的写 200 起。
+
+<<< @/examples/snippets/tour-steps.ts#tour-steps
+
+- `id` 用扩展 id 加点加名字；不能与别的步骤重名，也不能用留给 designer-shell 的 `shell.` 前缀，否则给 `extensions` 赋值就抛 `DesignerExtensionError`。
+- `target` 指要高亮的目标：`{ panel }` 一块面板，`{ command }` 工具栏上的一条命令，`{ region }` 外框的区，`{ selector }` 设计器里的任意节点；不给就居中显示。目标看不见的那步自动跳过。
+- `title`、`description` 可以是按上下文现算的函数，跟着语言变。
+
+### 关于
+
+`about` 是设置「关于」页里的几行 `{ label, value }`，接在设计器自己的版本与许可证后面，适合写附加包的版本与授权；上面的示例里就写了一行。
+
 ### setup
 
 `setup` 在设计器连上文档时调用，返回的函数在断开或扩展被换下时调用，适合加监听、开定时器这类要清理的事：
@@ -123,6 +137,6 @@ core 层只管取值对不对；属性面板里用什么控件编辑它，由设
 
 ## 冲突
 
-节点类型、属性路径、编辑方式、命令 id、快捷键、面板的区名、导入器或导出器的 id、扩展 id 在两个扩展里重复时，给 `extensions` 赋值当场抛 `DesignerExtensionError`（从 `@xihan-ui/designer-kit` 导入），元素保持原来的扩展。错误上带冲突的名字空间、名字与两个扩展的 id：
+节点类型、属性路径、编辑方式、命令 id、快捷键、面板的区名、导入器或导出器的 id、设置分区 id、引导步骤 id、扩展 id 在两个扩展里重复时，给 `extensions` 赋值当场抛 `DesignerExtensionError`（从 `@xihan-ui/designer-kit` 导入），元素保持原来的扩展。错误上带冲突的名字空间、名字与两个扩展的 id：
 
 <<< @/examples/snippets/conflict.ts#conflict

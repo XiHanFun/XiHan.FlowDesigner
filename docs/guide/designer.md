@@ -52,7 +52,7 @@ aside: false
 
 ## 命令
 
-工具栏、右键菜单与快捷键执行的都是命令。每条内置命令都带图标，工具栏缺省只显示图标，悬停或聚焦时提示命令的名字与快捷键；撤销、复制、对齐、缩放这些四款设计器都有的命令，文案用 designer-shell 语言包里 `xh-designer-commands` 那一桶，与其它设计器一致，要改它们的文字时改那一桶。工具栏末组是 designer-shell 内置的「面板」「设置」与「帮助」：面板点开一张菜单，列出物料、属性、问题这些能开关的面板，勾选的显示，收起的面板从这里再打开；设置打开设置对话框（同 `openSettings()`），帮助在新窗口打开本站的设计器一页（地址是导出的 `FLOW_DESIGNER_HELP_URL`）；宿主不要哪一条，用 `commandLayout` 排掉。内置命令的 id、名称与快捷键见[内置命令](../reference/designer#内置命令)；只读时会修改流程定义的命令不可用，复制、全选与缩放仍可用。命令都有对应的方法，宿主的按钮直接调用方法即可，比如 `undo()`、`duplicate()`、`align('left')`、`autoLayout({ direction: 'LR' })`。
+工具栏、右键菜单与快捷键执行的都是命令。每条内置命令都带图标，工具栏缺省只显示图标，悬停或聚焦时提示命令的名字与快捷键；撤销、复制、对齐、缩放这些四款设计器都有的命令，文案用 designer-shell 语言包里 `xh-designer-commands` 那一桶，与其它设计器一致，要改它们的文字时改那一桶。工具栏末组是 designer-shell 内置的「面板」「设置」与「帮助」：面板点开一张菜单，列出物料、属性、问题这些能开关的面板，勾选的显示，收起的面板从这里再打开；设置打开设置对话框（同 `openSettings()`），帮助在新窗口打开本站的设计器一页（地址是导出的 `FLOW_DESIGNER_HELP_URL`）；宿主不要哪一条，用 `commandLayout` 排掉。另有「开始引导」（`start-tour`），不上工具栏，在设置的帮助页里，也能排进 `commandLayout`。内置命令的 id、名称与快捷键见[内置命令](../reference/designer#内置命令)；只读时会修改流程定义的命令不可用，复制、全选与缩放仍可用。命令都有对应的方法，宿主的按钮直接调用方法即可，比如 `undo()`、`duplicate()`、`align('left')`、`autoLayout({ direction: 'LR' })`。
 
 右键菜单按落点给出不同的命令：节点上是剪切、复制、创建副本与删除，选中两个以上节点时加上对齐，三个以上时再加上分布；连线上是删除与清除拐点；空白处是粘贴、全选、自动布局与适合窗口。在画布上按 ContextMenu 键或 Shift + F10，按当前的选择打开菜单。右键事件可以取消，取消后内置菜单与浏览器的菜单都不出现，宿主可以在 `detail` 的 `x`、`y` 处弹自己的菜单。
 
@@ -72,20 +72,24 @@ aside: false
 
 布局改了，整份写进设置的 `layout.panels`（`DESIGNER_SETTING_KEYS.layout`），和设置对话框里改一条一样派发 `settings-change`，宿主存下来、下次随 `settings` 赋回即可；给了 `settingsStorageKey` 时设计器自己存。宿主要固定布局，用 `settingsPolicy`：`layout.panels` 锁住整份，`layout.panels.<面板 id>` 藏掉或锁定一块面板。
 
-除了命令的快捷键，画布有焦点时还认这些键：Ctrl / ⌘ + Y 重做，Backspace 删除，`=` 放大。Ctrl / ⌘ + C、X、V 走系统剪贴板：复制出的是一段 JSON 文本，能在同一页面、别的页面或别的标签页的设计器里粘贴；读不出流程内容的文本交给扩展的导入器（见[导入与导出](./extensions#导入与导出)），没有导入器接下时不会贴进来。
+除了命令的快捷键，画布有焦点时还认这些键：Ctrl / ⌘ + Y 重做，Backspace 删除，`=` 放大；设置的「快捷键」页把命令的快捷键与这些键列成一张表。Ctrl / ⌘ + C、X、V 走系统剪贴板：复制出的是一段 JSON 文本，能在同一页面、别的页面或别的标签页的设计器里粘贴；读不出流程内容的文本交给扩展的导入器（见[导入与导出](./extensions#导入与导出)），没有导入器接下时不会贴进来。
 
 ## 设置
 
 设置是用户偏好，每人每机一份，不随流程定义保存。`openSettings(section?)` 打开设置对话框，左边一个分区一页：
 
-- 「基础」（`general`）：主题（跟随页面、跟随系统、亮色、暗色）、主题色与工具栏按钮的显示方式（图标、文字、图标和文字，缺省只显示图标）。工具栏的显示方式只走设置，没有单独的属性。
+- 「基础」（`general`）：主题（跟随页面、跟随系统、亮色、暗色）、主题色与状态栏开关。
 - 「布局」（`layout`）：一张面板表，逐块面板改显隐、位置、先后与收起，表下一颗「恢复默认布局」。
+- 「工具栏」（`toolbar`）：按钮的显示方式（图标、文字、图标和文字，缺省只显示图标）、显示工具栏开关，以及一张按钮表：按缺省排列列出工具栏上的命令，可以勾掉不要的、拖动换先后、跨组挪，表下「恢复默认」。工具栏的这些只走设置，没有单独的属性；用户的改动压在宿主的 `commandLayout` 之上。
 - 「画布」（`flow`）：自动布局的方向与两种间距、吸附对齐。
-- 扩展登记的分区，排在后面。分区 id 与 `general`、`layout`、`flow` 或别的扩展重名时，给 `extensions` 赋值就抛 `DesignerExtensionError`。
+- 扩展登记的分区，排在后面。
+- 「帮助」「快捷键」「关于」三页在最后：帮助页是几段操作说明与「开始引导」「帮助」两颗钮；快捷键页把命令的快捷键与画布认的几个键列成一张表；关于页写设计器的版本（包入口导出的 `FLOW_VERSION`）与许可证，扩展可以在后面加几行（扩展的 `about` 字段）。
+
+分区 id 与 `flow`、内建的 `general`、`layout`、`toolbar`、`help`、`shortcuts`、`about` 或别的扩展重名时，给 `extensions` 赋值就抛 `DesignerExtensionError`。
 
 <<< @/examples/snippets/settings.ts#open
 
-值是扁平的键值，键是「分区 id.条目 id」，如 `general.theme`、`flow.snap`，没写的键取缺省值。宿主给缺省、锁定条目或读值时用常量，不手写键：「画布」分区的 id 与各条目的键是包入口导出的 `FLOW_SETTINGS_SECTION` 与 `FLOW_SETTING_KEYS`，「基础」分区的键是 `@xihan-ui/designer-shell` 的 `DESIGNER_SETTING_KEYS`；以后条目改了 path，常量跟着变，宿主的缺省不会静默失效。`settings` 赋值即生效；用户在对话框里改了一条，设计器换成新的一份并派发 `settings-change`，宿主存起来、下次赋回。`settingsPolicy` 隐藏或锁定条目，键是条目键或分区 id：`hidden` 不显示，一个分区的条目全藏了就没有这一页；`locked` 只读，说明换成「由所在系统管理」。
+值是扁平的键值，键是「分区 id.条目 id」，如 `general.theme`、`flow.snap`，没写的键取缺省值。宿主给缺省、锁定条目或读值时用常量，不手写键：「画布」分区的 id 与各条目的键是包入口导出的 `FLOW_SETTINGS_SECTION` 与 `FLOW_SETTING_KEYS`，「基础」「布局」「工具栏」分区的键是 `@xihan-ui/designer-shell` 的 `DESIGNER_SETTING_KEYS`（如 `toolbar.display`、`toolbar.visible`、`toolbar.layout`）；以后条目改了 path，常量跟着变，宿主的缺省不会静默失效。`settings` 赋值即生效；用户在对话框里改了一条，设计器换成新的一份并派发 `settings-change`，宿主存起来、下次赋回。`settingsPolicy` 隐藏或锁定条目，键是条目键或分区 id：`hidden` 不显示，一个分区的条目全藏了就没有这一页；`locked` 只读，说明换成「由所在系统管理」。
 
 <<< @/examples/snippets/settings.ts#host
 
@@ -96,6 +100,15 @@ aside: false
 独立使用、没有宿主替你存时，给 `settingsStorageKey`：连上文档时若没赋 `settings` 就从根所在窗口的 localStorage 读，用户改了设置就写回去；标了 `secret` 的文本条目（如密钥）不存。读写失败派发 `settings-storage-error`，设置留在内存里。不给就不读写存储。
 
 <<< @/examples/snippets/settings.ts#storage
+
+## 新手引导
+
+设计器第一次显示出来、画布铺好之后，自动开始一次新手引导：一步步高亮工具栏、节点面板、画布、属性面板、问题面板、状态栏与设置，接着是流程自己的三步——顶栏的插入钮、连线（指向第一个端口）与自动布局。目标看不见的那步自动跳过，比如没有插入钮时不讲顶栏，画布上还没有节点时不讲连线。
+
+- 走完、跳过或关上之后，设置里记下 `help.tourDone`（`@xihan-ui/designer-shell` 的 `DESIGNER_TOUR_DONE_KEY`）并派发 `settings-change`，以后不再自动开始。宿主替用户存设置时，这个键随设置一起存。
+- 设计器藏着时不开始，等它显示出来再看。宿主不要自动开始时写 `autoTour = false`（同名 attribute `auto-tour="false"`）。
+- `startTour()` 随时从头开始，没有能走的步骤时返回 `false`；设置帮助页的「开始引导」与 `start-tour` 命令做的是同一件事。
+- 扩展可以登记自己的步骤，见[扩展](./extensions)的 `tourSteps`。
 
 ## 撤销与保存
 

@@ -98,6 +98,27 @@ export interface FlowDesignerTranslations {
   readonly startVariableAdd: string
   /** 启动变量表里一格的可访问名：第几个变量（从 1 起）、哪一列。 */
   readonly startVariableCell: (row: number, column: string) => string
+  /** 新手引导里流程自己的几步：标题与说明。 */
+  readonly tourSteps: Readonly<Record<FlowTourStepKey, FlowTourStepTranslations>>
+  /** 设置对话框「帮助」页的几段操作说明。 */
+  readonly helpNotes: readonly string[]
+  /** 快捷键页：Ctrl / ⌘ + S 一行的说明。 */
+  readonly shortcutSave: string
+  /** 快捷键页：方向键一行按流程的做法改写的说明。 */
+  readonly shortcutNudge: string
+  /** 快捷键页：Esc 一行按流程的做法改写的说明。 */
+  readonly shortcutCancel: string
+  /** 快捷键页：Shift + F10 与菜单键一行的说明。 */
+  readonly shortcutContextMenu: string
+}
+
+/** 新手引导里流程自己的几步：顶栏的插入钮、连线与自动布局。 */
+export type FlowTourStepKey = 'insert' | 'connect' | 'autoLayout'
+
+/** 新手引导一步的文案。 */
+export interface FlowTourStepTranslations {
+  readonly title: string
+  readonly description: string
 }
 
 /** 启动变量表的列：变量名、必填、缺省值、说明。 */

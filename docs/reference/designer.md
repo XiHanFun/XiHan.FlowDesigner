@@ -11,6 +11,7 @@
 | 属性 | attribute | 类型 | 说明 |
 | --- | --- | --- | --- |
 | `readonly` | `readonly` | `boolean \| undefined` | 只读：可以选择与浏览，不能修改；缺省 false。同名 attribute 三态：不写为缺省，写 "false" 为 false，其余写法（空串、"true" 等）为 true。 |
+| `autoTour` | `auto-tour` | `boolean \| undefined` | 设计器第一次显示出来、画布铺好之后自动开始新手引导，缺省开；藏着时不开始；设置里记过 help.tourDone（走完、跳过或关上过一次）时不再自动开始。写 false 关掉，start-tour 命令、帮助页的「开始引导」与 startTour() 照样能开始。同名 attribute auto-tour，写 "false" 是关。 |
 | `grid` | — | `number \| false` | 拖动与新建节点时吸附的网格边长，false 不吸附网格；缺省 16。 |
 | `defaultLayout` | — | `DesignerLayout \| undefined` | 面板布局的缺省：设置里还没有 layout.panels 时用它，「恢复默认布局」也回到它；不给按各面板登记的位置，全部显示。用户挪了面板、改了显隐或大小，整份布局写进设置的 layout.panels（DESIGNER_SETTING_KEYS.layout）并派发 settings-change。 |
 | `paletteGroupOrder` | — | `readonly string[] \| undefined` | 物料面板里先列出的类别及其顺序，其余类别按登记顺序排在后面。 |
@@ -61,6 +62,7 @@
 | `distribute(axis: DistributeAxis): void` | 等距分布选中的节点；少于三个或只读时什么都不做。 |
 | `autoLayout(options?: FlowAutoLayoutOptions): void` | 按连线方向分层排布全部节点，左上角保持在原处，并清除连线的手动拐点；记为一步，只读时什么都不做。没给的方向与间距取设置里「画布」分区的值。 |
 | `openSettings(section?: string): void` | 打开设置对话框，给了分区 id 就显示那一页：基础是 general，设计器自己的「画布」是 flow。 |
+| `startTour(): boolean` | 从头开始新手引导：通用步骤加流程与扩展的步骤；没有能走的步骤时返回 false。 |
 | `validate(): FlowIssue[]` | 按当前扩展与校验选项校验定义。 |
 | `getViewport(): Viewport` | 当前视口。 |
 | `setViewport(viewport: Viewport): void` | 设置视口；此后尺寸变化不再自动适配。 |
@@ -141,6 +143,7 @@ declare function defineFlowDesigner(): void
 | `layout-reset` | 恢复默认布局 | — | — | 可用 |
 | `settings` | 设置 | `SettingsIcon` | — | 可用 |
 | `help` | 帮助 | `CircleHelpIcon` | — | 可用 |
+| `start-tour` | 开始引导 | — | — | 可用 |
 | `panel:palette` | 节点 | — | — | 可用 |
 | `panel:properties` | 属性 | — | — | 可用 |
 | `panel:issues` | 问题 | — | — | 可用 |
@@ -269,6 +272,12 @@ const FLOW_PANELS = { palette: 'palette', properties: 'properties', issues: 'iss
 | `flow` | `string` | 不落在节点或连线上的问题（如节点个数）所属的对象名。 |
 | `startVariableColumns` | `Readonly<Record<FlowStartVariableColumn, string>>` | 启动变量表的列名。 |
 | `startVariableAdd` | `string` | 启动变量表的新增按钮。 |
+| `tourSteps` | `Readonly<Record<FlowTourStepKey, FlowTourStepTranslations>>` | 新手引导里流程自己的几步：标题与说明。 |
+| `helpNotes` | `readonly string[]` | 设置对话框「帮助」页的几段操作说明。 |
+| `shortcutSave` | `string` | 快捷键页：Ctrl / ⌘ + S 一行的说明。 |
+| `shortcutNudge` | `string` | 快捷键页：方向键一行按流程的做法改写的说明。 |
+| `shortcutCancel` | `string` | 快捷键页：Esc 一行按流程的做法改写的说明。 |
+| `shortcutContextMenu` | `string` | 快捷键页：Shift + F10 与菜单键一行的说明。 |
 
 | 方法 | 说明 |
 | --- | --- |
@@ -331,10 +340,11 @@ type FlowBuiltinPropertyKey = 'label' | 'style.dashed'
 | 名称 | 种类 | 说明 |
 | --- | --- | --- |
 | `createFlowDesignerModel` | 函数 | 合出设计器用的模型；editors 是垫在各扩展之下的内建编辑器。 |
-| `FLOW_DESIGNER_EXTENSION` | 常量 | 设计器的内置扩展：内置命令与图片导出器。 |
+| `FLOW_DESIGNER_EXTENSION` | 常量 | 设计器的内置扩展：内置命令、图片导出器与引导步骤。 |
 | `FLOW_DESIGNER_HELP_URL` | 常量 | 内置命令 help 打开的帮助页：流程文档站的设计器一页。 |
 | `FLOW_PANELS` | 常量 | 设计器登记的面板与画布浮动件的 id：宿主写 defaultLayout、settingsPolicy（layout.panels.&lt;面板 id&gt;）时用它，不手写字符串。 |
 | `FLOW_TOOLBAR_LAYOUT` | 常量 | 工具栏的缺省排列；commandLayout 没写 toolbar 时用它，再把 placement 含 toolbar 的扩展命令追加成一组。 |
+| `FLOW_TOUR_STEPS` | 常量 | 新手引导里流程自己的几步，排在通用步骤之后：顶栏的插入钮、连线（指向第一个端口）与自动布局。 |
 | `FlowDesignerCommand` | 类型 | 设计器的命令。 |
 | `FlowDesignerContext` | 接口 | 命令、面板与扩展装上时拿到的上下文。 |
 | `FlowDesignerExporter` | 类型 | 导出器：把当前流程定义换成文件。 |
@@ -374,3 +384,9 @@ type FlowBuiltinPropertyKey = 'label' | 'style.dashed'
 | --- | --- | --- |
 | `FLOW_SETTING_KEYS` | 常量 | 「画布」分区各条目的键，即 settings 里的键（分区 id.条目 id）。 |
 | `FLOW_SETTINGS_SECTION` | 常量 | 设计器自己那个设置分区的 id，扩展不能再用。 |
+
+### version
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `FLOW_VERSION` | 常量 | @xihan-flow/designer 的版本号。 |

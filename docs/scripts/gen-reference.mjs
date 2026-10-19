@@ -547,7 +547,7 @@ function shortcutText(keys) {
 }
 
 /**
- * designer-shell 的内置命令：...designerShellCommands({ frame, openSettings, helpUrl, icons }) 给了哪个选项就有哪几条，文案在共用一桶里；
+ * designer-shell 的内置命令：...designerShellCommands({ frame, openSettings, helpUrl, startTour, icons }) 给了哪个选项就有哪几条，文案在共用一桶里；
  * 给了 frame 时除「面板」外还有显示或隐藏所有面板、还原面板显隐与恢复默认布局三条（快捷键与 designer-shell 的一致）。
  */
 const SHELL_COMMANDS = [
@@ -557,6 +557,7 @@ const SHELL_COMMANDS = [
   { id: 'layout-reset', label: 'layoutReset', option: 'frame', shortcut: [] },
   { id: 'settings', label: 'settings', option: 'openSettings', shortcut: [] },
   { id: 'help', label: 'help', option: 'helpUrl', shortcut: [] },
+  { id: 'start-tour', label: 'startTour', option: 'startTour', shortcut: [] },
 ]
 
 function shellCommands(call) {

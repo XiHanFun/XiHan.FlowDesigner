@@ -35,6 +35,7 @@ const mounted: Element[] = []
 
 export async function mount(setup: (designer: XhFlowDesigner) => void = () => {}): Promise<XhFlowDesigner> {
   const designer = window.document.createElement(FLOW_DESIGNER_TAG)
+  designer.autoTour = false
   designer.extensions = [nodes]
   designer.schema = sample()
   setup(designer)

@@ -7,6 +7,7 @@
 
 import type { FlowDesignerContext, FlowDesignerExtension, XhFlowDesigner } from '../src'
 import { DesignerExtensionError } from '@xihan-ui/designer-kit'
+import { DESIGNER_SETTING_KEYS } from '@xihan-ui/designer-shell'
 import { afterEach, describe, expect, it } from 'vitest'
 import { defineFlowDesigner, FLOW_SETTING_KEYS, FLOW_SETTINGS_SECTION } from '../src'
 import { mount, nodes, unmountAll } from './helpers'
@@ -43,11 +44,11 @@ function panelSwitch(name: string): HTMLElement {
 }
 
 describe('设置', () => {
-  it('openSettings 打开设置对话框：基础、布局在前，画布在后，画布分区列出自动布局与吸附；基础里有状态栏', async () => {
+  it('openSettings 打开设置对话框：基础、布局、工具栏在前，画布在后，帮助、快捷键、关于在最后；画布分区列出自动布局与吸附，基础里有状态栏', async () => {
     const designer = await mount()
     designer.openSettings('flow')
     await settle(designer)
-    expect(pages()).toEqual(['general', 'layout', 'flow'])
+    expect(pages()).toEqual(['general', 'layout', 'toolbar', 'flow', 'help', 'shortcuts', 'about'])
     expect(['layoutDirection', 'nodeGap', 'layerGap', 'snap'].map(id => row(`flow.${id}`) !== null)).toEqual([true, true, true, true])
     expect(row('flow.minimap')).toBeNull()
     expect([row('general.theme') !== null, row('general.statusBar') !== null]).toEqual([true, true])
@@ -60,7 +61,7 @@ describe('设置', () => {
     })
     designer.openSettings()
     await settle(designer)
-    expect(pages()).toEqual(['layout', 'flow'])
+    expect(pages()).toEqual(['layout', 'toolbar', 'flow', 'help', 'shortcuts', 'about'])
     expect(row('flow.snap')!.querySelector('xh-field')!.hasAttribute('read-only')).toBe(true)
   })
 
@@ -133,29 +134,29 @@ describe('设置', () => {
     expect(errors).toEqual([expect.objectContaining({ operation: 'read', key: 'broken' })])
   })
 
-  it('扩展登记的设置分区放进对话框；分区 id 与 flow、general、layout 或彼此重名时赋值即抛错', async () => {
+  it('扩展登记的设置分区放进对话框；分区 id 与 flow 或内建的分区 id 重名时赋值即抛错', async () => {
     const section = { id: 'acme', label: 'Acme', order: 200, items: [{ path: ['token'], label: 'Token', control: { kind: 'text' as const, secret: true } }] }
     const designer = await mount(element => (element.extensions = [nodes, { id: 'acme', settings: [section] }]))
     designer.openSettings('acme')
     await settle(designer)
-    expect(pages()).toEqual(['general', 'layout', 'flow', 'acme'])
+    expect(pages()).toEqual(['general', 'layout', 'toolbar', 'flow', 'acme', 'help', 'shortcuts', 'about'])
     expect(row('acme.token')!.querySelector('xh-password-input')).not.toBeNull()
     const before = designer.extensions
-    for (const id of ['flow', 'general', 'layout']) {
+    for (const id of ['flow', 'general', 'layout', 'toolbar', 'help', 'shortcuts', 'about']) {
       const assign = (): unknown => (designer.extensions = [nodes, { id: 'acme', settings: [{ ...section, id }] }])
       expect(assign).toThrow(DesignerExtensionError)
     }
     expect(designer.extensions).toBe(before)
   })
 
-  it('工具栏显示方式取设置里的 general.toolbarDisplay，缺省只显示图标', async () => {
+  it('工具栏显示方式取设置里的 toolbar.display，缺省只显示图标', async () => {
     const designer = await mount()
     const shell = (): Element => designer.querySelector('xh-tooltip[data-scope="designer-commands"]')!
     expect(shell().getAttribute('data-display')).toBe('icon')
-    designer.settings = { 'general.toolbarDisplay': 'both' }
+    designer.settings = { [DESIGNER_SETTING_KEYS.toolbarDisplay]: 'both' }
     await designer.updateComplete
     expect(shell().getAttribute('data-display')).toBe('both')
-    designer.settings = { 'general.toolbarDisplay': 'text' }
+    designer.settings = { [DESIGNER_SETTING_KEYS.toolbarDisplay]: 'text' }
     await designer.updateComplete
     expect(shell().getAttribute('data-display')).toBe('text')
   })
