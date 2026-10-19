@@ -66,6 +66,7 @@ export const flowZhTW: XhConfig = /* @__PURE__ */ flowLocale(designerShellZhTW, 
     shortcutNudge: '移動選取的節點；沒有選取時平移畫布',
     shortcutCancel: '取消正在進行的拖曳',
     shortcutContextMenu: '開啟右鍵選單',
+    outline: { title: '流程結構', help: '列出流程裡的節點，每個節點下面是從它出去的連線（預設收合）。點一項就在畫布上選取並顯示它，懸停時在畫布上標出。', search: '搜尋流程結構', empty: '還沒有節點' },
     history: {
       node: (kind, name) => `${kind} ${name}`,
       addNode: label => `新增${label}`,

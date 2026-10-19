@@ -110,8 +110,18 @@ export interface FlowDesignerTranslations {
   readonly shortcutCancel: string
   /** 快捷键页：Shift + F10 与菜单键一行的说明。 */
   readonly shortcutContextMenu: string
+  /** 流程结构面板（页面结构零件）的标题、帮助、搜索框与空状态，压在零件文案之上。 */
+  readonly outline: FlowOutlineTranslations
   /** 撤销历史里一步的说明。 */
   readonly history: FlowHistoryTranslations
+}
+
+/** 流程结构面板的几处文案。 */
+export interface FlowOutlineTranslations {
+  readonly title: string
+  readonly help: string
+  readonly search: string
+  readonly empty: string
 }
 
 /** 撤销历史里一步的说明：单个节点写「种类 名称」（见 node，没有名称时名称是 id），几个节点写个数。 */

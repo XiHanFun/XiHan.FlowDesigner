@@ -66,6 +66,7 @@ export const flowKoKR: XhConfig = /* @__PURE__ */ flowLocale(designerShellKoKR, 
     shortcutNudge: '선택한 노드 이동. 선택이 없으면 캔버스 이동',
     shortcutCancel: '진행 중인 끌기 취소',
     shortcutContextMenu: '상황에 맞는 메뉴 열기',
+    outline: { title: '플로 구조', help: '플로의 노드와 각 노드에서 나가는 연결선(처음에는 접힘)을 나열합니다. 항목을 고르면 캔버스에서 선택해 보여 주고, 가리키면 캔버스에 표시합니다.', search: '플로 구조 검색', empty: '아직 노드가 없습니다' },
     history: {
       node: (kind, name) => `${kind} ${name}`,
       addNode: label => `${label} 추가`,

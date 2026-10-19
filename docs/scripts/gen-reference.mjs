@@ -569,13 +569,14 @@ function shellCommands(call) {
     .map(command => ({ id: command.id, label: command.label, bucket: 'xh-designer-commands', icon: icons.get(command.label), shortcut: command.shortcut, readonly: true }))
 }
 
-/** 面板的名字：物料与小地图取设计器文案，属性与问题取那两个零件的标题。 */
+/** 面板的名字：物料、小地图与流程结构取设计器文案（键可以是 outline.title 这样的嵌套写法），属性、问题与历史记录取那几个零件的标题。 */
 const PANEL_TITLES = {
   palette: ['xh-flow-designer', 'palette'],
   minimap: ['xh-flow-designer', 'minimap'],
   properties: ['xh-designer-properties', 'title'],
   issues: ['xh-designer-issues', 'title'],
   history: ['xh-designer-history', 'title'],
+  outline: ['xh-flow-designer', 'outline.title'],
 }
 
 /**
@@ -652,7 +653,7 @@ function builtinCommands(file) {
 function commandTable(file) {
   return table(['命令', '名称', '图标', '快捷键', '只读时'], builtinCommands(file).map(command => [
     code(command.id, true),
-    flowZhCN.translations[command.bucket][command.label],
+    command.label.split('.').reduce((value, key) => value?.[key], flowZhCN.translations[command.bucket]),
     command.icon === undefined ? '—' : code(command.icon, true),
     command.shortcut.length === 0 ? '—' : [command.shortcut, ...(command.alternate ?? [])].map(keys => code(shortcutText(keys), true)).join('、'),
     command.readonly ? '可用' : '不可用',

@@ -94,6 +94,7 @@ export const FLOW_DESIGNER_EN_US: FlowDesignerLocale = {
   shortcutNudge: 'Move the selected nodes; pan the canvas when nothing is selected',
   shortcutCancel: 'Cancel the drag in progress',
   shortcutContextMenu: 'Open the context menu',
+  outline: { title: 'Flow structure', help: 'The nodes of the flow, each with the connections leaving it (folded at first). Choose an item to select and reveal it on the canvas; point at one to mark it there.', search: 'Search flow structure', empty: 'No nodes yet' },
   history: {
     node: (kind, name) => `${kind} ${name}`,
     addNode: label => `Add ${label}`,

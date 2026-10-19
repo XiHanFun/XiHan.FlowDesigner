@@ -66,6 +66,7 @@ export const flowEsES: XhConfig = /* @__PURE__ */ flowLocale(designerShellEsES, 
     shortcutNudge: 'Mover los nodos seleccionados; sin selección, desplazar el lienzo',
     shortcutCancel: 'Cancelar el arrastre en curso',
     shortcutContextMenu: 'Abrir el menú contextual',
+    outline: { title: 'Estructura del flujo', help: 'Los nodos del flujo, cada uno con las conexiones que salen de él (plegadas al principio). Elige un elemento para seleccionarlo y mostrarlo en el lienzo; señálalo para marcarlo allí.', search: 'Buscar en la estructura del flujo', empty: 'Todavía no hay nodos' },
     history: {
       node: (kind, name) => `${kind} ${name}`,
       addNode: label => `Añadir ${label}`,

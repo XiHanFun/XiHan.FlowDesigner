@@ -66,6 +66,7 @@ export const flowZhCN: XhConfig = /* @__PURE__ */ flowLocale(designerShellZhCN, 
     shortcutNudge: '移动选中的节点；没有选中时平移画布',
     shortcutCancel: '取消正在进行的拖动',
     shortcutContextMenu: '打开右键菜单',
+    outline: { title: '流程结构', help: '列出流程里的节点，每个节点下面是从它出去的连线（缺省收起）。点一项就在画布上选中并显露它，悬停时在画布上标出。', search: '搜索流程结构', empty: '还没有节点' },
     history: {
       node: (kind, name) => `${kind} ${name}`,
       addNode: label => `添加${label}`,

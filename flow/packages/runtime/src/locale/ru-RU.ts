@@ -66,6 +66,7 @@ export const flowRuRU: XhConfig = /* @__PURE__ */ flowLocale(designerShellRuRU, 
     shortcutNudge: 'Сдвинуть выделенные узлы; без выделения — сдвинуть холст',
     shortcutCancel: 'Отменить текущее перетаскивание',
     shortcutContextMenu: 'Открыть контекстное меню',
+    outline: { title: 'Структура процесса', help: 'Узлы процесса, у каждого — исходящие из него связи (сначала свёрнуты). Выберите пункт, чтобы выделить и показать его на холсте; наведите указатель, чтобы отметить его там.', search: 'Поиск по структуре процесса', empty: 'Узлов пока нет' },
     history: {
       node: (kind, name) => `${kind} ${name}`,
       addNode: label => `Добавить: ${label}`,
