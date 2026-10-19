@@ -20,7 +20,7 @@ import type {
   FlowValidateOptions,
 } from '@xihan-flow/core'
 import type { JsonObject, JsonPath, JsonValue } from '@xihan-ui/core/json'
-import type { AlignMode, DistributeAxis, ExecuteOptions, History, HistoryChangeKind, Point } from '@xihan-ui/designer-kit'
+import type { AlignMode, DistributeAxis, ExecuteOptions, History, HistoryChangeKind, HistoryLabel, Point } from '@xihan-ui/designer-kit'
 import type { LayeredDirection } from '@xihan-ui/viz/graph'
 import { applyOperation, checkConnection, createFlowModel, createNode, validateDocument } from '@xihan-flow/core'
 import { formatJsonPath, getJsonAt, isPlainObject, jsonEquals, setJsonAt } from '@xihan-ui/core/json'
@@ -72,6 +72,8 @@ export interface FlowEditorOptions {
   /** 同一合并键相隔多少毫秒内并入上一步，缺省 1000。 */
   readonly mergeWithin?: number
   readonly now?: () => number
+  /** 没给说明的一步，按正向操作与应用前的文档生成说明。 */
+  readonly describe?: (operations: readonly FlowOperation[], before: FlowDocument) => HistoryLabel | undefined
 }
 
 /** 新建节点的参数：位置为左上角。 */
@@ -95,8 +97,8 @@ export interface FlowAutoLayoutOptions {
   readonly nodeGap?: number
   /** 相邻两层之间的空隙，缺省 48。 */
   readonly layerGap?: number
-  /** 这一步的说明，供撤销重做按钮提示。 */
-  readonly label?: string
+  /** 这一步的说明，供撤销重做按钮提示与历史记录；可以是现取的函数，跟着语言变。 */
+  readonly label?: HistoryLabel
 }
 
 export interface FlowEditor {
@@ -190,6 +192,7 @@ export function createFlowEditor(options: FlowEditorOptions): FlowEditor {
     limit: options.historyLimit,
     mergeWithin: options.mergeWithin ?? 1000,
     now: options.now,
+    ...(options.describe === undefined ? {} : { describe: options.describe }),
   })
 
   const emit = (change: FlowEditorChange): void => {

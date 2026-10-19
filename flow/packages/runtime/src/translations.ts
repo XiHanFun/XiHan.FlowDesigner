@@ -110,6 +110,43 @@ export interface FlowDesignerTranslations {
   readonly shortcutCancel: string
   /** 快捷键页：Shift + F10 与菜单键一行的说明。 */
   readonly shortcutContextMenu: string
+  /** 撤销历史里一步的说明。 */
+  readonly history: FlowHistoryTranslations
+}
+
+/** 撤销历史里一步的说明：单个节点写「种类 名称」（见 node，没有名称时名称是 id），几个节点写个数。 */
+export interface FlowHistoryTranslations {
+  /** 说明里一个节点的写法：kind 是节点类型的显示名，name 是节点的名称或 id。 */
+  readonly node: (kind: string, name: string) => string
+  readonly addNode: (label: string) => string
+  readonly addNodes: (count: number) => string
+  readonly removeNode: (label: string) => string
+  readonly removeNodes: (count: number) => string
+  readonly moveNode: (label: string) => string
+  readonly moveNodes: (count: number) => string
+  readonly resizeNode: (label: string) => string
+  readonly resizeNodes: (count: number) => string
+  readonly editNode: (label: string) => string
+  readonly editNodes: (count: number) => string
+  /** 按住 Alt 拖动复制。 */
+  readonly copyNode: (label: string) => string
+  readonly copyNodes: (count: number) => string
+  readonly addEdge: string
+  readonly addEdges: (count: number) => string
+  readonly removeEdge: string
+  readonly removeEdges: (count: number) => string
+  /** 把连线的一端改连到别处。 */
+  readonly reconnectEdge: string
+  /** 拖拐点、加拐点或去掉拐点。 */
+  readonly editRoute: string
+  readonly editEdge: string
+  readonly editEdges: (count: number) => string
+  /** 在属性面板里改了一项；name 是属性名。 */
+  readonly editProperty: (name: string) => string
+  /** 改了流程定义本身的属性。 */
+  readonly editDocument: string
+  /** 在 JSON 编辑框里整份换上。 */
+  readonly editJson: string
 }
 
 /** 新手引导里流程自己的几步：顶栏的插入钮、连线与自动布局。 */

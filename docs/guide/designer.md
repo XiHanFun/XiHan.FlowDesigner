@@ -52,7 +52,7 @@ aside: false
 
 ## 命令
 
-工具栏、右键菜单与快捷键执行的都是命令。每条内置命令都带图标，工具栏缺省只显示图标，悬停或聚焦时提示命令的名字与快捷键；撤销、复制、对齐、缩放这些四款设计器都有的命令，文案用 designer-shell 语言包里 `xh-designer-commands` 那一桶，与其它设计器一致，要改它们的文字时改那一桶。工具栏末组是 designer-shell 内置的「面板」「设置」与「帮助」：面板点开一张菜单，列出物料、属性、问题这些能开关的面板，勾选的显示，收起的面板从这里再打开；设置打开设置对话框（同 `openSettings()`），帮助在新窗口打开本站的设计器一页（地址是导出的 `FLOW_DESIGNER_HELP_URL`）；宿主不要哪一条，用 `commandLayout` 排掉。另有「开始引导」（`start-tour`）与「编辑 JSON」（`edit-json`，Ctrl / ⌘ + Shift + J，见[编辑 JSON](#编辑-json)），不上工具栏：开始引导在设置的帮助页里，编辑 JSON 在空白处的右键菜单末尾，也都能排进 `commandLayout`。内置命令的 id、名称与快捷键见[内置命令](../reference/designer#内置命令)；只读时会修改流程定义的命令不可用，复制、全选与缩放仍可用。命令都有对应的方法，宿主的按钮直接调用方法即可，比如 `undo()`、`duplicate()`、`align('left')`、`autoLayout({ direction: 'LR' })`。
+工具栏、右键菜单与快捷键执行的都是命令。每条内置命令都带图标，工具栏缺省只显示图标，悬停或聚焦时提示命令的名字与快捷键；撤销、复制、对齐、缩放这些四款设计器都有的命令，文案用 designer-shell 语言包里 `xh-designer-commands` 那一桶，与其它设计器一致，要改它们的文字时改那一桶；撤销、重做与清空历史本身就是 designer-shell 的共用命令，见[撤销与保存](#撤销与保存)。工具栏末组是 designer-shell 内置的「面板」「设置」与「帮助」：面板点开一张菜单，列出物料、属性、问题这些能开关的面板，勾选的显示，收起的面板从这里再打开；设置打开设置对话框（同 `openSettings()`），帮助在新窗口打开本站的设计器一页（地址是导出的 `FLOW_DESIGNER_HELP_URL`）；宿主不要哪一条，用 `commandLayout` 排掉。另有「开始引导」（`start-tour`）与「编辑 JSON」（`edit-json`，Ctrl / ⌘ + Shift + J，见[编辑 JSON](#编辑-json)），不上工具栏：开始引导在设置的帮助页里，编辑 JSON 在空白处的右键菜单末尾，也都能排进 `commandLayout`。内置命令的 id、名称与快捷键见[内置命令](../reference/designer#内置命令)；只读时会修改流程定义的命令不可用，复制、全选与缩放仍可用。命令都有对应的方法，宿主的按钮直接调用方法即可，比如 `undo()`、`duplicate()`、`align('left')`、`autoLayout({ direction: 'LR' })`。
 
 右键菜单按落点给出不同的命令：节点上是剪切、复制、创建副本与删除，选中两个以上节点时加上对齐，三个以上时再加上分布；连线上是删除与清除拐点；空白处是粘贴、全选、自动布局与适合窗口，末尾是编辑 JSON。在画布上按 ContextMenu 键或 Shift + F10，按当前的选择打开菜单。右键事件可以取消，取消后内置菜单与浏览器的菜单都不出现，宿主可以在 `detail` 的 `x`、`y` 处弹自己的菜单。
 
@@ -60,7 +60,7 @@ aside: false
 
 <<< @/examples/snippets/designer-layout.ts#command-layout
 
-面板是物料（`palette`）、属性（`properties`）、问题（`issues`）三张卡片与画布右下角的小地图（`minimap`），id 在包入口导出的 `FLOW_PANELS` 里。`defaultLayout` 是宿主给的缺省布局：用户没存过布局时用它，「恢复默认布局」也回到它；不给时全部显示、各在缺省的位置。形状是 `@xihan-ui/designer-shell` 的 `DesignerLayout`，写了的字段整项覆盖缺省，常用的是 `hidden`（收起哪些面板）与 `docks`（各栏放哪些面板、谁先谁后）。
+面板是物料（`palette`）、属性（`properties`）、问题（`issues`）、历史记录（`history`）四张卡片与画布右下角的小地图（`minimap`），id 在包入口导出的 `FLOW_PANELS` 里。历史记录缺省隐藏，打开后停在右栏属性下面。`defaultLayout` 是宿主给的缺省布局：用户没存过布局时用它，「恢复默认布局」也回到它；不给时全部显示、各在缺省的位置。形状是 `@xihan-ui/designer-shell` 的 `DesignerLayout`，写了的字段整项覆盖缺省，常用的是 `hidden`（收起哪些面板）与 `docks`（各栏放哪些面板、谁先谁后）。
 
 <<< @/examples/snippets/designer-layout.ts#default-layout
 
@@ -72,7 +72,7 @@ aside: false
 
 布局改了，整份写进设置的 `layout.panels`（`DESIGNER_SETTING_KEYS.layout`），和设置对话框里改一条一样派发 `settings-change`，宿主存下来、下次随 `settings` 赋回即可；给了 `settingsStorageKey` 时设计器自己存。宿主要固定布局，用 `settingsPolicy`：`layout.panels` 锁住整份，`layout.panels.<面板 id>` 藏掉或锁定一块面板。
 
-除了命令的快捷键，画布有焦点时还认这些键：Ctrl / ⌘ + Y 重做，Backspace 删除，`=` 放大；设置的「快捷键」页把命令的快捷键与这些键列成一张表。Ctrl / ⌘ + C、X、V 走系统剪贴板：复制出的是一段 JSON 文本，能在同一页面、别的页面或别的标签页的设计器里粘贴；读不出流程内容的文本交给扩展的导入器（见[导入与导出](./extensions#导入与导出)），没有导入器接下时不会贴进来。
+除了命令的快捷键，画布有焦点时还认这些键：Backspace 删除，`=` 放大；设置的「快捷键」页把命令的快捷键与这些键列成一张表。Ctrl / ⌘ + C、X、V 走系统剪贴板：复制出的是一段 JSON 文本，能在同一页面、别的页面或别的标签页的设计器里粘贴；读不出流程内容的文本交给扩展的导入器（见[导入与导出](./extensions#导入与导出)），没有导入器接下时不会贴进来。
 
 ## 设置
 
@@ -112,7 +112,13 @@ aside: false
 
 ## 撤销与保存
 
-每次修改记为一步撤销，拖动这类连续操作松手时才记为一步。`canUndo`、`canRedo` 表示能不能撤销重做，`undo()`、`redo()` 执行。宿主自己改流程定义时用 `execute(operations)`，一组操作记为一步，操作的写法见[流程定义结构](./schema#编辑操作)。
+每次修改记为一步撤销，拖动这类连续操作松手时才记为一步。`canUndo`、`canRedo` 表示能不能撤销重做，`undo()`、`redo()` 执行。
+
+- **每一步带说明**：如「移动 任务 approve_1」「添加 3 个节点」「修改「名称」」「自动布局」「编辑 JSON」。单个节点写「种类 名称」（没有名称时是 id），几个节点写个数；说明跟着界面语言变。撤销、重做钮的名字带上下一步的说明，如「撤销：移动 任务 approve_1」，按钮上看得见的字仍是「撤销」。
+- **合并**：在同一个属性字段里连续输入合成一步；画布有焦点时按方向键微移，同一组选中的节点一秒内连按合成一步，换了选中另起一步。
+- **快捷键**：撤销 Ctrl / ⌘ + Z，重做 Ctrl / ⌘ + Shift + Z，另认 Ctrl + Y。
+- **清空历史**：命令 `clear-history`，不上工具栏，在历史记录面板的面板头上；点了先弹确认框，确定后才清空，清空后不能再撤销到之前。
+- **历史记录面板**：列出每一步与起点，选一步（或起点）就一次跳过去，之后的步骤留着、可以再重做回来；只读时只能看。撤销、重做、清空与跳转之后，读屏会礼貌地读一句。宿主自己改流程定义时用 `execute(operations)`，一组操作记为一步，操作的写法见[流程定义结构](./schema#编辑操作)。
 
 流程定义每次变化派发 `schema-change`，`detail` 里是新的定义、这次的操作与种类：`execute` 是编辑，`undo`、`redo` 是撤销重做，`load` 是装载了新定义。
 

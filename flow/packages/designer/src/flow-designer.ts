@@ -39,6 +39,7 @@ import type {
   DesignerCommandsTranslations,
   DesignerFrameEventMap,
   DesignerFrameRegion,
+  DesignerHistoryTranslations,
   DesignerIssueItem,
   DesignerJsonEditorEventMap,
   DesignerLayout,
@@ -57,6 +58,7 @@ import type {
 } from '@xihan-ui/designer-shell'
 import type { PointerSession } from '@xihan-ui/pointer'
 import type { KeyedChildren, PropertyValues } from '@xihan-ui/web-components/authoring'
+import type { DialogService } from '@xihan-ui/web-components/services'
 import type { FlowAutoLayoutOptions, FlowClipboard, FlowEditor, FlowSelection } from './editor'
 import type { FlowDesignerContext, FlowDesignerExtension, FlowDesignerImporter, FlowDesignerModel, FlowImportFragment, FlowMenuSubject } from './extensions'
 import type { FlowPropertyEditor } from './panels/properties'
@@ -72,8 +74,10 @@ import {
   expandRect,
   findImporter,
   fitRect,
+  HISTORY_NUDGE_MERGE_WITHIN,
   hitTest,
   nudgeDelta,
+  nudgeMergeKey,
   panBy,
   revealRect,
   screenToWorld,
@@ -94,6 +98,7 @@ import {
   DESIGNER_COMMANDS_EN_US,
   DESIGNER_COMMON_KEYS,
   DESIGNER_FRAME_REGIONS,
+  DESIGNER_HISTORY_EN_US,
   DESIGNER_SETTING_KEYS,
   DESIGNER_SHELL_COMMANDS,
   DESIGNER_TOUR_DONE_KEY,
@@ -134,9 +139,11 @@ import {
   XhReactiveElement,
 } from '@xihan-ui/web-components/authoring'
 import { defineXhElement, XhCheckboxElement, XhContextMenuElement, XhFieldArrayElement, XhIconElement, XhToolbarElement } from '@xihan-ui/web-components/define'
+import { createDialogService } from '@xihan-ui/web-components/services'
 import { encodeFlowClipboard, readFlowClipboard, readFlowFragment, writeFlowClipboard } from './clipboard'
 import { createFlowEditor } from './editor'
-import { createFlowDesignerModel, FLOW_DESIGNER_EXTENSION, flowMenuLayout, flowToolbarLayout, IMAGE_RENDERERS } from './extensions'
+import { createFlowDesignerModel, DESIGNER_INTERNALS, FLOW_DESIGNER_EXTENSION, flowMenuLayout, flowToolbarLayout, IMAGE_RENDERERS } from './extensions'
+import { describeFlowOperations, identitiesIn, nodesLabel } from './history-labels'
 import { ContextMenuPanel } from './panels/context-menu'
 import { flowIssueItems, IssuesPanel } from './panels/issues'
 import { MinimapPanel } from './panels/minimap'
@@ -353,7 +360,18 @@ export class XhFlowDesigner extends XhReactiveElement {
   }
 
   #model: FlowDesignerModel = createFlowDesignerModel(NO_EXTENSIONS, this.#builtinEditors)
-  readonly #editor: FlowEditor = createFlowEditor({ document: EMPTY_SCHEMA, extensions: this.#model.list })
+  /** 历史说明现取的文案与流程模型。 */
+  readonly #labelSource = {
+    translations: () => this.#translations(),
+    model: () => this.#editor.model,
+  }
+
+  readonly #editor: FlowEditor = createFlowEditor({
+    document: EMPTY_SCHEMA,
+    extensions: this.#model.list,
+    describe: (operations, before) => describeFlowOperations(operations, before, this.#labelSource),
+  })
+
   readonly #host: ExtensionHost<FlowDesignerExtension> = createExtensionHost<FlowDesignerExtension, FlowDesignerContext>({
     builtins: [FLOW_DESIGNER_EXTENSION],
     context: () => this.#context(),
@@ -394,13 +412,25 @@ export class XhFlowDesigner extends XhReactiveElement {
   #helpKey = ''
   /** 看过要不要自动开始引导了（每个元素只看一次）。 */
   #tourChecked = false
+  /** 清空历史前的确认框服务：第一次要弹时建，元素移出文档时释放。 */
+  #dialogs: DialogService | undefined
 
   constructor() {
     super()
     IMAGE_RENDERERS.set(this, (format, options) => this.#renderImage(format, options))
+    DESIGNER_INTERNALS.set(this, {
+      history: () => this.#editor.history,
+      historyTranslations: () => this.#config.translations<DesignerHistoryTranslations>('xh-designer-history', DESIGNER_HISTORY_EN_US),
+      confirm: (options) => {
+        this.#dialogs ??= createDialogService()
+        return this.#dialogs.confirm(options)
+      },
+    })
     this.grid = 16
     this.#editor.subscribe((change) => {
       if (change.kind === 'selection') {
+        // 选中换了，接着的微移与属性修改另起一步
+        this.#editor.seal()
         this.requestUpdate()
         emitEvent(this, 'selection-change', change.selection)
         return
@@ -515,6 +545,8 @@ export class XhFlowDesigner extends XhReactiveElement {
     super.disconnectedCallback()
     this.#settingsHost?.dispose()
     this.#settingsHost = undefined
+    this.#dialogs?.dispose()
+    this.#dialogs = undefined
     for (const type of CLIPBOARD_EVENTS)
       this.ownerDocument.removeEventListener(type, this.#onClipboard)
     this.#resizeObserver?.disconnect()
@@ -598,7 +630,6 @@ export class XhFlowDesigner extends XhReactiveElement {
         { label: shared.cut, keys: [['Mod', 'X']] },
         { label: shared.paste, keys: [['Mod', 'V']] },
         { label: shared.delete, keys: [['Backspace']] },
-        { label: shared.redo, keys: [['Mod', 'Y']] },
         { label: t.shortcutContextMenu, keys: [['Shift', 'F10'], ['ContextMenu']] },
         { label: t.shortcutSave, keys: [['Mod', 'S']] },
       ],
@@ -755,12 +786,14 @@ export class XhFlowDesigner extends XhReactiveElement {
       return
     const settings = this.#resolvedSettings
     const direction = settings[FLOW_SETTING_KEYS.layoutDirection]
+    const label = (): string => this.#translations().autoLayout
     const nodeGap = settings[FLOW_SETTING_KEYS.nodeGap]
     const layerGap = settings[FLOW_SETTING_KEYS.layerGap]
     this.#editor.autoLayout({
       ...(LAYOUT_DIRECTIONS.includes(direction) ? { direction: direction as FlowAutoLayoutOptions['direction'] } : {}),
       ...(typeof nodeGap === 'number' ? { nodeGap } : {}),
       ...(typeof layerGap === 'number' ? { layerGap } : {}),
+      label,
       ...options,
     })
   }
@@ -1096,7 +1129,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     issueSummary.slot = 'issues-actions'
     minimap.element.slot = 'minimap'
     frame.append(toolbar, palette.element, canvas, properties.element, issues.element, issueSummary, minimap.element)
-    const panels = createPanelHost<FlowDesignerContext>(frame)
+    const panels = createPanelHost<FlowDesignerContext>(frame, { commands: () => this.#model.commands })
     const selectionStatus = createStatusItem(doc, { value: '' })
     selectionStatus.element.slot = 'status-start'
     const zoomStatus = createStatusItem(doc, { value: '', action: () => this.zoomToActual() })
@@ -1685,7 +1718,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     const history = this.#editor.history
     const root = this.#ensureLayers().root
     if (phase === 'start') {
-      history.begin()
+      history.begin(nodesLabel('move', identitiesIn(this.#editor.document, [...rects.keys()]), this.#labelSource))
       root.dataset.gesture = 'move'
       return
     }
@@ -1708,7 +1741,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     const [id, rect] = [...rects][0]!
     const node = this.#editor.document.nodes.find(item => item.id === id)
     if (node)
-      this.#editor.duplicate({ offset: { x: rect.x - node.x, y: rect.y - node.y } })
+      this.#editor.duplicate({ offset: { x: rect.x - node.x, y: rect.y - node.y }, label: nodesLabel('copy', identitiesIn(this.#editor.document, this.#editor.selection.nodes), this.#labelSource) })
   }
 
   /** 交给覆盖层框选；没拖动就松手且不是追加时清空选择。 */
@@ -1813,7 +1846,7 @@ export class XhFlowDesigner extends XhReactiveElement {
       return
     const interior = points.slice(1, -1)
     this.#track(event, 'vertex', {
-      onActivate: () => this.#editor.history.begin(),
+      onActivate: () => this.#editor.history.begin(() => this.#translations().history.editRoute),
       onMove: (client) => {
         const at = this.#snapToGrid(this.clientToWorld(client.x, client.y))
         const vertices = mode === 'move'
@@ -2123,18 +2156,12 @@ export class XhFlowDesigner extends XhReactiveElement {
       event.preventDefault()
   }
 
-  /** 没有命令占用的修饰键组合：Ctrl / ⌘ + S 派发 save，Ctrl / ⌘ + Y 重做。 */
+  /** 没有命令占用的修饰键组合：Ctrl / ⌘ + S 派发 save。 */
   #onCommandKey(event: KeyboardEvent): boolean {
-    const key = event.key.toLowerCase()
-    if (key === 's') {
-      emitEvent(this, 'save', {})
-      return true
-    }
-    if (key === 'y' && !this.readonly) {
-      this.#editor.redo()
-      return true
-    }
-    return false
+    if (event.key.toLowerCase() !== 's')
+      return false
+    emitEvent(this, 'save', {})
+    return true
   }
 
   /** 没有命令占用的单键：Backspace 删除，= 与按着 Shift 的 + 放大，方向键微移选中的节点或平移视口。 */
@@ -2152,7 +2179,7 @@ export class XhFlowDesigner extends XhReactiveElement {
       return false
     const ids = this.#editor.selection.nodes
     if (ids.length > 0 && !this.readonly) {
-      this.#editor.moveNodes(ids, delta.dx, delta.dy, { merge: 'nudge' })
+      this.#editor.moveNodes(ids, delta.dx, delta.dy, { merge: nudgeMergeKey(ids), mergeWithin: HISTORY_NUDGE_MERGE_WITHIN })
       return true
     }
     this.setViewport(panBy(this.#viewport, -Math.sign(delta.dx) * PAN_STEP, -Math.sign(delta.dy) * PAN_STEP))

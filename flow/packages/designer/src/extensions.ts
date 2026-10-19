@@ -5,16 +5,16 @@
 
 // 设计器层的扩展：在运行时层之上加属性编辑器、命令、面板、导入器、导出器与装上时的回调；内置命令也写成一个扩展。
 
-import type { FlowDocument, FlowEdge, FlowNode, FlowNodeType, FlowRuleContext } from '@xihan-flow/core'
+import type { FlowDocument, FlowEdge, FlowNode, FlowNodeType, FlowOperation, FlowRuleContext } from '@xihan-flow/core'
 import type { FlowDesignerTranslations, FlowImageExportOptions, FlowImageFormat, FlowRuntimeExtension, FlowRuntimeModel, FlowTourStepKey } from '@xihan-flow/runtime'
-import type { DesignerCommand, DesignerExporter, DesignerImporter } from '@xihan-ui/designer-kit'
+import type { DesignerCommand, DesignerExporter, DesignerImporter, History } from '@xihan-ui/designer-kit'
 import type { PropertyEditorLayer, PropertyEditorTable } from '@xihan-ui/designer-kit/properties'
-import type { DesignerCommandsTranslations, DesignerCommandTable, DesignerSettings, DesignerSettingsSection, DesignerShellExtension, DesignerTourStep, DesignerTourTarget, XhDesignerFrameElement } from '@xihan-ui/designer-shell'
+import type { DesignerCommandsTranslations, DesignerCommandTable, DesignerHistoryConfirm, DesignerHistoryTranslations, DesignerSettings, DesignerSettingsSection, DesignerShellExtension, DesignerTourStep, DesignerTourTarget, XhDesignerFrameElement } from '@xihan-ui/designer-shell'
 import type { XhFlowDesigner } from './flow-designer'
 import type { FlowPropertyEditor } from './panels/properties'
 import { createFlowRuntimeModel } from '@xihan-flow/runtime'
-import { DesignerExtensionError, extensionCommands, extensionEditors } from '@xihan-ui/designer-kit'
-import { collectSettingsSections, collectTourSteps, designerPanelCommands, designerShellCommands } from '@xihan-ui/designer-shell'
+import { DesignerExtensionError, extensionCommands, extensionEditors, snapshotHistory } from '@xihan-ui/designer-kit'
+import { collectSettingsSections, collectTourSteps, createHistoryPanel, designerHistoryCommands, designerPanelCommands, designerShellCommands } from '@xihan-ui/designer-shell'
 import {
   AlignObjectsBottomIcon,
   AlignObjectsCenterIcon,
@@ -32,6 +32,7 @@ import {
   FileCodeIcon,
   FileImageIcon,
   FolderOpenIcon,
+  HistoryIcon,
   MaximizeIcon,
   PanelLeftIcon,
   RedoIcon,
@@ -118,6 +119,23 @@ function selectedVertices(designer: XhFlowDesigner): boolean {
   return designer.schema.edges.some(edge => selected.has(edge.id) && edge.vertices !== undefined)
 }
 
+/** 内置命令与内置面板要用、又不公开的设计器能力：历史栈、历史记录的文案与确认框。 */
+export interface FlowDesignerInternals {
+  readonly history: () => History<FlowDocument, FlowOperation>
+  readonly historyTranslations: () => DesignerHistoryTranslations
+  readonly confirm: (options: DesignerHistoryConfirm) => Promise<boolean>
+}
+
+/** 设计器 → 它不公开的能力；设计器建出时登记，内置的历史命令与历史面板经它取。 */
+export const DESIGNER_INTERNALS = new WeakMap<XhFlowDesigner, FlowDesignerInternals>()
+
+function internalsOf(designer: XhFlowDesigner): FlowDesignerInternals {
+  const internals = DESIGNER_INTERNALS.get(designer)
+  if (!internals)
+    throw new Error('[flow-designer] this designer has no internals registered')
+  return internals
+}
+
 /** 设计器 → 把它画面上的流程图导出成图片；设计器建出时登记，内置的图片导出器经它取图。 */
 export const IMAGE_RENDERERS = new WeakMap<XhFlowDesigner, (format: FlowImageFormat, options: FlowImageExportOptions) => Promise<Blob>>()
 
@@ -156,7 +174,10 @@ export const FLOW_DESIGNER_HELP_URL = 'https://flow.docs.xihanfun.com/guide/desi
  * 设计器登记的面板与画布浮动件的 id：宿主写 defaultLayout、settingsPolicy（layout.panels.<面板 id>）时用它，不手写字符串。
  * 各有一条开关命令 panel:<面板 id>。
  */
-export const FLOW_PANELS = { palette: 'palette', properties: 'properties', issues: 'issues', minimap: 'minimap' } as const
+export const FLOW_PANELS = { palette: 'palette', properties: 'properties', issues: 'issues', minimap: 'minimap', history: 'history' } as const
+
+/** 外框上直接登记的面板与画布浮动件；历史这类内置扩展的面板，开关命令随扩展面板一起生成。 */
+const FRAME_PANELS = [FLOW_PANELS.palette, FLOW_PANELS.properties, FLOW_PANELS.issues, FLOW_PANELS.minimap]
 
 /**
  * 内置命令：打开文件、撤销重做、剪贴板、选择、对齐分布、布局、缩放、导出图片，以及 designer-shell 内置的面板、设置、帮助、
@@ -165,8 +186,16 @@ export const FLOW_PANELS = { palette: 'palette', properties: 'properties', issue
  */
 const BUILTIN_COMMANDS: readonly FlowDesignerCommand[] = [
   { id: 'open-file', label: text('openFile'), icon: FolderOpenIcon, enabled: editable(d => d.canImport), run: ({ designer }) => designer.openFile() },
-  { id: 'undo', label: shared('undo'), icon: UndoIcon, shortcut: ['Mod', 'Z'], enabled: editable(d => d.canUndo), run: ({ designer }) => designer.undo() },
-  { id: 'redo', label: shared('redo'), icon: RedoIcon, shortcut: ['Mod', 'Shift', 'Z'], enabled: editable(d => d.canRedo), run: ({ designer }) => designer.redo() },
+  // 撤销、重做与清空历史用 designer-shell 的四款共用命令：只读时不可用，清空先弹确认框，做完经外框播报
+  ...designerHistoryCommands<FlowDesignerContext>({
+    history: ({ designer }) => internalsOf(designer).history(),
+    disabled: ({ designer }) => designer.readonly === true,
+    translations: context => context.commandTranslations,
+    historyTranslations: ({ designer }) => internalsOf(designer).historyTranslations(),
+    confirm: ({ designer }, options) => internalsOf(designer).confirm(options),
+    announce: (context, message) => context.frame?.announce(message),
+    icons: { undo: UndoIcon, redo: RedoIcon, clearHistory: EraserIcon },
+  }),
   { id: 'cut', label: shared('cut'), icon: ScissorsIcon, enabled: editable(d => selectedNodes(d) > 0), run: ({ designer }) => designer.cut() },
   { id: 'copy', label: shared('copy'), icon: CopyIcon, enabled: ({ designer }) => selectedNodes(designer) > 0, run: ({ designer }) => designer.copy() },
   { id: 'paste', label: shared('paste'), icon: ClipboardIcon, enabled: editable(d => d.canPaste), run: ({ designer }) => designer.paste() },
@@ -224,8 +253,18 @@ const BUILTIN_COMMANDS: readonly FlowDesignerCommand[] = [
     openJsonEditor: ({ designer }) => designer.openJsonEditor(),
     icons: { panels: PanelLeftIcon, settings: SettingsIcon, help: CircleHelpIcon, editJson: FileCodeIcon },
   }),
-  ...designerPanelCommands<FlowDesignerContext>({ panels: Object.values(FLOW_PANELS), frame: context => context.frame }),
+  ...designerPanelCommands<FlowDesignerContext>({ panels: FRAME_PANELS, frame: context => context.frame }),
 ]
+
+/** 历史记录面板：列出撤销历史，选一步就跳过去；缺省停在右栏属性下面、缺省隐藏，面板头是清空历史。 */
+const HISTORY_PANEL = createHistoryPanel<FlowDesignerContext>({
+  snapshot: ({ designer }) => snapshotHistory(internalsOf(designer).history()),
+  goTo: ({ designer }, position) => {
+    if (designer.readonly !== true)
+      internalsOf(designer).history().goTo(position)
+  },
+  announce: (context, message) => context.frame?.announce(message),
+}, { region: { icon: HistoryIcon }, readonly: ({ designer }) => designer.readonly === true })
 
 function tourStep(key: FlowTourStepKey, target: DesignerTourTarget, order: number): DesignerTourStep<FlowDesignerContext> {
   return {
@@ -244,11 +283,12 @@ export const FLOW_TOUR_STEPS: readonly DesignerTourStep<FlowDesignerContext>[] =
   tourStep('autoLayout', { command: 'auto-layout' }, 120),
 ]
 
-/** 设计器的内置扩展：内置命令、图片导出器与引导步骤。节点类型、连线属性等 core 层的内置部分在 FLOW_CORE_EXTENSION 里。 */
+/** 设计器的内置扩展：内置命令、图片导出器、历史记录面板与引导步骤。节点类型、连线属性等 core 层的内置部分在 FLOW_CORE_EXTENSION 里。 */
 export const FLOW_DESIGNER_EXTENSION: FlowDesignerExtension = {
   id: '@xihan-flow/designer',
   commands: BUILTIN_COMMANDS,
   exporters: [IMAGE_EXPORTER],
+  panels: [HISTORY_PANEL],
   tourSteps: FLOW_TOUR_STEPS,
 }
 

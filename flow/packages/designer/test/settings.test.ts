@@ -75,7 +75,7 @@ describe('设置', () => {
     panelSwitch('minimap').dispatchEvent(new CustomEvent('checked-change', { detail: { checked: false }, bubbles: true }))
     await settle(designer)
     expect(changes.map(change => change.key)).toEqual(['layout.panels'])
-    expect(changes[0]!.value).toMatchObject({ hidden: ['minimap'] })
+    expect(changes[0]!.value).toMatchObject({ hidden: ['history', 'minimap'] })
     expect(designer.settings).toEqual({ 'layout.panels': changes[0]!.value })
     expect(minimapRegion(designer).hidden).toBe(true)
     designer.settings = {}
@@ -123,7 +123,7 @@ describe('设置', () => {
     designer.openSettings('layout')
     await settle(designer)
     panelSwitch('palette').dispatchEvent(new CustomEvent('checked-change', { detail: { checked: false }, bubbles: true }))
-    expect(JSON.parse(localStorage.getItem('flow-settings')!)).toMatchObject({ 'flow.snap': false, 'layout.panels': { hidden: ['palette'] } })
+    expect(JSON.parse(localStorage.getItem('flow-settings')!)).toMatchObject({ 'flow.snap': false, 'layout.panels': { hidden: ['history', 'palette'] } })
 
     localStorage.setItem('broken', '[1]')
     const errors: unknown[] = []
@@ -172,7 +172,7 @@ describe('设置', () => {
     expect(frame.showsPanel('status')).toBe(false)
     frame.querySelector<HTMLButtonElement>('[data-region="palette"] [data-part="panel-close"]')!.click()
     await designer.updateComplete
-    expect(designer.settings).toMatchObject({ 'general.statusBar': false, 'layout.panels': { hidden: ['palette'] } })
+    expect(designer.settings).toMatchObject({ 'general.statusBar': false, 'layout.panels': { hidden: ['history', 'palette'] } })
     designer.settings = {}
     await designer.updateComplete
     await frame.updateComplete

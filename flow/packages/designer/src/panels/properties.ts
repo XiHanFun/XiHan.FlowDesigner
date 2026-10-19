@@ -10,6 +10,7 @@
 import type { FlowIssue, FlowPropertyDescriptor } from '@xihan-flow/core'
 import type { FlowDesignerTranslations } from '@xihan-flow/runtime'
 import type { JsonPath, JsonValue } from '@xihan-ui/core/json'
+import type { HistoryLabel } from '@xihan-ui/designer-kit'
 import type { PropertyEditorContext, PropertyEditorInstance, PropertyEditorTable } from '@xihan-ui/designer-kit/properties'
 import type {
   DesignerPropertiesEventMap,
@@ -20,7 +21,7 @@ import type {
   XhDesignerPropertiesElement,
 } from '@xihan-ui/designer-shell'
 import type { FlowEditor, FlowPropertyRef } from '../editor'
-import { formatJsonPath } from '@xihan-ui/core/json'
+import { formatJsonPath, jsonEquals } from '@xihan-ui/core/json'
 import { createGeneratedElement } from '@xihan-ui/web-components/authoring'
 
 /** 节点类型没有声明属性时只编辑标签。 */
@@ -73,6 +74,8 @@ export class PropertiesPanel {
   #propertyLabel: FlowDesignerTranslations['propertyLabel'] | undefined
   #labelOf: ((descriptor: DesignerPropertyDescriptor) => string) | undefined
   #errorsKey = ''
+  /** 最近一次刷新时的文案：历史说明在显示时用它。 */
+  #t: FlowDesignerTranslations | undefined
 
   constructor(host: PropertiesHost) {
     this.#host = host
@@ -83,12 +86,24 @@ export class PropertiesPanel {
       if (host.isReadonly())
         return
       const refs = targets.flatMap(target => this.#refs.get(refKey(target.kind, target.id)) ?? [])
-      host.editor.setProperty(refs, path, value, { merge })
+      host.editor.setProperty(refs, path, value, { merge, ...this.#historyLabel(path) })
     })
     this.element.addEventListener('property-commit', () => host.editor.seal())
   }
 
+  /** 改一项属性的说明「修改「属性名」」，属性名与面板上的一致、跟着语言变；找不到这一项时不给，交给编辑器的 describe。 */
+  #historyLabel(path: JsonPath): { readonly label?: HistoryLabel } {
+    const descriptor = this.element.targets?.flatMap(target => target.descriptors).find(item => jsonEquals(item.path, path))
+    if (descriptor === undefined)
+      return {}
+    return { label: () => {
+      const t = this.#t!
+      return t.history.editProperty(this.#labelOf?.(descriptor) ?? descriptor.label ?? t.propertyLabel(formatJsonPath(descriptor.path)))
+    } }
+  }
+
   update(t: FlowDesignerTranslations): void {
+    this.#t = t
     const panel = this.element
     const editor = this.#host.editor
     const document = editor.document
