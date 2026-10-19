@@ -1742,7 +1742,7 @@ export class XhFlowDesigner extends XhReactiveElement {
   }
 
   readonly #onPointerDown = (event: PointerEvent): void => {
-    if (event.button !== 0 || this.#gesture)
+    if (event.button !== 0 || this.#gesture || this.#inSelectionBar(event))
       return
     this.#stopAutoFit()
     const target = event.target instanceof Element ? event.target : undefined
@@ -1776,6 +1776,11 @@ export class XhFlowDesigner extends XhReactiveElement {
       this.#beginMarquee(event, event.ctrlKey || event.metaKey)
     else
       this.#startPan(event)
+  }
+
+  /** 事件出自选中工具条（它在画布视口里）。 */
+  #inSelectionBar(event: Event): boolean {
+    return event.target instanceof Node && this.#layers?.selectionBar.element.contains(event.target) === true
   }
 
   #pressNode(event: PointerEvent, id: string, additive: boolean): void {
@@ -2276,7 +2281,8 @@ export class XhFlowDesigner extends XhReactiveElement {
       event.preventDefault()
       return
     }
-    if (this.#gesture)
+    // 画布里的元件（如选中工具条走位的方向键）已经接走的键不再处理
+    if (this.#gesture || event.defaultPrevented)
       return
     const context = this.#context()
     const hit = commandForShortcut(this.#model.commands.values(), event, context, this.#kbdPlatform())
