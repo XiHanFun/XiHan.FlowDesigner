@@ -575,9 +575,13 @@ const PANEL_TITLES = {
   minimap: ['xh-flow-designer', 'minimap'],
   properties: ['xh-designer-properties', 'title'],
   issues: ['xh-designer-issues', 'title'],
+  history: ['xh-designer-history', 'title'],
 }
 
-/** ...designerPanelCommands({ panels: Object.values(FLOW_PANELS) })：FLOW_PANELS 里每块面板一条 panel:<面板 id>，名字取面板的标题。 */
+/**
+ * 面板的开关命令：FLOW_PANELS 里每块面板一条 panel:<面板 id>，名字取面板的标题。外框上直接登记的几块由 designerPanelCommands 生成，
+ * 历史这类内置扩展的面板随扩展面板一起生成，这里按 FLOW_PANELS 一并列出。
+ */
 function panelCommands(file) {
   const { node } = declaration(file, 'FLOW_PANELS')
   const literal = node.initializer.expression ?? node.initializer
@@ -590,15 +594,30 @@ function panelCommands(file) {
   })
 }
 
-/** BUILTIN_COMMANDS 里展开的一项：designerShellCommands 或 designerPanelCommands。 */
+/** designer-shell 的历史命令：撤销、重做（另认 Ctrl + Y）与清空历史，文案在共用一桶里，只读时都不可用。 */
+const HISTORY_COMMANDS = [
+  { id: 'undo', label: 'undo', shortcut: ['Mod', 'Z'] },
+  { id: 'redo', label: 'redo', shortcut: ['Mod', 'Shift', 'Z'], alternate: [['Ctrl', 'Y']] },
+  { id: 'clear-history', label: 'clearHistory', shortcut: [] },
+]
+
+function historyCommands(call) {
+  const options = new Map(call.arguments[0].properties.map(property => [nameOf(property), property.initializer]))
+  const icons = new Map((options.get('icons')?.properties ?? []).map(property => [nameOf(property), flat(property.initializer)]))
+  return HISTORY_COMMANDS.map(command => ({ ...command, bucket: 'xh-designer-commands', icon: icons.get(command.label), readonly: false }))
+}
+
+/** BUILTIN_COMMANDS 里展开的一项：designerHistoryCommands、designerShellCommands 或 designerPanelCommands。 */
 function spreadCommands(element, file) {
   const call = element.expression
   const name = flat(call)
+  if (name.startsWith('designerHistoryCommands'))
+    return historyCommands(call)
   if (name.startsWith('designerShellCommands'))
     return shellCommands(call)
   if (name.startsWith('designerPanelCommands'))
     return panelCommands(file)
-  throw new Error(`[gen-reference] BUILTIN_COMMANDS 里展开的不是 designerShellCommands 或 designerPanelCommands：${flat(element)}`)
+  throw new Error(`[gen-reference] BUILTIN_COMMANDS 里展开的不是 designerHistoryCommands、designerShellCommands 或 designerPanelCommands：${flat(element)}`)
 }
 
 /**
@@ -635,7 +654,7 @@ function commandTable(file) {
     code(command.id, true),
     flowZhCN.translations[command.bucket][command.label],
     command.icon === undefined ? '—' : code(command.icon, true),
-    command.shortcut.length === 0 ? '—' : code(shortcutText(command.shortcut), true),
+    command.shortcut.length === 0 ? '—' : [command.shortcut, ...(command.alternate ?? [])].map(keys => code(shortcutText(keys), true)).join('、'),
     command.readonly ? '可用' : '不可用',
   ]))
 }

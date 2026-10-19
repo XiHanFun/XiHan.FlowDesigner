@@ -326,6 +326,7 @@ declare function createOrthogonalRouter(options?: OrthogonalRouterOptions): Flow
 | --- | --- | --- |
 | `DEFAULT_FLOW_VIEWER_TRANSLATIONS` | 常量 | 查看器的英文文案，也是不配语言包时的缺省。 |
 | `FlowDesignerTranslations` | 接口 | 设计器的文案。 |
+| `FlowHistoryTranslations` | 接口 | 撤销历史里一步的说明：单个节点写「种类 名称」（见 node，没有名称时名称是 id），几个节点写个数。 |
 | `FlowIssueNames` | 接口 | 拼问题说明时用到的名称。 |
 | `FlowStartVariableColumn` | 类型 | 启动变量表的列：变量名、必填、缺省值、说明。 |
 | `FlowTourStepKey` | 类型 | 新手引导里流程自己的几步：顶栏的插入钮、连线与自动布局。 |

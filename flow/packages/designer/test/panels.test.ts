@@ -103,11 +103,11 @@ describe('工具栏', () => {
     document.querySelector<HTMLElement>('[data-scope="menu"][data-part="item"][data-value="item:palette"]')!.click()
     await settleFrame(designer)
     expect(seen).toEqual(['layout.panels'])
-    expect(designer.settings!['layout.panels']).toMatchObject({ version: 1, hidden: ['palette'] })
+    expect(designer.settings!['layout.panels']).toMatchObject({ version: 1, hidden: ['history', 'palette'] })
     expect(menu.checkboxValue).toEqual(['item:properties', 'item:issues', 'item:minimap'])
     document.querySelector<HTMLElement>('[data-scope="menu"][data-part="item"][data-value="item:palette"]')!.click()
     await settleFrame(designer)
-    expect(designer.settings!['layout.panels']).toMatchObject({ hidden: [] })
+    expect(designer.settings!['layout.panels']).toMatchObject({ hidden: ['history'] })
   })
 
   it('每块面板一条 panel:<id> 命令：排进工具栏后点它开关小地图，文字取面板的名字', async () => {
@@ -119,7 +119,7 @@ describe('工具栏', () => {
     toolbarItem(designer, 'panel:minimap').click()
     await settleFrame(designer)
     expect(overlay().hidden).toBe(true)
-    expect(designer.settings!['layout.panels']).toMatchObject({ hidden: ['minimap'] })
+    expect(designer.settings!['layout.panels']).toMatchObject({ hidden: ['history', 'minimap'] })
   })
 
   it('点条目执行对应命令，禁用的条目不执行', async () => {
@@ -184,7 +184,7 @@ describe('外框卡片', () => {
     frame.querySelector<HTMLButtonElement>('[data-region="palette"] [data-part="panel-close"]')!.click()
     await settleFrame(designer)
     expect(seen.map(change => change.key)).toEqual(['layout.panels'])
-    expect(seen[0]!.value).toMatchObject({ version: 1, hidden: ['palette'], docks: { start: ['palette'], end: ['properties'], bottom: ['issues'] } })
+    expect(seen[0]!.value).toMatchObject({ version: 1, hidden: ['history', 'palette'], docks: { start: ['palette'], end: ['properties', 'history'], bottom: ['issues'] } })
     expect([seen[0]!.settings, designer.settings]).toEqual([{ 'layout.panels': seen[0]!.value }, { 'layout.panels': seen[0]!.value }])
     expect([frame.showsPanel('palette'), frame.showsPanel('properties')]).toEqual([false, true])
 
@@ -198,7 +198,7 @@ describe('外框卡片', () => {
     const designer = await mount(element => element.settingsPolicy = { 'layout.panels.issues': 'hidden' })
     await settleFrame(designer)
     const frame = designer.querySelector<FrameElement>('xh-designer-frame')!
-    expect(frame.panelEntries().map(entry => entry.name)).toEqual(['palette', 'properties', 'minimap'])
+    expect(frame.panelEntries().map(entry => entry.name)).toEqual(['palette', 'properties', 'minimap', 'history'])
     expect(part(frameOf(designer), 'issues')).toHaveLength(0)
     designer.settingsPolicy = { 'layout.panels': 'locked' }
     await settleFrame(designer)

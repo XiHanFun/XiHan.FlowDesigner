@@ -115,7 +115,8 @@ declare function defineFlowDesigner(): void
 | --- | --- | --- | --- | --- |
 | `open-file` | 打开文件 | `FolderOpenIcon` | — | 不可用 |
 | `undo` | 撤销 | `UndoIcon` | `Ctrl / ⌘ + Z` | 不可用 |
-| `redo` | 重做 | `RedoIcon` | `Ctrl / ⌘ + Shift + Z` | 不可用 |
+| `redo` | 重做 | `RedoIcon` | `Ctrl / ⌘ + Shift + Z`、`Ctrl + Y` | 不可用 |
+| `clear-history` | 清空历史 | `EraserIcon` | — | 不可用 |
 | `cut` | 剪切 | `ScissorsIcon` | — | 不可用 |
 | `copy` | 复制 | `CopyIcon` | — | 可用 |
 | `paste` | 粘贴 | `ClipboardIcon` | — | 不可用 |
@@ -150,6 +151,7 @@ declare function defineFlowDesigner(): void
 | `panel:properties` | 属性 | — | — | 可用 |
 | `panel:issues` | 问题 | — | — | 可用 |
 | `panel:minimap` | 小地图 | — | — | 可用 |
+| `panel:history` | 历史记录 | — | — | 可用 |
 
 ### FLOW_TOOLBAR_LAYOUT {#flow_toolbar_layout}
 
@@ -201,7 +203,7 @@ schema-change 的种类：执行操作、撤销、重做，或宿主装载了新
 ### FLOW_PANELS {#flow_panels}
 
 ```ts
-const FLOW_PANELS = { palette: 'palette', properties: 'properties', issues: 'issues', minimap: 'minimap' } as const
+const FLOW_PANELS = { palette: 'palette', properties: 'properties', issues: 'issues', minimap: 'minimap', history: 'history' } as const
 ```
 
 设计器登记的面板与画布浮动件的 id：宿主写 defaultLayout、settingsPolicy（layout.panels.&lt;面板 id&gt;）时用它，不手写字符串。各有一条开关命令 panel:&lt;面板 id&gt;。
@@ -233,7 +235,7 @@ const FLOW_PANELS = { palette: 'palette', properties: 'properties', issues: 'iss
 | `direction?` | `LayeredDirection` | 分层方向：TB 自上而下、BT 自下而上、LR 自左而右、RL 自右而左；缺省 TB。 |
 | `nodeGap?` | `number` | 同层相邻两节点之间的空隙，缺省 24。 |
 | `layerGap?` | `number` | 相邻两层之间的空隙，缺省 48。 |
-| `label?` | `string` | 这一步的说明，供撤销重做按钮提示。 |
+| `label?` | `HistoryLabel` | 这一步的说明，供撤销重做按钮提示与历史记录；可以是现取的函数，跟着语言变。 |
 
 ## 文案
 
@@ -280,6 +282,7 @@ const FLOW_PANELS = { palette: 'palette', properties: 'properties', issues: 'iss
 | `shortcutNudge` | `string` | 快捷键页：方向键一行按流程的做法改写的说明。 |
 | `shortcutCancel` | `string` | 快捷键页：Esc 一行按流程的做法改写的说明。 |
 | `shortcutContextMenu` | `string` | 快捷键页：Shift + F10 与菜单键一行的说明。 |
+| `history` | `FlowHistoryTranslations` | 撤销历史里一步的说明。 |
 
 | 方法 | 说明 |
 | --- | --- |
@@ -342,7 +345,7 @@ type FlowBuiltinPropertyKey = 'label' | 'style.dashed'
 | 名称 | 种类 | 说明 |
 | --- | --- | --- |
 | `createFlowDesignerModel` | 函数 | 合出设计器用的模型；editors 是垫在各扩展之下的内建编辑器。 |
-| `FLOW_DESIGNER_EXTENSION` | 常量 | 设计器的内置扩展：内置命令、图片导出器与引导步骤。 |
+| `FLOW_DESIGNER_EXTENSION` | 常量 | 设计器的内置扩展：内置命令、图片导出器、历史记录面板与引导步骤。 |
 | `FLOW_DESIGNER_HELP_URL` | 常量 | 内置命令 help 打开的帮助页：流程文档站的设计器一页。 |
 | `FLOW_PANELS` | 常量 | 设计器登记的面板与画布浮动件的 id：宿主写 defaultLayout、settingsPolicy（layout.panels.&lt;面板 id&gt;）时用它，不手写字符串。 |
 | `FLOW_TOOLBAR_LAYOUT` | 常量 | 工具栏的缺省排列；commandLayout 没写 toolbar 时用它，再把 placement 含 toolbar 的扩展命令追加成一组。 |
