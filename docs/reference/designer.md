@@ -63,7 +63,7 @@
 | `distribute(axis: DistributeAxis): void` | 等距分布选中的节点；少于三个或只读时什么都不做。 |
 | `autoLayout(options?: FlowAutoLayoutOptions): void` | 按连线方向分层排布全部节点，左上角保持在原处，并清除连线的手动拐点；记为一步，只读时什么都不做。没给的方向与间距取设置里「画布」分区的值。 |
 | `openSettings(section?: string): void` | 打开设置对话框，给了分区 id 就显示那一页：基础是 general，设计器自己的「画布」是 flow。 |
-| `startTour(): boolean` | 从头开始新手引导：通用步骤加流程与扩展的步骤；没有能走的步骤时返回 false。 |
+| `startTour(): boolean` | 从头开始新手引导：通用步骤加流程与扩展的步骤，同一页里别的引导开着时先收起它；没有能走的步骤时返回 false。 |
 | `openJsonEditor(): void` | 打开编辑整份流程定义 JSON 的对话框：写出当前定义，边改边按读入检查与校验报问题；没有错误时「应用」整份换上，记一步撤销。只读时只能看、不能应用。 |
 | `validate(): FlowIssue[]` | 按当前扩展与校验选项校验定义。 |
 | `getViewport(): Viewport` | 当前视口。 |

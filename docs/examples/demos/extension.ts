@@ -98,6 +98,8 @@ export function mount(host: HTMLElement): () => void {
   designer.propertyGroupLabels = { basic: '基本', rule: '规则' }
   designer.schema = schema
   // #endregion use
+  // 文档页上有几个示例，示例不自动开始新手引导
+  designer.autoTour = false
   host.append(designer)
   return () => host.replaceChildren()
 }

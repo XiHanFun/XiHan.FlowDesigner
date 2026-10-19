@@ -51,6 +51,18 @@ describe('新手引导', () => {
     expect([keys, designer.settings?.[DESIGNER_TOUR_DONE_KEY]]).toEqual([[DESIGNER_TOUR_DONE_KEY], true])
   })
 
+  it('同一页只开一个引导：别的设计器的引导开着时不自动开始；startTour() 先收起开着的那个', async () => {
+    const first = await mount(element => (element.autoTour = undefined))
+    const second = await mount(element => (element.autoTour = undefined))
+    await show(first)
+    expect(tour(first).running).toBe(true)
+    await show(second)
+    expect(tour(second).running).toBe(false)
+    expect(second.startTour()).toBe(true)
+    expect([tour(first).running, tour(second).running]).toEqual([false, true])
+    tour(second).stop()
+  })
+
   it('设置里记过 help.tourDone 时不再自动开始；autoTour 为 false 时也不自动开始', async () => {
     const done = await mount((element) => {
       element.autoTour = undefined
