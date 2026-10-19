@@ -296,20 +296,24 @@ function selectionOf(rows: readonly string[]): { nodes: string[], edges: string[
   return { nodes: targets.filter(target => target.kind === 'node').map(target => target.id), edges: targets.filter(target => target.kind === 'edge').map(target => target.id) }
 }
 
+/** 画布上此刻的选择换成流程结构的行 id。 */
+function outlineSelection(designer: XhFlowDesigner): string[] {
+  const { nodes, edges } = designer.getSelection()
+  return [...nodes.map(id => flowOutlineRowId({ kind: 'node', id })), ...edges.map(id => flowOutlineRowId({ kind: 'edge', id }))]
+}
+
 /**
- * 流程结构面板：节点为行，从它出去的连线列在下面、缺省收起，没有名称的写「种类名 · id」；选中一行就在画布上选中并显露它，
- * 悬停时在画布上标出，删除走设计器的删除。缺省停在左栏物料下面，标题与帮助换成流程的说法。行不能挪。
+ * 流程结构面板：节点为行，从它出去的连线列在下面、缺省收起，没有名称的写「种类名 · id」。面板交来的整份选中换成画布的选择
+ * （节点与连线可以一起选，空数组全部取消），只显露新选上的第一行；悬停时在画布上标出，删除走设计器的删除。
+ * 缺省停在左栏物料下面，标题与帮助换成流程的说法。行不能挪。
  */
 const OUTLINE_PANEL = createOutlinePanel<FlowDesignerContext>({
   nodes: ({ designer }) => internalsOf(designer).outline(),
-  selection: ({ designer }) => {
-    const { nodes, edges } = designer.getSelection()
-    return [...nodes.map(id => flowOutlineRowId({ kind: 'node', id })), ...edges.map(id => flowOutlineRowId({ kind: 'edge', id }))]
-  },
+  selection: ({ designer }) => outlineSelection(designer),
   select: ({ designer }, rows) => {
-    const selection = selectionOf(rows)
-    designer.select(selection)
-    const first = flowOutlineTarget(rows[0] ?? '')
+    const before = new Set(outlineSelection(designer))
+    designer.select(selectionOf(rows))
+    const first = flowOutlineTarget(rows.find(row => !before.has(row)) ?? '')
     if (first?.kind === 'node')
       designer.revealNode(first.id)
     else if (first?.kind === 'edge')
