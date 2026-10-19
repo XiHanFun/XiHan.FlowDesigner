@@ -8,7 +8,7 @@
 import type { XhFlowDesigner } from '../src'
 import { afterEach, describe, expect, it } from 'vitest'
 import { defineFlowDesigner, flowSelectionLayout } from '../src'
-import { mount, part, unmountAll } from './helpers'
+import { mount, part, placeCanvas, press, release, unmountAll } from './helpers'
 
 defineFlowDesigner()
 
@@ -61,5 +61,24 @@ describe('选中工具条', () => {
     expect(designer.querySelector('xh-designer-transform [data-part="toolbar"]')!.contains(document.activeElement)).toBe(true)
     designer.querySelector<HTMLButtonElement>('xh-designer-transform [data-part="toolbar"] button[value="delete"]')!.click()
     expect(designer.schema.nodes.map(node => node.id)).toEqual(['s', 't'])
+  })
+
+  it('在工具条上按下松开不当作点画布空白处，选中不变；工具条接走的方向键不微移节点，没接的键照旧交给画布', async () => {
+    const designer = await mount()
+    placeCanvas(designer, 800, 600)
+    designer.select({ nodes: ['t'] })
+    await designer.updateComplete
+    const copy = designer.querySelector<HTMLButtonElement>('xh-designer-transform [data-part="toolbar"] button[value="copy"]')!
+    press(copy, 300, 20)
+    release(300, 20)
+    await designer.updateComplete
+    expect(designer.getSelection().nodes).toEqual(['t'])
+    copy.focus()
+    const arrow = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })
+    copy.dispatchEvent(arrow)
+    expect(arrow.defaultPrevented).toBe(true)
+    expect(designer.schema.nodes.find(node => node.id === 't')!.x).toBe(200)
+    copy.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true }))
+    expect(designer.schema.nodes.map(node => node.id)).toEqual(['s', 'e'])
   })
 })
