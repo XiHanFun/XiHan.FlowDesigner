@@ -81,7 +81,7 @@ describe('工具栏', () => {
     }
   })
 
-  it('「面板」点开一张锚在按钮上的菜单，列出物料、属性与问题，勾选的显示；选中一项开关它并派发 panels-change', async () => {
+  it('「面板」点开一张锚在按钮上的菜单，列出物料、属性、问题与小地图，勾选的显示；选中一项开关它，布局写进设置的 layout.panels', async () => {
     const designer = await mount()
     await settleFrame(designer)
     const button = toolbarItem(designer, 'panels')
@@ -90,19 +90,31 @@ describe('工具栏', () => {
     type MenuHost = HTMLElement & { open?: boolean, anchor?: HTMLElement | null, collection?: readonly { value: string, label?: string }[], checkboxValue?: readonly string[] }
     const menu = designer.querySelector<MenuHost>('[data-part="command-bar"] xh-menu')!
     expect([menu.open, menu.anchor]).toEqual([true, button])
-    expect(menu.collection!.map(item => item.value)).toEqual(['item:palette', 'item:properties', 'item:issues'])
-    expect(menu.checkboxValue).toEqual(['item:palette', 'item:properties', 'item:issues'])
+    expect(menu.collection!.slice(0, 4).map(item => item.value)).toEqual(['item:palette', 'item:properties', 'item:issues', 'item:minimap'])
+    expect(menu.checkboxValue).toEqual(['item:palette', 'item:properties', 'item:issues', 'item:minimap'])
     const seen: string[] = []
-    designer.addEventListener('panels-change', event => seen.push((event as CustomEvent<{ panels: string }>).detail.panels))
+    designer.addEventListener('settings-change', event => seen.push((event as CustomEvent<{ key: string }>).detail.key))
     // 复选条目点了只派发 checkbox-value-change，用真实的点击走一遍
     document.querySelector<HTMLElement>('[data-scope="menu"][data-part="item"][data-value="item:palette"]')!.click()
     await settleFrame(designer)
-    expect(seen).toEqual([designer.panels])
-    expect(designer.panels!.split(' ')).not.toContain('palette')
-    expect(menu.checkboxValue).toEqual(['item:properties', 'item:issues'])
+    expect(seen).toEqual(['layout.panels'])
+    expect(designer.settings!['layout.panels']).toMatchObject({ version: 1, hidden: ['palette'] })
+    expect(menu.checkboxValue).toEqual(['item:properties', 'item:issues', 'item:minimap'])
     document.querySelector<HTMLElement>('[data-scope="menu"][data-part="item"][data-value="item:palette"]')!.click()
     await settleFrame(designer)
-    expect(designer.panels!.split(' ')).toContain('palette')
+    expect(designer.settings!['layout.panels']).toMatchObject({ hidden: [] })
+  })
+
+  it('每块面板一条 panel:<id> 命令：排进工具栏后点它开关小地图，文字取面板的名字', async () => {
+    const designer = await mount(element => element.commandLayout = { toolbar: [['panel:minimap', 'panel:palette']] })
+    await settleFrame(designer)
+    const overlay = (): HTMLElement => designer.querySelector<HTMLElement>('[data-region="minimap"]')!
+    expect([toolbarItem(designer, 'panel:minimap').textContent, toolbarItem(designer, 'panel:palette').textContent]).toEqual(['Minimap', 'Nodes'])
+    expect([overlay().hidden, overlay().contains(designer.querySelector('xh-designer-minimap'))]).toEqual([false, true])
+    toolbarItem(designer, 'panel:minimap').click()
+    await settleFrame(designer)
+    expect(overlay().hidden).toBe(true)
+    expect(designer.settings!['layout.panels']).toMatchObject({ hidden: ['minimap'] })
   })
 
   it('点条目执行对应命令，禁用的条目不执行', async () => {
@@ -119,23 +131,22 @@ describe('工具栏', () => {
     expect(designer.getViewport().zoom).toBeCloseTo(1.2)
   })
 
-  it('panels 里没列工具栏时收起，通用命令的文案跟着全局配置里 xh-designer-commands 那一桶变', async () => {
-    const designer = await mount(element => element.setAttribute('panels', 'palette properties'))
+  it('defaultLayout 藏掉的面板不显示，设置里存了布局时按存的；通用命令的文案跟着全局配置里 xh-designer-commands 那一桶变', async () => {
+    const designer = await mount(element => element.defaultLayout = { version: 1, hidden: ['issues'] })
     await settleFrame(designer)
-    expect(part(designer, 'command-bar')).toHaveLength(0)
-    expect(part(designer, 'palette')).toHaveLength(1)
-    expect(part(designer, 'issues')).toHaveLength(0)
-    designer.removeAttribute('panels')
+    expect([part(designer, 'command-bar'), part(designer, 'palette'), part(designer, 'issues')].map(list => list.length)).toEqual([1, 1, 0])
+    designer.settings = { 'layout.panels': { version: 1, hidden: ['palette'] } }
     setXhConfig({ translations: { 'xh-designer-commands': { undo: '撤销' } } })
     await settleFrame(designer)
-    expect(part(designer, 'command-bar')).toHaveLength(1)
+    expect([part(designer, 'palette'), part(designer, 'issues')].map(list => list.length)).toEqual([0, 1])
     expect(toolbarItem(designer, 'undo').textContent).toBe('撤销')
   })
 })
 
 type FrameElement = HTMLElement & {
-  regions: readonly { name: string, title?: string, subtitle?: string, help?: string }[]
+  regions: readonly { name: string, title?: string, subtitle?: string, help?: string, icon?: unknown, position: string, anchor?: string }[]
   showsPanel: (name: string) => boolean
+  panelEntries: () => readonly { name: string, locked: boolean }[]
 }
 
 describe('外框卡片', () => {
@@ -144,11 +155,12 @@ describe('外框卡片', () => {
     await settleFrame(designer)
     const frame = designer.querySelector<FrameElement>('xh-designer-frame')!
     const region = (name: string) => frame.regions.find(item => item.name === name)!
-    expect(['palette', 'properties', 'issues'].map(name => [region(name).title, typeof region(name).help])).toEqual([
-      ['Nodes', 'string'],
-      ['Properties', 'string'],
-      ['Problems', 'string'],
+    expect(['palette', 'properties', 'issues'].map(name => [region(name).title, typeof region(name).help, typeof region(name).icon])).toEqual([
+      ['Nodes', 'string', 'object'],
+      ['Properties', 'string', 'object'],
+      ['Problems', 'string', 'object'],
     ])
+    expect([region('minimap').position, region('minimap').anchor, region('minimap').title, typeof region('minimap').icon]).toEqual(['overlay', 'bottom-end', 'Minimap', 'object'])
     expect([region('toolbar').title, region('canvas').title]).toEqual([undefined, undefined])
     designer.select({ nodes: ['t'] })
     await settleFrame(designer)
@@ -158,25 +170,35 @@ describe('外框卡片', () => {
     expect(parts.map(element => element.headless)).toEqual([true, true, true])
   })
 
-  it('点面板头的关闭钮收起这块面板：panels 换成外框剩下的区，设计器自己的小地图照原样，派发 panels-change', async () => {
+  it('点面板头的关闭钮隐藏这块面板：整份布局写进设置的 layout.panels 并派发 settings-change，宿主赋回 settings 照样生效', async () => {
     const designer = await mount()
     await settleFrame(designer)
     const frame = designer.querySelector<FrameElement>('xh-designer-frame')!
-    const seen: string[] = []
-    designer.addEventListener('panels-change', event => seen.push((event as CustomEvent<{ panels: string }>).detail.panels))
+    const seen: { key: string, value: unknown, settings: Record<string, unknown> }[] = []
+    designer.addEventListener('settings-change', event => seen.push((event as CustomEvent<{ key: string, value: unknown, settings: Record<string, unknown> }>).detail))
     frame.querySelector<HTMLButtonElement>('[data-region="palette"] [data-part="panel-close"]')!.click()
     await settleFrame(designer)
-    expect(seen).toEqual([designer.panels])
-    const shown = designer.panels!.split(' ')
-    expect(shown).toEqual(expect.arrayContaining(['toolbar', 'properties', 'issues', 'minimap']))
-    expect([shown.includes('palette'), frame.showsPanel('palette'), frame.showsPanel('properties')]).toEqual([false, false, true])
+    expect(seen.map(change => change.key)).toEqual(['layout.panels'])
+    expect(seen[0]!.value).toMatchObject({ version: 1, hidden: ['palette'], docks: { start: ['palette'], end: ['properties'], bottom: ['issues'] } })
+    expect([seen[0]!.settings, designer.settings]).toEqual([{ 'layout.panels': seen[0]!.value }, { 'layout.panels': seen[0]!.value }])
+    expect([frame.showsPanel('palette'), frame.showsPanel('properties')]).toEqual([false, true])
 
-    designer.panels = 'toolbar properties issues'
+    designer.settings = { 'layout.panels': { version: 1, hidden: ['issues'] } }
     await settleFrame(designer)
-    frame.querySelector<HTMLButtonElement>('[data-region="issues"] [data-part="panel-close"]')!.click()
+    expect([frame.showsPanel('palette'), frame.showsPanel('issues')]).toEqual([true, false])
+    expect(seen).toHaveLength(1)
+  })
+
+  it('settingsPolicy 管布局：layout.panels.<id> 藏掉一块，layout.panels 锁整份', async () => {
+    const designer = await mount(element => element.settingsPolicy = { 'layout.panels.issues': 'hidden' })
     await settleFrame(designer)
-    expect(designer.panels).toBe('toolbar properties')
-    expect(designer.querySelector<HTMLElement>('xh-designer-minimap')!.hidden).toBe(true)
+    const frame = designer.querySelector<FrameElement>('xh-designer-frame')!
+    expect(frame.panelEntries().map(entry => entry.name)).toEqual(['palette', 'properties', 'minimap'])
+    expect(part(designer, 'issues')).toHaveLength(0)
+    designer.settingsPolicy = { 'layout.panels': 'locked' }
+    await settleFrame(designer)
+    expect(frame.panelEntries().every(entry => entry.locked)).toBe(true)
+    expect(frame.querySelector<HTMLElement>('[data-region="palette"] [data-part="panel-close"]')!.hidden).toBe(true)
   })
 })
 
@@ -390,17 +412,17 @@ describe('物料面板', () => {
     expect(designer.getViewport()).toEqual({ x: -12, y: 4, zoom: 1 })
   })
 
-  it('只读时条目不能用、拖不进来，panels 里没列物料时收起', async () => {
+  it('只读时条目不能用、拖不进来，布局里隐藏物料时收起', async () => {
     const designer = await mount(element => element.readonly = true)
     await settle(designer)
     expect(Array.from(palette(designer).querySelectorAll('button[data-part="item"]')).every(button => button.getAttribute('aria-disabled') === 'true')).toBe(true)
     item(designer, 'task').click()
     expect(designer.schema.nodes).toHaveLength(3)
     const element = palette(designer)
-    designer.panels = 'toolbar  properties\tissues minimap'
+    designer.settings = { 'layout.panels': { version: 1, hidden: ['palette'] } }
     await settleFrame(designer)
     expect(element.isConnected).toBe(false)
-    designer.panels = undefined
+    designer.settings = undefined
     await settleFrame(designer)
     expect(element.isConnected).toBe(true)
   })
@@ -478,7 +500,7 @@ describe('问题列表', () => {
     expect(document.activeElement).toBe(designer.querySelector('[data-part="property"][data-path="data.owner"] input'))
   })
 
-  it('没有问题时给提示，panels 写空串时全部收起', async () => {
+  it('没有问题时给提示，布局里隐藏全部面板时都收起，画布还在', async () => {
     const designer = await mount((element) => {
       element.validateOptions = { severity: { 'node.isolated': 'off', 'node.missing-outgoing': 'off', 'node.missing-incoming': 'off' } }
     })
@@ -487,10 +509,10 @@ describe('问题列表', () => {
     const empty = list(designer).querySelector<HTMLElement>('[data-part="empty"]')!
     expect([empty.hidden, empty.textContent]).toEqual([false, 'No problems'])
     const panels = ['command-bar', 'palette', 'properties', 'issues'].map(name => part(designer, name)[0]!)
-    designer.panels = ''
+    designer.settings = { 'layout.panels': { version: 1, hidden: ['palette', 'properties', 'issues', 'minimap'] } }
     await settleFrame(designer)
-    expect(panels.map(element => element.isConnected)).toEqual([false, false, false, false])
-    expect(part(designer, 'minimap')[0]!.hidden).toBe(true)
+    expect(panels.map(element => element.isConnected)).toEqual([true, false, false, false])
+    expect(designer.querySelector<HTMLElement>('[data-region="minimap"]')!.hidden).toBe(true)
     expect(designer.querySelector('[data-region="canvas"] > [data-part="canvas"]')).not.toBeNull()
   })
 })
@@ -508,7 +530,7 @@ describe('小地图', () => {
     const designer = await mount()
     await settleFrame(designer)
     const minimap = designer.querySelector('xh-designer-minimap')!
-    expect(minimap.parentElement!.matches('[data-region="canvas"] > [data-part="overlay"][data-overlay="bottom-end"]')).toBe(true)
+    expect(minimap.parentElement!.matches('[data-region="canvas"] > [data-part="overlay"][data-overlay="bottom-end"] > [data-region="minimap"]')).toBe(true)
     expect(designer.querySelector('[data-part="canvas"] xh-designer-minimap')).toBeNull()
   })
 
@@ -542,7 +564,7 @@ describe('小地图', () => {
     release(75, 50)
   })
 
-  it('没有节点时收起，panels 里没列小地图时也收起', async () => {
+  it('没有节点时收起，布局里隐藏小地图时也收起', async () => {
     const designer = await mount(element => element.schema = { version: 1, nodes: [], edges: [] })
     const minimap = designer.querySelector<HTMLElement & { updateComplete: Promise<unknown> }>('xh-designer-minimap')!
     await minimap.updateComplete
@@ -551,9 +573,9 @@ describe('小地图', () => {
     await designer.updateComplete
     await minimap.updateComplete
     expect([minimap.hasAttribute('data-empty'), minimap.hidden]).toEqual([false, false])
-    designer.panels = 'toolbar palette'
-    await designer.updateComplete
-    expect(minimap.hidden).toBe(true)
+    designer.settings = { 'layout.panels': { version: 1, hidden: ['minimap'] } }
+    await settleFrame(designer)
+    expect(minimap.closest<HTMLElement>('[data-region="minimap"]')!.hidden).toBe(true)
   })
 })
 

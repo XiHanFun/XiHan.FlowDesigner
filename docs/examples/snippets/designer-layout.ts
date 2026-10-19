@@ -3,12 +3,14 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-// 设计器的布局：只留工具栏与属性面板，重排工具栏与空白处的右键菜单，把一种警告关掉。
+import { FLOW_PANELS } from '@xihan-flow/designer'
+
+// 设计器的布局：缺省只显示属性面板，物料、问题与小地图收起；重排工具栏与空白处的右键菜单，把一种警告关掉。
 
 export function customize(designer: HTMLElementTagNameMap['xh-flow-designer']): void {
-  // #region panels
-  designer.panels = 'toolbar properties'
-  // #endregion panels
+  // #region default-layout
+  designer.defaultLayout = { version: 1, hidden: [FLOW_PANELS.palette, FLOW_PANELS.issues, FLOW_PANELS.minimap] }
+  // #endregion default-layout
 
   // #region command-layout
   designer.commandLayout = {

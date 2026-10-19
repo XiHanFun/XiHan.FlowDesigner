@@ -265,7 +265,7 @@ type PropertyCondition = { readonly path: JsonPath, readonly equals: JsonValue }
 
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
-| `panels?` | `readonly DesignerPanel<Ctx>[]` | 面板：各占外框的一个命名区，同一位置按扩展顺序上下排。 |
+| `panels?` | `readonly DesignerPanel<Ctx>[]` | 面板：各占外框的一个命名区，同一栏按扩展顺序上下排。 |
 | `settings?` | `readonly DesignerSettingsSection[]` | 设置分区：放进设置对话框，分区 id 不能与内置的 general 或别的扩展的重名，见 collectSettingsSections。 |
 
 ### FlowDesignerContext {#flowdesignercontext}
@@ -327,6 +327,7 @@ type FlowDesignerCommand = DesignerCommand<FlowDesignerContext>
 | `icon?` | `IconRecord` | 按钮与菜单项上的图标，图标集见 @xihan-ui/icons；工具栏按图标显示时，没有图标的命令退回显示短文字。 |
 | `placement?` | `readonly DesignerCommandPlacement[]` | 缺省排列里出现在哪些位置；不给即只经快捷键或 commandLayout 出现。 |
 | `shortcut?` | `readonly string[]` | 快捷键，写法同 xh-kbd 的 keys：['Mod', 'Shift', 'P']，Mod 在 macOS 上是 ⌘，其余平台是 Ctrl。 |
+| `alternateShortcuts?` | `readonly (readonly string[])[]` | 另外几组也能触发这条命令的快捷键，写法同 shortcut，如重做在 Mod+Shift+Z 之外再认 ['Ctrl', 'Y']。与 shortcut 一样查重、一样由 commandForShortcut 命中；提示里只显示 shortcut，快捷键表与 aria-keyshortcuts 全部列出（见 commandShortcuts）。 |
 | `tone?` | `Tone` | 语气：按钮与菜单项按这族色显示，破坏性命令写 danger。不给即不带语气。 |
 
 | 方法 | 说明 |
@@ -341,10 +342,10 @@ type FlowDesignerCommand = DesignerCommand<FlowDesignerContext>
 ### DesignerCommandPlacement {#designercommandplacement}
 
 ```ts
-type DesignerCommandPlacement = 'toolbar' | 'header' | `menu:${string}`
+type DesignerCommandPlacement = 'toolbar' | 'header' | `menu:${string}` | `selection:${string}`
 ```
 
-命令出现的位置：工具栏；顶栏中段（插入快捷钮，图标在上、短文字在下）；或某种主体的右键菜单（主体由各款定，如 node、edge、element、card、blank）。
+命令出现的位置：工具栏；顶栏中段（插入快捷钮，图标在上、短文字在下）；某种主体的右键菜单（主体由各款定，如 node、edge、element、card、blank）；或选中某种主体时浮在选中框上的选中工具条（主体同样由各款定，如 element、text、node、multiple）。
 
 ## 导入与导出
 
@@ -452,7 +453,8 @@ type FlowDesignerExporter = DesignerExporter<FlowExportContext>
 
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
-| `region` | `DesignerFrameRegion` | 外框的命名区：名字、位置、缺省与最小大小、分隔条上的区名；追加在内置区之后。 |
+| `region` | `DesignerFrameRegion` | 外框的命名区，即面板的登记：名字、缺省停的栏、标题、图标、能不能挪与浮出等；追加在内置区之后。 |
+| `headerCommands?` | `readonly string[] \| ((context: Ctx) => readonly string[])` | 面板头操作区里的命令（命令 id），按命令表铺成只显示图标的一小条工具栏；给函数时每轮刷新现取。 |
 
 | 方法 | 说明 |
 | --- | --- |
@@ -475,27 +477,33 @@ type FlowDesignerExporter = DesignerExporter<FlowExportContext>
 
 ### DesignerFrameRegion {#designerframeregion}
 
-一个命名区。同一位置的多个区按登记顺序上下排列，共用一个可调整的大小，区与区之间可拖动分高度。
+一个命名区，也就是面板的登记。区名是面板 id，同一栏的多块面板按登记顺序上下排列。
 
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
-| `name` | `string` | 区名：写 slot="&lt;区名&gt;" 的子元素放进这个区，panels 也按它开关。 |
-| `position` | `DesignerFramePosition` | 区在外框里的位置。 |
-| `size?` | `number` | 所在位置的缺省大小（百分比）：start、end 占中间一行的宽度，bottom 占中间一列的高度；取该位置第一个区的值。 |
-| `minSize?` | `number` | 拖动时所在位置的下限（百分比），缺省 10；取该位置第一个区的值。外框按尺寸槽算出的下限更大时以那个为准。 |
+| `name` | `string` | 区名：写 slot="&lt;区名&gt;" 的子元素放进这个区，布局里也按它认面板。 |
+| `position` | `DesignerFramePosition` | 区的位置；左、右、下是面板缺省停的栏。 |
+| `size?` | `number` | 所在栏的缺省大小（百分比）：左右两栏占中间一行的宽度，下方一栏占中间一列的高度；取那一栏第一块面板的值。 |
+| `minSize?` | `number` | 拖动时所在栏的下限（百分比），缺省 10；取那一栏第一块面板的值。外框按尺寸槽算出的下限更大时以那个为准。 |
 | `label?` | `string` | 分隔条无障碍名称里的区名，缺省用 title，再缺省用 name。 |
-| `title?` | `string` | 面板头的标题：给了就把这个区画成一张卡片，头部写标题；只对 start、end、bottom 三个位置生效。 |
+| `title?` | `string` | 面板头的标题：给了就把这块面板画成卡片，头部写标题；只对左、右、下三个位置生效。 |
 | `subtitle?` | `string` | 面板头标题下的一行副标题，如属性面板当前对象的名字。 |
 | `help?` | `string` | 面板头的帮助：给了就在右上角出帮助钮，悬停或聚焦时弹出这段说明。 |
-| `closable?` | `boolean` | 面板头出关闭钮，点了收起这块面板（从 panels 里去掉它）；缺省 true。 |
+| `icon?` | `IconRecord` | 面板的图标：面板菜单、浮出小窗的标题栏里用。 |
+| `anchor?` | `DesignerFrameOverlayAnchor` | position 为 overlay 时落在画布区的哪里，缺省 bottom-end。 |
+| `defaultHidden?` | `boolean` | 缺省不显示。 |
+| `closable?` | `boolean` | 能隐藏（面板头出关闭钮），缺省 true。 |
+| `movable?` | `boolean` | 能换栏、调序，缺省 true。 |
+| `floatable?` | `boolean` | 能浮出成小窗，缺省 true。 |
+| `minimizable?` | `boolean` | 能收成标题条，缺省 true。 |
 
 ### DesignerFramePosition {#designerframeposition}
 
 ```ts
-type DesignerFramePosition = 'header' | 'top' | 'start' | 'center' | 'end' | 'bottom' | 'status'
+type DesignerFramePosition = 'header' | 'top' | 'start' | 'center' | 'end' | 'bottom' | 'status' | 'overlay'
 ```
 
-区的位置：最上的顶栏、下面一条、中间一行的左、中、右、中间一列的下方，以及最下的状态栏。
+区的位置：最上的顶栏、下面一条、中间一行的左、中、右、中间一列的下方、最下的状态栏，以及画布浮动件。左、右、下三个位置上的区是面板，这里写的是它缺省停的栏，用户可以挪。
 
 ## 属性编辑器
 

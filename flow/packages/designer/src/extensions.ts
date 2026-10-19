@@ -14,7 +14,7 @@ import type { XhFlowDesigner } from './flow-designer'
 import type { FlowPropertyEditor } from './panels/properties'
 import { createFlowRuntimeModel } from '@xihan-flow/runtime'
 import { DesignerExtensionError, extensionCommands, extensionEditors } from '@xihan-ui/designer-kit'
-import { collectSettingsSections, designerShellCommands } from '@xihan-ui/designer-shell'
+import { collectSettingsSections, designerPanelCommands, designerShellCommands } from '@xihan-ui/designer-shell'
 import {
   AlignObjectsBottomIcon,
   AlignObjectsCenterIcon,
@@ -104,8 +104,11 @@ export interface FlowDesignerExtension extends FlowRuntimeExtension, Omit<Design
 /** 取值是字符串的文案键。 */
 type TextKey = { [K in keyof FlowDesignerTranslations]: FlowDesignerTranslations[K] extends string ? K : never }[keyof FlowDesignerTranslations]
 
+/** 共用命令文案里取值是字符串的键。 */
+type SharedTextKey = { [K in keyof DesignerCommandsTranslations]: DesignerCommandsTranslations[K] extends string ? K : never }[keyof DesignerCommandsTranslations]
+
 const text = (key: TextKey) => (context: FlowDesignerContext): string => context.translations[key]
-const shared = (key: keyof DesignerCommandsTranslations) => (context: FlowDesignerContext): string => context.commandTranslations[key]
+const shared = (key: SharedTextKey) => (context: FlowDesignerContext): string => context.commandTranslations[key]
 const editable = (test: (designer: XhFlowDesigner) => boolean) => ({ designer }: FlowDesignerContext): boolean => !designer.readonly && test(designer)
 const selectedNodes = (designer: XhFlowDesigner): number => designer.getSelection().nodes.length
 
@@ -150,8 +153,14 @@ async function saveImage(designer: XhFlowDesigner, format: FlowImageFormat): Pro
 export const FLOW_DESIGNER_HELP_URL = 'https://flow.docs.xihanfun.com/guide/designer'
 
 /**
- * 内置命令：打开文件、撤销重做、剪贴板、选择、对齐分布、布局、缩放、导出图片，以及 designer-shell 内置的设置与帮助，各带图标。四款都有的通用命令取 designer-shell 的
- * 共用文案，流程专属的取设计器文案；会删掉内容的删除写 danger 语气。
+ * 设计器登记的面板与画布浮动件的 id：宿主写 defaultLayout、settingsPolicy（layout.panels.<面板 id>）时用它，不手写字符串。
+ * 各有一条开关命令 panel:<面板 id>。
+ */
+export const FLOW_PANELS = { palette: 'palette', properties: 'properties', issues: 'issues', minimap: 'minimap' } as const
+
+/**
+ * 内置命令：打开文件、撤销重做、剪贴板、选择、对齐分布、布局、缩放、导出图片，以及 designer-shell 内置的面板、设置与帮助，各带图标；
+ * 每块面板另有一条开关命令。四款都有的通用命令取 designer-shell 的共用文案，流程专属的取设计器文案；会删掉内容的删除写 danger 语气。
  */
 const BUILTIN_COMMANDS: readonly FlowDesignerCommand[] = [
   { id: 'open-file', label: text('openFile'), icon: FolderOpenIcon, enabled: editable(d => d.canImport), run: ({ designer }) => designer.openFile() },
@@ -212,6 +221,7 @@ const BUILTIN_COMMANDS: readonly FlowDesignerCommand[] = [
     helpUrl: () => FLOW_DESIGNER_HELP_URL,
     icons: { panels: PanelLeftIcon, settings: SettingsIcon, help: CircleHelpIcon },
   }),
+  ...designerPanelCommands<FlowDesignerContext>({ panels: Object.values(FLOW_PANELS), frame: context => context.frame }),
 ]
 
 /** 设计器的内置扩展：内置命令与图片导出器。节点类型、连线属性等 core 层的内置部分在 FLOW_CORE_EXTENSION 里。 */
@@ -219,6 +229,22 @@ export const FLOW_DESIGNER_EXTENSION: FlowDesignerExtension = {
   id: '@xihan-flow/designer',
   commands: BUILTIN_COMMANDS,
   exporters: [IMAGE_EXPORTER],
+}
+
+/** 命令表并上扩展面板的开关命令 panel:<区名>；扩展自己登记了同名命令时抛 DesignerExtensionError。 */
+function withPanelCommands(commands: DesignerCommandTable<FlowDesignerContext>, extensions: readonly FlowDesignerExtension[]): DesignerCommandTable<FlowDesignerContext> {
+  const panels = extensions.flatMap(extension => (extension.panels ?? []).map(panel => panel.region.name))
+  if (panels.length === 0)
+    return commands
+  const table = new Map(commands)
+  for (const command of designerPanelCommands<FlowDesignerContext>({ panels, frame: context => context.frame })) {
+    if (table.has(command.id)) {
+      const owner = extensions.find(extension => extension.commands?.some(item => item.id === command.id))?.id ?? FLOW_DESIGNER_EXTENSION.id
+      throw new DesignerExtensionError('command', command.id, [FLOW_DESIGNER_EXTENSION.id, owner])
+    }
+    table.set(command.id, command)
+  }
+  return table
 }
 
 /** 命令表并上顶栏的插入命令；扩展自己登记了同名命令时抛 DesignerExtensionError。 */
@@ -320,7 +346,7 @@ export function createFlowDesignerModel(extensions: readonly FlowDesignerExtensi
     list,
     extensions: all,
     runtime,
-    commands: withQuickInsert(extensionCommands(all), runtime.nodeTypes.types, all),
+    commands: withPanelCommands(withQuickInsert(extensionCommands(all), runtime.nodeTypes.types, all), all),
     editors: extensionEditors<FlowPropertyEditor>(editors, all),
     importers: all.flatMap(extension => extension.importers ?? []),
     exporters: all.flatMap(extension => extension.exporters ?? []),

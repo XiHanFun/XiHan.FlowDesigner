@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-// 设计器自己的设置分区「画布」：自动布局的方向与间距、小地图、吸附对齐。值的键是 flow.<条目 id>，
+// 设计器自己的设置分区「画布」：自动布局的方向与间距、吸附对齐。值的键是 flow.<条目 id>，
 // 设计器与扩展从上下文的 settings 读。
 
 import type { FlowDesignerTranslations } from '@xihan-flow/runtime'
@@ -18,7 +18,6 @@ export const FLOW_SETTING_KEYS = {
   layoutDirection: 'flow.layoutDirection',
   nodeGap: 'flow.nodeGap',
   layerGap: 'flow.layerGap',
-  minimap: 'flow.minimap',
   snap: 'flow.snap',
 } as const
 
@@ -40,7 +39,6 @@ export function flowSettingsSection(t: FlowDesignerTranslations): DesignerSettin
       },
       { path: ['nodeGap'], label: t.settingsNodeGap, control: { kind: 'number', min: 0, step: 4, unit: 'px' }, default: 24, meta: { description: t.settingsNodeGapHint } },
       { path: ['layerGap'], label: t.settingsLayerGap, control: { kind: 'number', min: 0, step: 4, unit: 'px' }, default: 48, meta: { description: t.settingsLayerGapHint } },
-      { path: ['minimap'], label: t.settingsMinimap, control: { kind: 'boolean' }, default: true, meta: { description: t.settingsMinimapHint } },
       { path: ['snap'], label: t.settingsSnap, control: { kind: 'boolean' }, default: true, meta: { description: t.settingsSnapHint } },
     ],
   }

@@ -34,6 +34,8 @@ export interface FlowDesignerTranslations {
   readonly exportImage: string
   /** 物料面板的标题。 */
   readonly palette: string
+  /** 小地图的名字：面板菜单与设计器的面板命令用。 */
+  readonly minimap: string
   /** 没有类别的节点类型所在分组的标题。 */
   readonly paletteUncategorized: string
   /** 没有选中时属性面板里的提示。 */
@@ -72,10 +74,6 @@ export interface FlowDesignerTranslations {
   readonly settingsLayerGap: string
   /** 设置：层间距的说明。 */
   readonly settingsLayerGapHint: string
-  /** 设置：小地图开关的标签。 */
-  readonly settingsMinimap: string
-  /** 设置：小地图开关的说明。 */
-  readonly settingsMinimapHint: string
   /** 设置：吸附对齐开关的标签。 */
   readonly settingsSnap: string
   /** 设置：吸附对齐开关的说明。 */
