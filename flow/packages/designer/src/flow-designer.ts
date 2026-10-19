@@ -793,7 +793,10 @@ export class XhFlowDesigner extends XhReactiveElement {
 
   /** 复制选中内容并立即粘贴，偏移一格网格，不改动剪贴板；只读时什么都不做，返回空选择。 */
   duplicate(): FlowSelection {
-    return this.readonly ? { nodes: [], edges: [] } : this.#editor.duplicate({ offset: this.#gridStep() })
+    if (this.readonly)
+      return { nodes: [], edges: [] }
+    const label = nodesLabel('copy', identitiesIn(this.#editor.document, this.#editor.selection.nodes), this.#labelSource)
+    return this.#editor.duplicate({ offset: this.#gridStep(), label })
   }
 
   /** 对齐选中的节点；少于两个或只读时什么都不做。 */

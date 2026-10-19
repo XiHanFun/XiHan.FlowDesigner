@@ -142,7 +142,7 @@ export interface FlowHistoryTranslations {
   readonly resizeNodes: (count: number) => string
   readonly editNode: (label: string) => string
   readonly editNodes: (count: number) => string
-  /** 按住 Alt 拖动复制。 */
+  /** 按住 Alt 拖动复制、创建副本。 */
   readonly copyNode: (label: string) => string
   readonly copyNodes: (count: number) => string
   readonly addEdge: string
