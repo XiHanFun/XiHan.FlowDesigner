@@ -72,7 +72,7 @@
 
 ## 编辑操作
 
-设计器里的每次修改都是一组纯 JSON 的编辑操作，`schema-change` 事件把它们连同新的流程定义一起交给宿主。`applyOperation` 与 `applyOperations` 在任何地方都能把操作应用到流程定义上，返回新定义与逆操作；按顺序应用逆操作就回到修改之前。删除节点时与它相连的连线一并删除，逆操作会把它们放回原位置。
+设计器里的每次修改都是一组纯 JSON 的编辑操作，`schema-change` 事件把它们连同新的流程定义一起交给宿主。`applyOperation` 与 `applyOperations` 在任何地方都能把操作应用到流程定义上，返回新定义与逆操作；按顺序应用逆操作就回到修改之前。删除节点时与它相连的连线一并删除，逆操作会把它们放回原位置。`replaceDocument` 整份换掉流程定义，逆操作换回原来那份；设计器的 JSON 编辑与导入整份定义都走它。
 
 <<< @/examples/snippets/operations.ts#example
 

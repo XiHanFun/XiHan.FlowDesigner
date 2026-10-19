@@ -10,7 +10,7 @@
 // 物料拖进画布新建节点；Ctrl / ⌘ + 滚轮缩放，键盘删除、撤销重做、复制粘贴与微移。
 // 右键节点、连线或空白处弹出内置菜单，宿主取消对应的 *-contextmenu 事件即不弹。
 // 节点类型、节点渲染、属性编辑器、命令、面板、导入器与导出器都从 extensions 来，内置命令也是一个扩展；工具栏与菜单的排列可由 commandLayout 改写。
-// 粘贴、拖进画布的外部内容与 openFile() 选的文件交给扩展的导入器，export() 交给扩展的导出器。
+// 粘贴、拖进画布的外部内容与 openFile() 选的文件交给扩展的导入器，export() 交给扩展的导出器；openJsonEditor() 编辑整份流程定义的 JSON。
 // 设置对话框（openSettings()）里是基础、布局、工具栏、设计器自己的「画布」、各扩展的分区与帮助、快捷键、关于三页，值经 settings
 // 与 settings-change 交给宿主。第一次铺好画布后自动开始新手引导（autoTour 关掉，startTour() 随时重新开始）。
 // 面板用 @xihan-ui/web-components 的元素，defineFlowDesigner() 会一并注册它们。
@@ -39,6 +39,8 @@ import type {
   DesignerCommandsTranslations,
   DesignerFrameEventMap,
   DesignerFrameRegion,
+  DesignerIssueItem,
+  DesignerJsonEditorEventMap,
   DesignerLayout,
   DesignerLayoutPolicy,
   DesignerPanelHost,
@@ -58,7 +60,7 @@ import type { KeyedChildren, PropertyValues } from '@xihan-ui/web-components/aut
 import type { FlowAutoLayoutOptions, FlowClipboard, FlowEditor, FlowSelection } from './editor'
 import type { FlowDesignerContext, FlowDesignerExtension, FlowDesignerImporter, FlowDesignerModel, FlowImportFragment, FlowMenuSubject } from './extensions'
 import type { FlowPropertyEditor } from './panels/properties'
-import { getPortPosition, portAllows, readDocument } from '@xihan-flow/core'
+import { getPortPosition, portAllows, readDocument, validateDocument } from '@xihan-flow/core'
 import { XIHAN_WORKFLOW_START_VARIABLES } from '@xihan-flow/core/presets/xihan-workflow'
 import { buildScene, createOrthogonalRouter, DEFAULT_FLOW_DESIGNER_TRANSLATIONS, defaultNodeRenderer, exportFlowImage } from '@xihan-flow/runtime'
 import { detectKbdPlatform } from '@xihan-ui/core/hotkey'
@@ -110,6 +112,7 @@ import {
   tourDoneOf,
   XhDesignerFrameElement,
   XhDesignerIssuesElement,
+  XhDesignerJsonEditorElement,
   XhDesignerMinimapElement,
   XhDesignerPaletteElement,
   XhDesignerPropertiesElement,
@@ -135,7 +138,7 @@ import { encodeFlowClipboard, readFlowClipboard, readFlowFragment, writeFlowClip
 import { createFlowEditor } from './editor'
 import { createFlowDesignerModel, FLOW_DESIGNER_EXTENSION, flowMenuLayout, flowToolbarLayout, IMAGE_RENDERERS } from './extensions'
 import { ContextMenuPanel } from './panels/context-menu'
-import { IssuesPanel } from './panels/issues'
+import { flowIssueItems, IssuesPanel } from './panels/issues'
 import { MinimapPanel } from './panels/minimap'
 import { paletteNodeType, PalettePanel } from './panels/palette'
 import { PropertiesPanel } from './panels/properties'
@@ -241,6 +244,8 @@ interface Layers {
   readonly settings: XhDesignerSettingsElement
   /** 新手引导。 */
   readonly tour: XhDesignerTourElement
+  /** 编辑整份流程定义的 JSON 对话框。 */
+  readonly jsonEditor: XhDesignerJsonEditorElement
   /** 状态栏左段：选中对象的信息。 */
   readonly selectionStatus: DesignerStatusItem
   /** 状态栏右段：缩放，点了回到 100%。 */
@@ -316,7 +321,7 @@ export class XhFlowDesigner extends XhReactiveElement {
   /** 连线路由器，缺省为直角路由。 */
   declare router: FlowEdgeRouter | undefined
   /**
-   * 设置的值：扁平的键值，键是「分区 id.条目 id」，如 general.theme、flow.minimap；没写的键取条目的缺省值。
+   * 设置的值：扁平的键值，键是「分区 id.条目 id」，如 general.theme、flow.snap；没写的键取条目的缺省值。
    * 赋值即生效；用户在设置对话框里改了以后设计器换成新的一份并派发 settings-change。
    */
   declare settings: DesignerSettings | undefined
@@ -770,6 +775,38 @@ export class XhFlowDesigner extends XhReactiveElement {
     return this.#ensureLayers().tour.start()
   }
 
+  /**
+   * 打开编辑整份流程定义 JSON 的对话框：写出当前定义，边改边按读入检查与校验报问题；没有错误时「应用」整份换上，
+   * 记一步撤销。只读时只能看、不能应用。
+   */
+  openJsonEditor(): void {
+    const dialog = this.#ensureLayers().jsonEditor
+    dialog.value = this.#editor.document as unknown as JsonValue
+    dialog.validate = value => this.#jsonIssues(value)
+    dialog.readonly = this.readonly === true
+    dialog.show()
+  }
+
+  /** JSON 编辑框里的一份定义：先读入检查，读得了再按当前扩展与校验选项校验；问题的文字与问题列表的一致。 */
+  #jsonIssues(value: JsonValue): DesignerIssueItem[] {
+    const t = this.#translations()
+    const model = this.#editor.model
+    const read = readDocument(value)
+    if (!read.ok)
+      return flowIssueItems(read.issues, EMPTY_SCHEMA, model, t)
+    return flowIssueItems(validateDocument(read.document, { ...this.validateOptions, extensions: this.#model.list }), read.document, model, t)
+  }
+
+  /** JSON 编辑框里按了「应用」：读入后整份换上，记一步撤销。 */
+  readonly #onJsonApply = (event: Event): void => {
+    event.stopPropagation()
+    if (this.readonly)
+      return
+    const read = readDocument((event as DesignerJsonEditorEventMap['json-apply']).detail.value)
+    if (read.ok)
+      this.#applyDocument(read.document)
+  }
+
   /** 按当前扩展与校验选项校验定义。 */
   validate(): FlowIssue[] {
     return this.#editor.validate(this.validateOptions)
@@ -1071,12 +1108,14 @@ export class XhFlowDesigner extends XhReactiveElement {
     const tour = createGeneratedElement(doc, 'xh-designer-tour', { 'data-part': 'tour' })
     tour.frame = frame
     tour.addEventListener('tour-end', this.#onTourEnd)
-    this.append(frame, settings, tour)
+    const jsonEditor = createGeneratedElement(doc, 'xh-designer-json-editor', { 'data-part': 'json-editor' })
+    jsonEditor.addEventListener('json-apply', this.#onJsonApply)
+    this.append(frame, settings, tour, jsonEditor)
     root.addEventListener('pointerdown', this.#onPointerDown)
     root.addEventListener('dblclick', this.#onDoubleClick)
     root.addEventListener('contextmenu', this.#onContextMenu)
     root.addEventListener('wheel', this.#onWheel, { passive: false })
-    this.#layers = { frame, canvas, root, world, edges, labels, nodes, ports, handles, overlay, dropPreview, transform, toolbar, commandBar, headerBar, palette, properties, issues, minimap, menu, panels, settings, tour, selectionStatus, zoomStatus }
+    this.#layers = { frame, canvas, root, world, edges, labels, nodes, ports, handles, overlay, dropPreview, transform, toolbar, commandBar, headerBar, palette, properties, issues, minimap, menu, panels, settings, tour, jsonEditor, selectionStatus, zoomStatus }
     panels.assign(this.#model.extensions, this.#context())
     this.#prepareMenu(menu, 'blank')
     return this.#layers
@@ -2038,18 +2077,15 @@ export class XhFlowDesigner extends XhReactiveElement {
     const read = readDocument(document)
     if (!read.ok || !readFlowFragment(read.document.nodes, read.document.edges))
       throw new TypeError(`[flow-designer] importer "${importer}" returned a malformed flow definition`)
-    const next = read.document
-    this.#checkNodeTypes(next.nodes, importer)
-    const current = this.#editor.document
+    this.#checkNodeTypes(read.document.nodes, importer)
+    this.#applyDocument(read.document)
+  }
+
+  /** 整份换上一份读入过的定义（core 的 replaceDocument，记一步撤销）：清空选择，视口随后适配。 */
+  #applyDocument(document: FlowDocument): void {
     this.#editor.clearSelection()
     this.#startAutoFit()
-    this.#editor.execute([
-      ...current.edges.map((edge): FlowOperation => ({ type: 'removeEdge', id: edge.id })),
-      ...current.nodes.map((node): FlowOperation => ({ type: 'removeNode', id: node.id })),
-      ...next.nodes.map((node): FlowOperation => ({ type: 'addNode', node })),
-      ...next.edges.map((edge): FlowOperation => ({ type: 'addEdge', edge })),
-      { type: 'updateDocument', patch: { data: next.data ?? null, extensions: next.extensions ?? null } },
-    ])
+    this.#editor.execute([{ type: 'replaceDocument', document }])
   }
 
   /** 节点类型都已登记；有没登记的抛 TypeError。 */
@@ -2136,6 +2172,7 @@ export function defineFlowDesigner(): void {
   defineXhElement('xh-checkbox', XhCheckboxElement)
   defineDesignerShellElement('xh-designer-frame', XhDesignerFrameElement)
   defineDesignerShellElement('xh-designer-tour', XhDesignerTourElement)
+  defineDesignerShellElement('xh-designer-json-editor', XhDesignerJsonEditorElement)
   defineDesignerShellElement('xh-designer-palette', XhDesignerPaletteElement)
   defineDesignerShellElement('xh-designer-properties', XhDesignerPropertiesElement)
   defineDesignerShellElement('xh-designer-issues', XhDesignerIssuesElement)

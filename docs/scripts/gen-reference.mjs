@@ -547,7 +547,7 @@ function shortcutText(keys) {
 }
 
 /**
- * designer-shell 的内置命令：...designerShellCommands({ frame, openSettings, helpUrl, startTour, icons }) 给了哪个选项就有哪几条，文案在共用一桶里；
+ * designer-shell 的内置命令：...designerShellCommands({ frame, openSettings, helpUrl, startTour, openJsonEditor, icons }) 给了哪个选项就有哪几条，文案在共用一桶里；
  * 给了 frame 时除「面板」外还有显示或隐藏所有面板、还原面板显隐与恢复默认布局三条（快捷键与 designer-shell 的一致）。
  */
 const SHELL_COMMANDS = [
@@ -556,6 +556,7 @@ const SHELL_COMMANDS = [
   { id: 'panels-restore', label: 'panelsRestore', option: 'frame', shortcut: ['Mod', 'Shift', '\\'] },
   { id: 'layout-reset', label: 'layoutReset', option: 'frame', shortcut: [] },
   { id: 'settings', label: 'settings', option: 'openSettings', shortcut: [] },
+  { id: 'edit-json', label: 'editJson', option: 'openJsonEditor', shortcut: ['Mod', 'Shift', 'J'] },
   { id: 'help', label: 'help', option: 'helpUrl', shortcut: [] },
   { id: 'start-tour', label: 'startTour', option: 'startTour', shortcut: [] },
 ]
@@ -565,7 +566,7 @@ function shellCommands(call) {
   const icons = new Map((options.get('icons')?.properties ?? []).map(property => [nameOf(property), flat(property.initializer)]))
   return SHELL_COMMANDS
     .filter(command => options.has(command.option))
-    .map(command => ({ id: command.id, label: command.label, bucket: 'xh-designer-commands', icon: icons.get(command.id), shortcut: command.shortcut, readonly: true }))
+    .map(command => ({ id: command.id, label: command.label, bucket: 'xh-designer-commands', icon: icons.get(command.label), shortcut: command.shortcut, readonly: true }))
 }
 
 /** 面板的名字：物料与小地图取设计器文案，属性与问题取那两个零件的标题。 */

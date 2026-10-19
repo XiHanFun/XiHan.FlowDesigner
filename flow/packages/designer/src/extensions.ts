@@ -159,7 +159,8 @@ export const FLOW_DESIGNER_HELP_URL = 'https://flow.docs.xihanfun.com/guide/desi
 export const FLOW_PANELS = { palette: 'palette', properties: 'properties', issues: 'issues', minimap: 'minimap' } as const
 
 /**
- * 内置命令：打开文件、撤销重做、剪贴板、选择、对齐分布、布局、缩放、导出图片，以及 designer-shell 内置的面板、设置与帮助，各带图标；
+ * 内置命令：打开文件、撤销重做、剪贴板、选择、对齐分布、布局、缩放、导出图片，以及 designer-shell 内置的面板、设置、帮助、
+ * 开始引导与编辑 JSON，各带图标；
  * 每块面板另有一条开关命令。四款都有的通用命令取 designer-shell 的共用文案，流程专属的取设计器文案；会删掉内容的删除写 danger 语气。
  */
 const BUILTIN_COMMANDS: readonly FlowDesignerCommand[] = [
@@ -220,7 +221,8 @@ const BUILTIN_COMMANDS: readonly FlowDesignerCommand[] = [
     openSettings: ({ designer }) => designer.openSettings(),
     helpUrl: () => FLOW_DESIGNER_HELP_URL,
     startTour: ({ designer }) => designer.startTour(),
-    icons: { panels: PanelLeftIcon, settings: SettingsIcon, help: CircleHelpIcon },
+    openJsonEditor: ({ designer }) => designer.openJsonEditor(),
+    icons: { panels: PanelLeftIcon, settings: SettingsIcon, help: CircleHelpIcon, editJson: FileCodeIcon },
   }),
   ...designerPanelCommands<FlowDesignerContext>({ panels: Object.values(FLOW_PANELS), frame: context => context.frame }),
 ]
@@ -300,12 +302,12 @@ export function flowToolbarLayout(hasImporters: boolean): (readonly string[])[] 
 /** 右键菜单落在哪类对象上。 */
 export type FlowMenuSubject = 'node' | 'edge' | 'blank'
 
-/** 右键菜单的缺省排列：节点菜单在选中两个以上时加对齐，三个以上时加分布。 */
+/** 右键菜单的缺省排列：节点菜单在选中两个以上时加对齐，三个以上时加分布；空白处的末尾是编辑 JSON。 */
 export function flowMenuLayout(subject: FlowMenuSubject, selectedNodes: number): string[][] {
   if (subject === 'edge')
     return [['delete', 'clear-vertices']]
   if (subject === 'blank')
-    return [['paste', 'select-all'], ['auto-layout', 'zoom-to-fit']]
+    return [['paste', 'select-all'], ['auto-layout', 'zoom-to-fit'], ['edit-json']]
   const groups = [['cut', 'copy', 'duplicate', 'delete']]
   if (selectedNodes >= 2)
     groups.push(['align-left', 'align-center', 'align-right', 'align-top', 'align-middle', 'align-bottom'])

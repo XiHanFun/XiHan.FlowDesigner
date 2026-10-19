@@ -170,6 +170,23 @@ describe('文档操作', () => {
     roundTrip(sample(), [{ type: 'updateDocument', patch: { data: null } }])
   })
 
+  it('replaceDocument 整份换掉，逆操作换回原文档；与当前文档按值相同时不变', () => {
+    const next: FlowDocument = { version: 1, nodes: [node('x', { label: 'X' })], edges: [edge('xx', 'x', 'x')] }
+    const result = roundTrip(sample(), [{ type: 'replaceDocument', document: next }])
+    expect(result.document).toBe(next)
+    expect(result.inverse).toEqual([{ type: 'replaceDocument', document: sample() }])
+    const same = sample()
+    expect(applyOperation(same, { type: 'replaceDocument', document: sample() })).toEqual({ document: same, inverse: [] })
+  })
+
+  it('replaceDocument 拒绝节点或连线 id 重复的文档', () => {
+    const twinNodes: FlowDocument = { version: 1, nodes: [node('x'), node('x')], edges: [] }
+    const twinEdges: FlowDocument = { version: 1, nodes: [node('x')], edges: [edge('e', 'x', 'x'), edge('e', 'x', 'x')] }
+    expect([twinNodes, twinEdges].map(document => errorOf(() => applyOperation(sample(), { type: 'replaceDocument', document })).code)).toEqual(['duplicate-id', 'duplicate-id'])
+    const shared: FlowDocument = { version: 1, nodes: [node('x')], edges: [edge('x', 'x', 'x')] }
+    expect(applyOperation(sample(), { type: 'replaceDocument', document: shared }).document).toBe(shared)
+  })
+
   it('未知操作类型报错', () => {
     expect(errorOf(() => applyOperation(sample(), { type: 'explode' } as never)).code).toBe('invalid-operation')
   })
