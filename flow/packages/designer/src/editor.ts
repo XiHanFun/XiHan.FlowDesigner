@@ -159,9 +159,11 @@ export interface FlowEditor {
   readonly cut: (options?: ExecuteOptions) => FlowClipboard | undefined
   /**
    * 粘贴剪贴板内容并选中粘贴出的对象，每次粘贴比上一次多偏移 offset。缺省用当前剪贴板内容；
-   * 给了 clipboard 时它成为剪贴板内容，与当前内容相同则接着累加偏移。
+   * 给了 clipboard 时它成为剪贴板内容，与当前内容相同则接着累加偏移。给了 at 时内容的左上角放到 at，不累加偏移。
    */
-  readonly paste: (clipboard?: FlowClipboard, options?: ExecuteOptions & { readonly offset?: number }) => FlowSelection
+  readonly paste: (clipboard?: FlowClipboard, options?: ExecuteOptions & { readonly offset?: number, readonly at?: Point }) => FlowSelection
+  /** 此刻剪贴板里的内容。 */
+  readonly clipboard: FlowClipboard | undefined
   /** 复制选中内容并立即粘贴，不改动剪贴板；offset 是一个数时横纵同偏移，也可分别给出。 */
   readonly duplicate: (options?: ExecuteOptions & { readonly offset?: number | Point }) => FlowSelection
   /** 对齐选中的节点；少于两个时什么都不做。 */
@@ -454,9 +456,18 @@ export function createFlowEditor(options: FlowEditorOptions): FlowEditor {
       }
       if (!clipboard)
         return EMPTY_SELECTION
+      const at = pasteOptions.at
+      if (at !== undefined) {
+        const bounds = unionRects(clipboard.nodes)
+        return bounds === undefined ? EMPTY_SELECTION : pasteInto(clipboard, { x: at.x - bounds.x, y: at.y - bounds.y }, pasteOptions)
+      }
       pasteCount++
       const step = (pasteOptions.offset ?? DEFAULT_PASTE_OFFSET) * pasteCount
       return pasteInto(clipboard, { x: step, y: step }, pasteOptions)
+    },
+
+    get clipboard() {
+      return clipboard
     },
 
     duplicate(pasteOptions = {}) {

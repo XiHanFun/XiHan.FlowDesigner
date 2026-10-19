@@ -61,7 +61,7 @@ aside: false
 
 ## 命令
 
-工具栏、右键菜单与快捷键执行的都是命令。每条内置命令都带图标，工具栏缺省只显示图标，悬停或聚焦时提示命令的名字与快捷键；撤销、复制、对齐、缩放这些四款设计器都有的命令，文案用 designer-shell 语言包里 `xh-designer-commands` 那一桶，与其它设计器一致，要改它们的文字时改那一桶；撤销、重做与清空历史本身就是 designer-shell 的共用命令，见[撤销与保存](#撤销与保存)。工具栏末组是 designer-shell 内置的「面板」「设置」与「帮助」：面板点开一张菜单，列出物料、属性、问题这些能开关的面板，勾选的显示，收起的面板从这里再打开；设置打开设置对话框（同 `openSettings()`），帮助在新窗口打开本站的设计器一页（地址是导出的 `FLOW_DESIGNER_HELP_URL`）；宿主不要哪一条，用 `commandLayout` 排掉。另有「开始引导」（`start-tour`）与「编辑 JSON」（`edit-json`，Ctrl / ⌘ + Shift + J，见[编辑 JSON](#编辑-json)），不上工具栏：开始引导在设置的帮助页里，编辑 JSON 在空白处的右键菜单末尾，也都能排进 `commandLayout`。内置命令的 id、名称与快捷键见[内置命令](../reference/designer#内置命令)；只读时会修改流程定义的命令不可用，复制、全选与缩放仍可用。命令都有对应的方法，宿主的按钮直接调用方法即可，比如 `undo()`、`duplicate()`、`align('left')`、`autoLayout({ direction: 'LR' })`。
+工具栏、右键菜单与快捷键执行的都是命令。每条内置命令都带图标，工具栏缺省只显示图标，悬停或聚焦时提示命令的名字与快捷键；撤销、复制、对齐、缩放这些四款设计器都有的命令，文案用 designer-shell 语言包里 `xh-designer-commands` 那一桶，与其它设计器一致，要改它们的文字时改那一桶；撤销、重做与清空历史本身就是 designer-shell 的共用命令，见[撤销与保存](#撤销与保存)。工具栏末组是 designer-shell 内置的「面板」「设置」与「帮助」：面板点开一张菜单，列出物料、属性、问题这些能开关的面板，勾选的显示，收起的面板从这里再打开；设置打开设置对话框（同 `openSettings()`），帮助在新窗口打开本站的设计器一页（地址是导出的 `FLOW_DESIGNER_HELP_URL`）；宿主不要哪一条，用 `commandLayout` 排掉。另有「开始引导」（`start-tour`）与「编辑 JSON」（`edit-json`，Ctrl / ⌘ + Shift + J，见[编辑 JSON](#编辑-json)），不上工具栏：开始引导在设置的帮助页里，编辑 JSON 在空白处的右键菜单末尾，也都能排进 `commandLayout`。内置命令的 id、名称与快捷键见[内置命令](../reference/designer#内置命令)；只读时会修改流程定义的命令不可用，复制、全选与缩放仍可用。命令都有对应的方法，宿主的按钮直接调用方法即可，比如 `undo()`、`duplicate()`、`align('left')`、`autoLayout({ direction: 'LR' })`；按 id 执行用 `runCommand(id)`，内置命令与扩展命令都认，命令存在且此刻可用才执行，返回是否执行了。
 
 右键菜单按落点给出不同的命令：节点上是剪切、复制、创建副本与删除，选中两个以上节点时加上对齐，三个以上时再加上分布；连线上是删除与清除拐点；空白处是粘贴、全选、自动布局与适合窗口，末尾是编辑 JSON。在画布上按 ContextMenu 键或 Shift + F10，按当前的选择打开菜单。右键事件可以取消，取消后内置菜单与浏览器的菜单都不出现，宿主可以在 `detail` 的 `x`、`y` 处弹自己的菜单。
 
@@ -83,7 +83,7 @@ aside: false
 
 布局改了，整份写进设置的 `layout.panels`（`DESIGNER_SETTING_KEYS.layout`），和设置对话框里改一条一样派发 `settings-change`，宿主存下来、下次随 `settings` 赋回即可；给了 `settingsStorageKey` 时设计器自己存。宿主要固定布局，用 `settingsPolicy`：`layout.panels` 锁住整份，`layout.panels.<面板 id>` 藏掉或锁定一块面板。
 
-除了命令的快捷键，画布有焦点时还认这些键：Backspace 删除，`=` 放大；设置的「快捷键」页把命令的快捷键与这些键列成一张表。Ctrl / ⌘ + C、X、V 走系统剪贴板：复制出的是一段 JSON 文本，能在同一页面、别的页面或别的标签页的设计器里粘贴；读不出流程内容的文本交给扩展的导入器（见[导入与导出](./extensions#导入与导出)），没有导入器接下时不会贴进来。
+除了命令的快捷键，画布有焦点时还认这些键：Backspace 删除，`=` 放大；设置的「快捷键」页把命令的快捷键与这些键列成一张表。Ctrl / ⌘ + C、X、V 走系统剪贴板：复制出的是一段 JSON 文本，能在同一页面、别的页面或别的标签页的设计器里粘贴；读不出流程内容的文本交给扩展的导入器（见[导入与导出](./extensions#导入与导出)），没有导入器接下时不会贴进来。宿主调 `paste(内容)` 时每次比上一次多错开一格；给了落点 `paste(内容, { at })` 时内容整体的中心放到 `at`（世界坐标，视口中央是 `getViewportCenter()`），左上角吸附网格，不累加错开。剪贴板的文本格式由 `encodeFlowClipboard` 与 `decodeFlowClipboard` 互转。
 
 ## 设置
 

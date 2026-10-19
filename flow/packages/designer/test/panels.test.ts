@@ -5,8 +5,8 @@
 
 // @vitest-environment jsdom
 
-import type { FlowNode } from '@xihan-flow/core'
-import type { FlowDesignerExtension, XhFlowDesigner } from '../src'
+import type { FlowNode, FlowPoint } from '@xihan-flow/core'
+import type { FlowDesignerContext, FlowDesignerExtension, XhFlowDesigner } from '../src'
 import { setXhConfig } from '@xihan-ui/web-components'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defineFlowDesigner, FLOW_DESIGNER_HELP_URL } from '../src'
@@ -407,6 +407,63 @@ describe('物料面板', () => {
     await designer.updateComplete
     expect(designer.schema.nodes).toHaveLength(4)
     expect(preview.hidden).toBe(true)
+  })
+
+  it('扩展的物料来源接在内置分组后面：点它的条目交给它的 insert（不带落点），拖进画布放下时带上松手处的世界坐标', async () => {
+    const calls: [string, FlowDesignerContext, FlowPoint | undefined][] = []
+    const host: FlowDesignerExtension = {
+      id: 'host',
+      paletteSources: [{
+        id: 'mine',
+        groups: () => [{ id: 'mine', label: '我的物料', items: [{ id: 'approval-pair', label: '审批对', payload: 'task' }] }],
+        insert: (paletteItem, context, at) => calls.push([paletteItem.id, context, at]),
+      }],
+    }
+    const designer = await mount(d => d.extensions = [{ id: 'test', nodeTypes: definitions }, host])
+    placeCanvas(designer, 600, 400)
+    hitCanvas(designer, 600, 400)
+    designer.setViewport({ x: 0, y: 0, zoom: 1 })
+    await settle(designer)
+    expect(designer.getViewportCenter()).toEqual({ x: 300, y: 200 })
+    expect(Array.from(palette(designer).querySelectorAll('[data-part="group-label"]'), label => label.textContent)).toEqual(['事件', '活动', 'Other', '我的物料'])
+
+    const pair = item(designer, 'approval-pair')
+    pair.click()
+    expect(calls.map(([id, , at]) => [id, at])).toEqual([['approval-pair', undefined]])
+    expect(calls[0]![1].designer).toBe(designer)
+    expect(designer.schema.nodes).toHaveLength(3)
+
+    press(pair, 5, 5)
+    move(310, 300)
+    await designer.updateComplete
+    expect(part(designer, 'drop-preview')[0]!.hidden).toBe(true)
+    release(310, 300)
+    pair.click()
+    await designer.updateComplete
+    expect(calls.map(([id, , at]) => [id, at])).toEqual([['approval-pair', undefined], ['approval-pair', { x: 310, y: 300 }]])
+    expect(designer.schema.nodes).toHaveLength(3)
+
+    item(designer, 'task').click()
+    expect(designer.schema.nodes.at(-1)!.type).toBe('task')
+    expect(calls).toHaveLength(2)
+  })
+
+  it('物料来源每轮现取：内容没变时不重设分组，变了换上新的', async () => {
+    let label = '审批对'
+    const host: FlowDesignerExtension = {
+      id: 'host',
+      paletteSources: [{ id: 'mine', groups: () => [{ id: 'mine', label: '我的物料', items: [{ id: 'approval-pair', label }] }], insert: () => {} }],
+    }
+    const designer = await mount(d => d.extensions = [{ id: 'test', nodeTypes: definitions }, host])
+    await settle(designer)
+    const groups = (palette(designer) as HTMLElement & { groups?: unknown }).groups
+    designer.select({ nodes: ['t'] })
+    await settle(designer)
+    expect((palette(designer) as HTMLElement & { groups?: unknown }).groups).toBe(groups)
+    label = '会签'
+    designer.select({ nodes: [] })
+    await settle(designer)
+    expect(item(designer, 'approval-pair').textContent).toBe('会签')
   })
 
   it('拖到画布边缘时按 pan-request 平移视口', async () => {

@@ -13,6 +13,7 @@ export const jsonFiles: FlowDesignerExtension = {
   id: '@example/json-files',
   importers: [{
     id: '@example/json-files.open',
+    fileTypes: ['.json', 'application/json'],
     accepts: source => source.file !== undefined && (source.mime === 'application/json' || source.name?.endsWith('.json') === true),
     import: async (source) => {
       const read = readDocument(JSON.parse(await source.file!.text()))

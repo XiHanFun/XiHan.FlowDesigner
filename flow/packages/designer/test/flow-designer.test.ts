@@ -354,6 +354,38 @@ describe('<xh-flow-designer>', () => {
     expect(target.getSelection()).toEqual({ nodes: ['start_2', 'task_2'], edges: ['edge_2'] })
   })
 
+  it('paste(clip, { at }) 把内容整体的中心放到 at、左上角吸附网格，不累加偏移；剪贴板是空的或只读时返回空选择', async () => {
+    const designer = await mount(element => element.schema = { version: 1, nodes: [], edges: [] })
+    expect(designer.paste(undefined, { at: { x: 0, y: 0 } })).toEqual({ nodes: [], edges: [] })
+    const content = { nodes: sample().nodes.slice(0, 2), edges: sample().edges }
+    expect(designer.paste(content, { at: { x: 502, y: 314 } })).toEqual({ nodes: ['start_1', 'task_1'], edges: ['edge_1'] })
+    designer.paste(undefined, { at: { x: 502, y: 314 } })
+    expect(designer.schema.nodes.map(node => [node.id, node.x, node.y])).toEqual([
+      ['start_1', 352, 288],
+      ['task_1', 552, 288],
+      ['start_2', 352, 288],
+      ['task_2', 552, 288],
+    ])
+    expect(designer.getSelection()).toEqual({ nodes: ['start_2', 'task_2'], edges: ['edge_2'] })
+    designer.readonly = true
+    expect(designer.paste(content, { at: { x: 0, y: 0 } })).toEqual({ nodes: [], edges: [] })
+    expect(designer.schema.nodes).toHaveLength(4)
+  })
+
+  it('runCommand(id) 执行此刻可用的命令（内置的或扩展的）并返回 true；命令不存在或不可用时返回 false', async () => {
+    const run = vi.fn()
+    const designer = await mount(element => element.extensions = [nodes, { id: 'acme', commands: [{ id: 'acme.run', label: 'Run', run }] }])
+    expect(designer.runCommand('delete')).toBe(false)
+    designer.select({ nodes: ['t'] })
+    expect(designer.runCommand('delete')).toBe(true)
+    expect(designer.schema.nodes.map(node => node.id)).toEqual(['s', 'e'])
+    expect(designer.runCommand('undo')).toBe(true)
+    expect(designer.schema).toEqual(sample())
+    expect(designer.runCommand('acme.run')).toBe(true)
+    expect(run).toHaveBeenCalledWith(expect.objectContaining({ designer }))
+    expect(designer.runCommand('acme.missing')).toBe(false)
+  })
+
   it('只有 text/plain 也能粘贴；别的内容、结构不合法或焦点不在画布上时不处理', async () => {
     const designer = await mount(element => element.schema = { version: 1, nodes: [], edges: [] })
     const text = encodeFlowClipboard({ nodes: [sample().nodes[0]!], edges: [] })

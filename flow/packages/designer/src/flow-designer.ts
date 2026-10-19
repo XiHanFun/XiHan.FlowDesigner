@@ -45,6 +45,7 @@ import type {
   DesignerLayout,
   DesignerLayoutPolicy,
   DesignerOutlineNode,
+  DesignerPaletteDragPayload,
   DesignerPanelHost,
   DesignerSettings,
   DesignerSettingsEventMap,
@@ -77,6 +78,7 @@ import {
   fitRect,
   HISTORY_NUDGE_MERGE_WITHIN,
   hitTest,
+  importerAccept,
   nudgeDelta,
   nudgeMergeKey,
   panBy,
@@ -740,10 +742,24 @@ export class XhFlowDesigner extends XhReactiveElement {
 
   /**
    * 粘贴并选中粘贴出的对象，返回它们；每次比上一次多偏移一格网格（不吸附网格时 24）。
-   * 缺省用设计器剪贴板里的内容，给了 clipboard 时它成为剪贴板内容；只读时什么都不做，返回空选择。
+   * 缺省用设计器剪贴板里的内容，给了 clipboard 时它成为剪贴板内容；给了 at（世界坐标）时内容整体的中心放到那里、
+   * 左上角吸附网格，不累加偏移。只读或剪贴板是空的时什么都不做，返回空选择。
    */
-  paste(clipboard?: FlowClipboard): FlowSelection {
-    return this.readonly ? { nodes: [], edges: [] } : this.#editor.paste(clipboard, { offset: this.#gridStep() })
+  paste(clipboard?: FlowClipboard, options: { readonly at?: FlowPoint } = {}): FlowSelection {
+    if (this.readonly)
+      return { nodes: [], edges: [] }
+    const at = options.at
+    if (at === undefined)
+      return this.#editor.paste(clipboard, { offset: this.#gridStep() })
+    const bounds = unionRects((clipboard ?? this.#editor.clipboard)?.nodes ?? [])
+    if (!bounds)
+      return { nodes: [], edges: [] }
+    return this.#editor.paste(clipboard, { at: this.#snapToGrid({ x: at.x - bounds.width / 2, y: at.y - bounds.height / 2 }) })
+  }
+
+  /** 执行一条命令（内置的或扩展的）：命令存在、此刻可用才执行，返回是否执行了；给扩展与宿主替用户操作设计器用。 */
+  runCommand(id: string): boolean {
+    return runCommand(this.#model.commands, id, this.#context())
   }
 
   /**
@@ -755,6 +771,7 @@ export class XhFlowDesigner extends XhReactiveElement {
       return
     const input = this.ownerDocument.createElement('input')
     input.type = 'file'
+    input.accept = importerAccept(this.#model.importers)
     input.addEventListener('change', () => {
       const file = input.files?.[0]
       if (!file)
@@ -862,6 +879,11 @@ export class XhFlowDesigner extends XhReactiveElement {
   /** 当前视口。 */
   getViewport(): Viewport {
     return this.#viewport
+  }
+
+  /** 视口中央的世界坐标；画布还没有尺寸时是原点。 */
+  getViewportCenter(): FlowPoint {
+    return this.#viewportCenter()
   }
 
   /** 设置视口；此后尺寸变化不再自动适配。 */
@@ -1152,10 +1174,11 @@ export class XhFlowDesigner extends XhReactiveElement {
       ownerDocument: doc,
       isReadonly: () => this.readonly === true,
       addNode: type => this.addNode(type),
+      context: () => this.#context(),
     })
     registerDropTarget(root, {
       over: (point, payload) => this.#dropOver(point, payload),
-      drop: (_point, payload) => this.#dropAt(payload),
+      drop: (point, payload) => this.#dropAt(point, payload),
       leave: () => this.#clearDrop(),
     })
     root.addEventListener('pan-request', this.#onPanRequest)
@@ -1537,7 +1560,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     }
     this.#renderSelectionBar(layers, context, t)
     if (this.#shows('palette'))
-      layers.palette.update(this.#editor.model.nodeTypes, { order: this.paletteGroupOrder, labels: this.paletteGroupLabels }, t)
+      layers.palette.update(this.#editor.model.nodeTypes, { order: this.paletteGroupOrder, labels: this.paletteGroupLabels }, t, this.#model.paletteSources)
     if (this.#shows('properties'))
       layers.properties.update(t)
     if (this.#shows('issues'))
@@ -1984,6 +2007,11 @@ export class XhFlowDesigner extends XhReactiveElement {
 
   /** 物料拖到画布上：按节点类型的尺寸在指针处画落点（吸附网格）；只读或不是物料时不接受。 */
   #dropOver(point: FlowPoint, payload: unknown): DropOver {
+    const sourceItem = this.#sourceItemOf(payload)
+    if (sourceItem !== undefined) {
+      this.#clearDrop()
+      return { accept: !this.readonly }
+    }
     const type = paletteNodeType(payload)
     const nodeType = type === undefined ? undefined : this.#editor.model.nodeTypes.get(type)
     if (this.readonly || !nodeType) {
@@ -1998,8 +2026,21 @@ export class XhFlowDesigner extends XhReactiveElement {
     return { accept: true, ghost: 'hide' }
   }
 
-  /** 在落点新建拖进来的节点类型。 */
-  #dropAt(payload: unknown): void {
+  /** 拖进来的是物料来源的条目时它的 id。 */
+  #sourceItemOf(payload: unknown): string | undefined {
+    const drag = payload as Partial<DesignerPaletteDragPayload> | undefined
+    return drag?.source === 'palette' && typeof drag.id === 'string' && this.#ensureLayers().palette.isSourceItem(drag.id) ? drag.id : undefined
+  }
+
+  /** 在落点新建拖进来的节点类型；物料来源的条目交给那个来源，带上松手处的世界坐标。 */
+  #dropAt(point: FlowPoint, payload: unknown): void {
+    const sourceItem = this.#sourceItemOf(payload)
+    if (sourceItem !== undefined) {
+      this.#clearDrop()
+      if (!this.readonly)
+        this.#ensureLayers().palette.insert(sourceItem, this.clientToWorld(point.x, point.y))
+      return
+    }
     const type = paletteNodeType(payload)
     const target = this.#dropPreview
     this.#clearDrop()
