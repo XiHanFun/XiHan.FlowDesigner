@@ -249,6 +249,13 @@ const BUILTIN_COMMANDS: readonly FlowDesignerCommand[] = [
   { id: 'align-bottom', label: shared('alignBottom'), icon: AlignObjectsBottomIcon, enabled: editable(d => selectedNodes(d) >= 2), run: ({ designer }) => designer.align('bottom') },
   { id: 'distribute-horizontal', label: shared('distributeHorizontal'), icon: DistributeHorizontalIcon, enabled: editable(d => selectedNodes(d) >= 3), run: ({ designer }) => designer.distribute('horizontal') },
   { id: 'distribute-vertical', label: shared('distributeVertical'), icon: DistributeVerticalIcon, enabled: editable(d => selectedNodes(d) >= 3), run: ({ designer }) => designer.distribute('vertical') },
+  {
+    id: 'align-menu',
+    label: text('alignMenu'),
+    icon: AlignObjectsLeftIcon,
+    enabled: editable(d => selectedNodes(d) >= 2),
+    menu: () => ['align-left', 'align-center', 'align-right', 'align-top', 'align-middle', 'align-bottom', 'separator', 'distribute-horizontal', 'distribute-vertical'],
+  },
   { id: 'auto-layout', label: text('autoLayout'), icon: WorkflowIcon, enabled: editable(d => d.schema.nodes.length > 0), run: ({ designer }) => designer.autoLayout() },
   {
     id: 'clear-vertices',
@@ -399,6 +406,18 @@ export const FLOW_TOOLBAR_LAYOUT: readonly (readonly string[])[] = [
 /** 工具栏此刻的缺省排列：有导入器时在 FLOW_TOOLBAR_LAYOUT 前面多一组打开文件。 */
 export function flowToolbarLayout(hasImporters: boolean): (readonly string[])[] {
   return hasImporters ? [['open-file'], ...FLOW_TOOLBAR_LAYOUT] : [...FLOW_TOOLBAR_LAYOUT]
+}
+
+/** 选中工具条落在哪类选中上：一个节点，或几个节点。只选了连线时没有选中工具条。 */
+export type FlowSelectionSubject = 'node' | 'nodes'
+
+/**
+ * 选中工具条（命令落点 selection:<主体>）的缺省排列：都有创建副本、复制与删除；几个节点时前面多一个对齐与分布菜单
+ * （align-menu，单条对齐命令照样能经 commandLayout 排上来）。
+ */
+export function flowSelectionLayout(subject: FlowSelectionSubject): string[][] {
+  const common = ['duplicate', 'copy', 'delete']
+  return subject === 'nodes' ? [['align-menu'], common] : [common]
 }
 
 /** 右键菜单落在哪类对象上。 */

@@ -90,6 +90,10 @@ export interface FlowDesignerTranslations {
   readonly insertToolbar: string
   /** 顶栏插入快捷钮的名字，入参是节点类型的显示名；钮上图标下面只写显示名。 */
   readonly insertNode: (label: string) => string
+  /** 选中节点时浮在选中框上的选中工具条的可访问名。 */
+  readonly selectionToolbar: string
+  /** 内置命令：对齐与分布菜单，点开列出六种对齐与两种分布。 */
+  readonly alignMenu: string
   /** 不落在节点或连线上的问题（如节点个数）所属的对象名。 */
   readonly flow: string
   /** 启动变量表的列名。 */

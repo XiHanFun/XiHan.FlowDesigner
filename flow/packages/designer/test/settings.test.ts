@@ -44,7 +44,8 @@ function panelSwitch(name: string): HTMLElement {
 }
 
 describe('设置', () => {
-  it('openSettings 打开设置对话框：基础、布局、工具栏在前，画布在后，帮助、快捷键、关于在最后；画布分区列出自动布局与吸附，基础里有状态栏', async () => {
+  // 头一条要冷启动七页的设置对话框，机器忙时超过缺省的 5 秒
+  it('openSettings 打开设置对话框：基础、布局、工具栏在前，画布在后，帮助、快捷键、关于在最后；画布分区列出自动布局与吸附，基础里有状态栏', { timeout: 15_000 }, async () => {
     const designer = await mount()
     designer.openSettings('flow')
     await settle(designer)

@@ -103,7 +103,7 @@ describe('帮助、快捷键与关于', () => {
     tour(designer).stop()
   })
 
-  it('快捷键表从命令表生成，流程自己那组末尾补上剪贴板三键、Backspace 删除、右键菜单与保存，重做那行带上 Ctrl + Y；通用里去掉空格与 Alt+F10，方向键与 Esc 按流程的做法改写', async () => {
+  it('快捷键表从命令表生成，流程自己那组末尾补上剪贴板三键、Backspace 删除、右键菜单与保存，重做那行带上 Ctrl + Y；通用里去掉空格，方向键与 Esc 按流程的做法改写', async () => {
     const designer = await mount()
     const source = settings(designer).shortcuts!
     const designerRows = source.groups.find(group => group.id === 'designer')!.rows
@@ -119,6 +119,7 @@ describe('帮助、快捷键与关于', () => {
     expect(source.commonKeys!.map(key => [key.id, key.label])).toEqual([
       ['nudge', 'Move the selected nodes; pan the canvas when nothing is selected'],
       ['nudgeLarge', undefined],
+      ['selectionToolbar', undefined],
       ['cancel', 'Cancel the drag in progress'],
     ])
   })

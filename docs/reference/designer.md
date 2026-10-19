@@ -132,6 +132,7 @@ declare function defineFlowDesigner(): void
 | `align-bottom` | 底端对齐 | `AlignObjectsBottomIcon` | — | 不可用 |
 | `distribute-horizontal` | 水平等距分布 | `DistributeHorizontalIcon` | — | 不可用 |
 | `distribute-vertical` | 垂直等距分布 | `DistributeVerticalIcon` | — | 不可用 |
+| `align-menu` | 对齐与分布 | `AlignObjectsLeftIcon` | — | 不可用 |
 | `auto-layout` | 自动布局 | `WorkflowIcon` | — | 不可用 |
 | `clear-vertices` | 清除拐点 | `EraserIcon` | — | 不可用 |
 | `zoom-out` | 缩小 | `ZoomOutIcon` | `-` | 可用 |
@@ -275,6 +276,8 @@ const FLOW_PANELS = { palette: 'palette', outline: 'outline', properties: 'prope
 | `settingsSnapHint` | `string` | 设置：吸附对齐开关的说明。 |
 | `statusZoom` | `string` | 状态栏：缩放一项的标签。 |
 | `insertToolbar` | `string` | 顶栏插入快捷钮那一条工具栏的可访问名。 |
+| `selectionToolbar` | `string` | 选中节点时浮在选中框上的选中工具条的可访问名。 |
+| `alignMenu` | `string` | 内置命令：对齐与分布菜单，点开列出六种对齐与两种分布。 |
 | `flow` | `string` | 不落在节点或连线上的问题（如节点个数）所属的对象名。 |
 | `startVariableColumns` | `Readonly<Record<FlowStartVariableColumn, string>>` | 启动变量表的列名。 |
 | `startVariableAdd` | `string` | 启动变量表的新增按钮。 |
@@ -365,6 +368,8 @@ type FlowBuiltinPropertyKey = 'label' | 'style.dashed'
 | `FlowImportResult` | 类型 | 导入的结果：一个片段，或一整份流程定义。 |
 | `flowMenuLayout` | 函数 | 右键菜单的缺省排列：节点菜单在选中两个以上时加对齐，三个以上时加分布；空白处的末尾是编辑 JSON。 |
 | `FlowMenuSubject` | 类型 | 右键菜单落在哪类对象上。 |
+| `flowSelectionLayout` | 函数 | 选中工具条（命令落点 selection:&lt;主体&gt;）的缺省排列：都有创建副本、复制与删除；几个节点时前面多一个对齐与分布菜单（align-menu，单条对齐命令照样能经 commandLayout 排上来）。 |
+| `FlowSelectionSubject` | 类型 | 选中工具条落在哪类选中上：一个节点，或几个节点。 |
 | `flowToolbarLayout` | 函数 | 工具栏此刻的缺省排列：有导入器时在 FLOW_TOOLBAR_LAYOUT 前面多一组打开文件。 |
 
 ### flow-designer
