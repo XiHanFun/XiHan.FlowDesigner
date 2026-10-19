@@ -28,12 +28,16 @@ function historyPanel(designer: XhFlowDesigner): XhDesignerHistoryElement {
 }
 
 describe('撤销历史', () => {
-  it('每一步带说明：撤销钮的名字写「撤销：<说明>」，自动布局、属性修改与 JSON 整份替换也各有说明', async () => {
+  it('每一步带说明：撤销钮的名字写「撤销：<说明>」，创建副本、自动布局、属性修改与 JSON 整份替换也各有说明', async () => {
     const designer = await mount()
     designer.select({ nodes: ['t'] })
     key(designer, { key: 'ArrowRight' })
     await designer.updateComplete
     expect(undoName(designer)).toBe('Undo: Move 任务 t')
+    designer.duplicate()
+    await designer.updateComplete
+    expect(undoName(designer)).toBe('Undo: Copy 任务 t')
+    designer.select({ nodes: ['t'] })
     designer.autoLayout()
     await designer.updateComplete
     expect(undoName(designer)).toBe('Undo: Auto layout')
