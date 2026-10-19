@@ -61,7 +61,7 @@ import type { PointerSession } from '@xihan-ui/pointer'
 import type { KeyedChildren, PropertyValues } from '@xihan-ui/web-components/authoring'
 import type { DialogService } from '@xihan-ui/web-components/services'
 import type { FlowAutoLayoutOptions, FlowClipboard, FlowEditor, FlowSelection } from './editor'
-import type { FlowDesignerContext, FlowDesignerExtension, FlowDesignerImporter, FlowDesignerModel, FlowImportFragment, FlowMenuSubject, FlowOutlineTarget } from './extensions'
+import type { FlowDesignerContext, FlowDesignerExtension, FlowDesignerImporter, FlowDesignerModel, FlowImportFragment, FlowMenuSubject, FlowOutlineTarget, FlowSelectionSubject } from './extensions'
 import type { FlowPropertyEditor } from './panels/properties'
 import { getPortPosition, portAllows, readDocument, validateDocument } from '@xihan-flow/core'
 import { XIHAN_WORKFLOW_START_VARIABLES } from '@xihan-flow/core/presets/xihan-workflow'
@@ -143,7 +143,7 @@ import { defineXhElement, XhCheckboxElement, XhContextMenuElement, XhFieldArrayE
 import { createDialogService } from '@xihan-ui/web-components/services'
 import { encodeFlowClipboard, readFlowClipboard, readFlowFragment, writeFlowClipboard } from './clipboard'
 import { createFlowEditor } from './editor'
-import { createFlowDesignerModel, DESIGNER_INTERNALS, FLOW_DESIGNER_EXTENSION, flowMenuLayout, flowToolbarLayout, IMAGE_RENDERERS } from './extensions'
+import { createFlowDesignerModel, DESIGNER_INTERNALS, FLOW_DESIGNER_EXTENSION, flowMenuLayout, flowSelectionLayout, flowToolbarLayout, IMAGE_RENDERERS } from './extensions'
 import { describeFlowOperations, identitiesIn, nodesLabel } from './history-labels'
 import { ContextMenuPanel } from './panels/context-menu'
 import { flowIssueItems, IssuesPanel } from './panels/issues'
@@ -241,6 +241,8 @@ interface Layers {
   readonly commandBar: CommandToolbar<FlowDesignerContext>
   /** 顶栏中段的插入快捷钮：有 header 位置的命令时才放进外框。 */
   readonly headerBar: CommandToolbar<FlowDesignerContext>
+  /** 选中节点时浮在选中框上的选中工具条：可编辑、有选中的节点、排列不空时放进变换覆盖层。 */
+  readonly selectionBar: CommandToolbar<FlowDesignerContext>
   readonly palette: PalettePanel
   readonly properties: PropertiesPanel
   readonly issues: IssuesPanel
@@ -635,7 +637,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     const shortcuts = shortcutSettingsSource(model.commands, context, {
       extensionCommands: (this.#extensions ?? NO_EXTENSIONS).flatMap(extension => (extension.commands ?? []).map(command => command.id)),
       commonKeys: DESIGNER_COMMON_KEYS
-        .filter(key => key.id !== 'pan' && key.id !== 'selectionToolbar')
+        .filter(key => key.id !== 'pan')
         .map(key => key.id === 'nudge' ? { ...key, label: t.shortcutNudge } : key.id === 'cancel' ? { ...key, label: t.shortcutCancel } : key),
       keys: [
         { label: shared.copy, keys: [['Mod', 'C']] },
@@ -1141,6 +1143,8 @@ export class XhFlowDesigner extends XhReactiveElement {
     const commandBar = createCommandToolbar<FlowDesignerContext>(doc)
     const headerBar = createCommandToolbar<FlowDesignerContext>(doc, { display: 'stacked' })
     headerBar.element.slot = 'header-center'
+    const selectionBar = createCommandToolbar<FlowDesignerContext>(doc)
+    selectionBar.element.slot = 'toolbar'
     const toolbar = createGeneratedElement(doc, 'div')
     toolbar.dataset.part = 'command-bar'
     toolbar.append(commandBar.element)
@@ -1207,7 +1211,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     root.addEventListener('dblclick', this.#onDoubleClick)
     root.addEventListener('contextmenu', this.#onContextMenu)
     root.addEventListener('wheel', this.#onWheel, { passive: false })
-    this.#layers = { frame, canvas, root, world, edges, labels, nodes, ports, handles, overlay, dropPreview, transform, toolbar, commandBar, headerBar, palette, properties, issues, minimap, menu, panels, settings, tour, jsonEditor, selectionStatus, zoomStatus }
+    this.#layers = { frame, canvas, root, world, edges, labels, nodes, ports, handles, overlay, dropPreview, transform, toolbar, commandBar, headerBar, selectionBar, palette, properties, issues, minimap, menu, panels, settings, tour, jsonEditor, selectionStatus, zoomStatus }
     panels.assign(this.#model.extensions, this.#context())
     this.#prepareMenu(menu, 'blank')
     return this.#layers
@@ -1531,6 +1535,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     else {
       layers.headerBar.element.remove()
     }
+    this.#renderSelectionBar(layers, context, t)
     if (this.#shows('palette'))
       layers.palette.update(this.#editor.model.nodeTypes, { order: this.paletteGroupOrder, labels: this.paletteGroupLabels }, t)
     if (this.#shows('properties'))
@@ -1542,6 +1547,29 @@ export class XhFlowDesigner extends XhReactiveElement {
     // 属性面板刷新后副标题（当前对象）才是新的，区登记再取一次；没变时是同一份
     frame.regions = this.#frameRegions(t, shared.toolbar, layers)
     layers.panels.update(context)
+  }
+
+  /** 选中工具条的主体：选中一个节点为 node，几个为 nodes；没选中节点时为 undefined。 */
+  #selectionSubject(): FlowSelectionSubject | undefined {
+    const count = this.#editor.selection.nodes.length
+    return count === 0 ? undefined : count === 1 ? 'node' : 'nodes'
+  }
+
+  /**
+   * 选中工具条：按主体取 selection:<主体> 的排列（宿主经 commandLayout 改，扩展命令写上落点就追加成一组），可编辑、
+   * 有选中的节点、排列不空时放进变换覆盖层（slot="toolbar"），否则拿掉；位置、翻转与手势中收起由覆盖层管。
+   */
+  #renderSelectionBar(layers: Layers, context: FlowDesignerContext, t: FlowDesignerTranslations): void {
+    const subject = this.readonly ? undefined : this.#selectionSubject()
+    const { commands } = this.#model
+    const groups = subject === undefined ? [] : arrangeCommands(`selection:${subject}`, commands, flowSelectionLayout(subject), this.commandLayout)
+    if (groups.every(group => group.length === 0)) {
+      layers.selectionBar.element.remove()
+      return
+    }
+    layers.selectionBar.update(groups, commands, context, t.selectionToolbar)
+    if (!layers.selectionBar.element.isConnected)
+      layers.transform.append(layers.selectionBar.element)
   }
 
   #startAutoFit(): void {
@@ -2194,6 +2222,12 @@ export class XhFlowDesigner extends XhReactiveElement {
       const { nodes, edges } = this.#editor.selection
       if (this.#layers)
         this.#prepareMenu(this.#layers.menu, nodes.length > 0 ? 'node' : edges.length > 0 ? 'edge' : 'blank')
+      return
+    }
+    // Alt + F10 把焦点交给选中工具条，在工具条里按 Esc 回到这里
+    if (event.key === 'F10' && event.altKey && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
+      if (this.#layers?.transform.focusToolbar())
+        event.preventDefault()
       return
     }
     if (event.key === 'Escape' && this.#gesture) {

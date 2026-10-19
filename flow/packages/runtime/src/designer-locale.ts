@@ -75,6 +75,8 @@ export const FLOW_DESIGNER_EN_US: FlowDesignerLocale = {
   statusGeometry: (x, y, width, height) => `X ${x}, Y ${y} · ${width} × ${height}`,
   insertToolbar: 'Insert nodes',
   insertNode: label => `Add ${label}`,
+  selectionToolbar: 'Selection',
+  alignMenu: 'Align and distribute',
   flow: 'Flow',
   startVariableColumns: { name: 'Name', required: 'Required', defaultValue: 'Default value', description: 'Description' },
   startVariableAdd: 'Add variable',

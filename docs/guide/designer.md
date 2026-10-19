@@ -65,7 +65,9 @@ aside: false
 
 右键菜单按落点给出不同的命令：节点上是剪切、复制、创建副本与删除，选中两个以上节点时加上对齐，三个以上时再加上分布；连线上是删除与清除拐点；空白处是粘贴、全选、自动布局与适合窗口，末尾是编辑 JSON。在画布上按 ContextMenu 键或 Shift + F10，按当前的选择打开菜单。右键事件可以取消，取消后内置菜单与浏览器的菜单都不出现，宿主可以在 `detail` 的 `x`、`y` 处弹自己的菜单。
 
-`commandLayout` 重排工具栏与各右键菜单，键是位置（`toolbar`、`menu:node`、`menu:edge`、`menu:blank`），值是若干组命令 id。写了某个位置就只显示列出的命令，没写的位置用内置排列；排列里写了不存在的命令 id 会抛 TypeError，不会静默跳过。
+选中节点时，选中框上方浮着一条选中工具条：创建副本、复制与删除，选中几个节点时前面多一个「对齐与分布」菜单（`align-menu`，点开列出六种对齐与两种分布）。贴顶放不下时翻到下方，拖动途中收起；只选了连线、没有选中或只读时不出现。画布有焦点时按 Alt + F10 把焦点交给它，在工具条里按 Esc 回到画布。
+
+`commandLayout` 重排工具栏、各右键菜单与选中工具条，键是位置（`toolbar`、`menu:node`、`menu:edge`、`menu:blank`，选中工具条是 `selection:node` 与 `selection:nodes`），值是若干组命令 id；某个选中工具条排空了就不出现。写了某个位置就只显示列出的命令，没写的位置用内置排列；排列里写了不存在的命令 id 会抛 TypeError，不会静默跳过。
 
 <<< @/examples/snippets/designer-layout.ts#command-layout
 
