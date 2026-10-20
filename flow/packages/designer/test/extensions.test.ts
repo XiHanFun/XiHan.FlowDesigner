@@ -164,7 +164,7 @@ describe('扩展', () => {
     const frame = designer.querySelector<HTMLElement & { regions: readonly { name: string, label?: string }[] }>('xh-designer-frame')!
     const element = frame.querySelector('section[slot="acme-sim"]')!
     expect(element).not.toBeNull()
-    expect(frame.regions.map(region => region.name)).toEqual(['header', 'toolbar', 'palette', 'canvas', 'properties', 'issues', 'status', 'minimap', 'outline', 'history', 'acme-sim'])
+    expect(frame.regions.map(region => region.name)).toEqual(['toolbar', 'palette', 'canvas', 'properties', 'issues', 'status', 'minimap', 'outline', 'history', 'acme-sim'])
     expect(frame.regions.find(region => region.name === 'toolbar')!.label).toBe('Designer actions')
     designer.select({ nodes: ['t'] })
     await settle(designer)
@@ -173,7 +173,7 @@ describe('扩展', () => {
     designer.extensions = [nodes]
     await settle(designer)
     expect([element.isConnected, destroy.mock.calls.length]).toEqual([false, 1])
-    expect(frame.regions.map(region => region.name)).toEqual(['header', 'toolbar', 'palette', 'canvas', 'properties', 'issues', 'status', 'minimap', 'outline', 'history'])
+    expect(frame.regions.map(region => region.name)).toEqual(['toolbar', 'palette', 'canvas', 'properties', 'issues', 'status', 'minimap', 'outline', 'history'])
   })
 
   it('节点渲染与规则随扩展；去掉扩展后它的节点类型在文档里照样保留、校验报 node.unknown-type，再装上恢复', async () => {
