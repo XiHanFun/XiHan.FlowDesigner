@@ -101,22 +101,24 @@ aside: false
 
 设置是用户偏好，每人每机一份，不随流程定义保存。`openSettings(section?)` 打开设置对话框，左边一个分区一页：
 
-- 「基础」（`general`）：主题（跟随页面、跟随系统、亮色、暗色）、主题色与状态栏开关。
+- 「基础」（`general`）：主题（跟随页面、跟随系统、亮色、暗色）、主题色（跟随页面、八种预设、自定义颜色）与状态栏开关。
+- 「语言」（`language`）：跟随页面（缺省）、跟随系统，或在十种语言里选一种，名字是各自的本名（简体中文、繁體中文、English、日本語……）。
 - 「布局」（`layout`）：一张面板表，逐块面板改显隐、位置、先后与收起，表下一颗「恢复默认布局」。
 - 「工具栏」（`toolbar`）：按钮的显示方式（图标、文字、图标和文字，缺省只显示图标）、显示工具栏开关，以及一张按钮表：按缺省排列列出工具栏上的命令，可以勾掉不要的、拖动换先后、跨组挪，表下「恢复默认」。工具栏的这些只走设置，没有单独的属性；用户的改动压在宿主的 `commandLayout` 之上。
 - 「画布」（`flow`）：自动布局的方向与两种间距、吸附对齐。
 - 扩展登记的分区，排在后面。
 - 「帮助」「快捷键」「关于」三页在最后：帮助页是几段操作说明与「开始引导」「帮助」两颗钮；快捷键页把命令的快捷键与画布认的几个键列成一张表，「通用」里方向键一行写明没有选中节点时平移画布，Esc 一行写明取消正在进行的拖动；画布在空白处直接拖动就平移，所以没有「按住空格拖动」那一行；关于页写设计器的版本（包入口导出的 `FLOW_VERSION`）与许可证，扩展可以在后面加几行（扩展的 `about` 字段）。
 
-分区 id 与 `flow`、内建的 `general`、`layout`、`toolbar`、`help`、`shortcuts`、`about` 或别的扩展重名时，给 `extensions` 赋值就抛 `DesignerExtensionError`。
+分区 id 与 `flow`、内建的 `general`、`language`、`layout`、`toolbar`、`help`、`shortcuts`、`about` 或别的扩展重名时，给 `extensions` 赋值就抛 `DesignerExtensionError`。
 
 <<< @/examples/snippets/settings.ts#open
 
-值是扁平的键值，键是「分区 id.条目 id」，如 `general.theme`、`flow.snap`，没写的键取缺省值。宿主给缺省、锁定条目或读值时用常量，不手写键：「画布」分区的 id 与各条目的键是包入口导出的 `FLOW_SETTINGS_SECTION` 与 `FLOW_SETTING_KEYS`，「基础」「布局」「工具栏」分区的键是 `@xihan-ui/designer-shell` 的 `DESIGNER_SETTING_KEYS`（如 `toolbar.display`、`toolbar.visible`、`toolbar.layout`）；以后条目改了 path，常量跟着变，宿主的缺省不会静默失效。`settings` 赋值即生效；用户在对话框里改了一条，设计器换成新的一份并派发 `settings-change`，宿主存起来、下次赋回。`settingsPolicy` 隐藏或锁定条目，键是条目键或分区 id：`hidden` 不显示，一个分区的条目全藏了就没有这一页；`locked` 只读，说明换成「由所在系统管理」。
+值是扁平的键值，键是「分区 id.条目 id」，如 `general.theme`、`flow.snap`，没写的键取缺省值。宿主给缺省、锁定条目或读值时用常量，不手写键：「画布」分区的 id 与各条目的键是包入口导出的 `FLOW_SETTINGS_SECTION` 与 `FLOW_SETTING_KEYS`，「基础」「语言」「布局」「工具栏」分区的键是 `@xihan-ui/designer-shell` 的 `DESIGNER_SETTING_KEYS`（如 `general.brand`、`language.locale`、`toolbar.display`、`toolbar.layout`）；以后条目改了 path，常量跟着变，宿主的缺省不会静默失效。`settings` 赋值即生效；用户在对话框里改了一条，设计器换成新的一份并派发 `settings-change`，宿主存起来、下次赋回。`settingsPolicy` 隐藏或锁定条目，键是条目键或分区 id：`hidden` 不显示，一个分区的条目全藏了就没有这一页；`locked` 只读，说明换成「由所在系统管理」。
 
 <<< @/examples/snippets/settings.ts#host
 
-- **主题只作用于设计器**：主题与主题色写在 `<xh-flow-designer>` 自己的 `data-theme`、`data-brand` 上，页面其余部分不变；设置对话框、菜单这些浮层跟着设计器变。主题色的预设由宿主给 `brands`（品牌 id 与色板格子的颜色，品牌 id 可以用 `@xihan-ui/tokens` 的 `BRAND_PRESETS`）；给了 `registerBrand`（形状同 `@xihan-ui/tokens` 的 `registerBrand`）才许自定义颜色。两样都不给时没有主题色这一项。
+- **主题只作用于设计器**：主题与主题色写在 `<xh-flow-designer>` 自己的 `data-theme`、`data-brand` 上，页面其余部分不变；设置对话框、菜单这些浮层跟着设计器变。主题色是内置的：跟随页面（缺省），或 UI 的八种预设，或自定义颜色，宿主不用传预设。
+- **语言只作用于设计器**：设置里选了语言，`<xh-flow-designer>` 把这一语言的 UI、designer-shell 与流程语言包作为自己的 `xhConfig` 交出去，设计器、里面的元素与它弹出的浮层都换成这种语言（日期、分页这些 UI 文案也一样），页面别处不变。跟随系统按浏览器的语言偏好挑最接近的一种，挑不到用英文；语言包第一次用到时才加载。跟随页面时 `xhConfig` 是空对象，照页面的全局配置。
 - **画布的设置**：`autoLayout()` 没给的方向与间距、工具栏的「自动布局」都取「画布」分区的值；吸附对齐关掉时拖动只吸附网格。小地图是一块面板，显隐跟着布局走。
 - **扩展读设置**：命令、面板与扩展从上下文的 `settings` 读值，各分区没写的条目已经取了缺省值，如 `context.settings['flow.snap']`。
 
