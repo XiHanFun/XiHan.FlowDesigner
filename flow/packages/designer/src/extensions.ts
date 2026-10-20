@@ -32,6 +32,7 @@ import {
   FileCodeIcon,
   FileImageIcon,
   FolderOpenIcon,
+  HandIcon,
   HistoryIcon,
   ListTreeIcon,
   MaximizeIcon,
@@ -285,7 +286,7 @@ const BUILTIN_COMMANDS: readonly FlowDesignerCommand[] = [
     helpUrl: () => FLOW_DESIGNER_HELP_URL,
     startTour: ({ designer }) => designer.startTour(),
     openJsonEditor: ({ designer }) => designer.openJsonEditor(),
-    icons: { panels: PanelLeftIcon, settings: SettingsIcon, help: CircleHelpIcon, editJson: FileCodeIcon },
+    icons: { panels: PanelLeftIcon, settings: SettingsIcon, help: CircleHelpIcon, editJson: FileCodeIcon, panTool: HandIcon },
   }),
   ...designerPanelCommands<FlowDesignerContext>({ panels: FRAME_PANELS, frame: context => context.frame }),
 ]
@@ -391,7 +392,7 @@ export const FLOW_TOOLBAR_LAYOUT: readonly (readonly string[])[] = [
   ['undo', 'redo'],
   ['delete', 'duplicate'],
   ['align-left', 'align-center', 'align-right', 'align-top', 'align-middle', 'align-bottom', 'distribute-horizontal', 'distribute-vertical', 'auto-layout'],
-  ['zoom-out', 'zoom-in', 'zoom-to-fit', 'zoom-to-actual'],
+  ['pan-tool', 'zoom-out', 'zoom-in', 'zoom-to-fit', 'zoom-to-actual'],
   ['export-png', 'export-svg'],
   ['panels', 'settings', 'help'],
 ]

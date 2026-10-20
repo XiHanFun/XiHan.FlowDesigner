@@ -46,6 +46,17 @@ xh-flow-designer [data-part='viewport'][data-gesture='pan'] {
   cursor: grabbing;
 }
 
+/* 拖动工具开着：画布与里面的节点、端口、连线一律手形，拖动中握拳 */
+xh-flow-designer [data-canvas-tool='pan'] [data-part='viewport'],
+xh-flow-designer [data-canvas-tool='pan'] [data-part='world'] * {
+  cursor: grab;
+}
+
+xh-flow-designer [data-canvas-tool='pan'] [data-part='viewport'][data-gesture='pan'],
+xh-flow-designer [data-canvas-tool='pan'] [data-part='viewport'][data-gesture='pan'] [data-part='world'] * {
+  cursor: grabbing;
+}
+
 xh-flow-designer [data-part='viewport'][data-gesture='move'] {
   cursor: move;
 }

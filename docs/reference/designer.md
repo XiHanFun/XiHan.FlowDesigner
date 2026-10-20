@@ -167,7 +167,7 @@ declare function defineFlowDesigner(): void
 | 1 | `undo` `redo` |
 | 2 | `delete` `duplicate` |
 | 3 | `align-left` `align-center` `align-right` `align-top` `align-middle` `align-bottom` `distribute-horizontal` `distribute-vertical` `auto-layout` |
-| 4 | `zoom-out` `zoom-in` `zoom-to-fit` `zoom-to-actual` |
+| 4 | `pan-tool` `zoom-out` `zoom-in` `zoom-to-fit` `zoom-to-actual` |
 | 5 | `export-png` `export-svg` |
 | 6 | `panels` `settings` `help` |
 

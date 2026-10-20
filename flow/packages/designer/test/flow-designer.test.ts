@@ -298,6 +298,36 @@ describe('<xh-flow-designer>', () => {
     expect(designer.getViewport()).toEqual({ x: 50, y: 30, zoom: 1 })
   })
 
+  it('拖动工具：在工具栏缩放那组最前；开着时在节点上按住拖动平移视口，节点不动、选中不变，只点一下也不改选中；按钮跟着按下；H 打开，拖动途中的 Esc 只取消这次拖动，再按退出', async () => {
+    const designer = await mount()
+    const frame = designer.querySelector<HTMLElement & { canvasTool: 'select' | 'pan' }>('xh-designer-frame')!
+    const buttons = (): string[] => Array.from(designer.querySelectorAll<HTMLButtonElement>('[data-part="command-bar"] button[value]'), button => button.value)
+    expect(buttons().slice(buttons().indexOf('pan-tool'), buttons().indexOf('pan-tool') + 2)).toEqual(['pan-tool', 'zoom-out'])
+    designer.select({ nodes: ['t'] })
+    designer.querySelector<HTMLButtonElement>('[data-part="command-bar"] button[value="pan-tool"]')!.click()
+    await designer.updateComplete
+    expect([frame.canvasTool, designer.querySelector('[data-part="command-bar"] button[value="pan-tool"]')!.getAttribute('aria-pressed')]).toEqual(['pan', 'true'])
+    press(nodeElement(designer, 's'), 10, 10)
+    move(60, 40)
+    release(60, 40)
+    expect(designer.getViewport()).toEqual({ x: 50, y: 30, zoom: 1 })
+    expect([designer.schema.nodes.find(node => node.id === 's')!.x, designer.getSelection().nodes]).toEqual([0, ['t']])
+    press(part(designer, 'viewport')[0]!, 300, 300)
+    release(300, 300)
+    expect(designer.getSelection().nodes).toEqual(['t'])
+    frame.canvasTool = 'select'
+    await designer.updateComplete
+    expect(designer.querySelector('[data-part="command-bar"] button[value="pan-tool"]')!.getAttribute('aria-pressed')).toBe('false')
+    key(designer, { key: 'h' })
+    expect(frame.canvasTool).toBe('pan')
+    press(part(designer, 'viewport')[0]!, 300, 300)
+    move(320, 300)
+    expect(key(designer, { key: 'Escape' }).defaultPrevented).toBe(true)
+    expect(frame.canvasTool).toBe('pan')
+    key(designer, { key: 'Escape' })
+    expect(frame.canvasTool).toBe('select')
+  })
+
   it('快捷键：删除、撤销重做、全选、复制粘贴、微移与保存', async () => {
     const designer = await mount()
     designer.select({ nodes: ['t'] })
