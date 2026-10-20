@@ -53,7 +53,8 @@ export const flowFrFR: XhConfig = /* @__PURE__ */ flowLocale(designerShellFrFR, 
     startVariableCell: (row, column) => `${column} de la variable ${row}`,
     tourSteps: {
       connect: { title: 'Connecter', description: 'Faites glisser depuis un port au bord d’un nœud jusqu’à un autre nœud. Une connexion sélectionnée, faites glisser ses extrémités pour la reconnecter ou ses coudes pour changer son tracé.' },
-      autoLayout: { title: 'Disposition automatique', description: 'Dispose les nœuds en couches dans le sens des connexions. Modifiez le sens et les espacements à la page Canevas des paramètres.' },
+      autoLayout: { title: 'Disposition automatique', description: 'Dispose les nœuds en couches dans le sens des connexions. Modifiez le sens et les espacements à la page Canevas des paramètres.', menubarDescription: 'Dispose les nœuds en couches dans le sens des connexions. Modifiez le sens et les espacements à la page Canevas des paramètres. La commande se trouve aussi dans le menu Affichage, à côté d’Aligner et répartir.' },
+      export: { title: 'Exporter une image', description: 'Enregistre le flux en image PNG ou SVG.', menubarDescription: 'Enregistre le flux en image PNG ou SVG. Les deux se trouvent aussi dans le menu Fichier.' },
     },
     helpNotes: [
       'Faites glisser des nœuds du panneau Nœuds, à gauche, vers le canevas, ou cliquez sur l’un d’eux pour l’ajouter. Modifiez-les dans le panneau Propriétés, à droite.',

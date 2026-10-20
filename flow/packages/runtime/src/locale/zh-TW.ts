@@ -53,7 +53,8 @@ export const flowZhTW: XhConfig = /* @__PURE__ */ flowLocale(designerShellZhTW, 
     startVariableCell: (row, column) => `第 ${row} 個變數的${column}`,
     tourSteps: {
       connect: { title: '連線', description: '從節點邊上的連接埠拖到另一個節點就連上了。選取連線後可以拖曳端點改接、拖曳拐點調整走向。' },
-      autoLayout: { title: '自動排版', description: '依連線方向把節點分層排開。方向與間距在設定的「畫布」一頁裡修改。' },
+      autoLayout: { title: '自動排版', description: '依連線方向把節點分層排開。方向與間距在設定的「畫布」一頁裡修改。', menubarDescription: '依連線方向把節點分層排開。方向與間距在設定的「畫布」一頁裡修改。「檢視」選單裡也有它，旁邊是「對齊與分佈」。' },
+      export: { title: '匯出圖片', description: '把流程匯出成 PNG 或 SVG 圖片。', menubarDescription: '把流程匯出成 PNG 或 SVG 圖片；「檔案」選單裡也有這兩項。' },
     },
     helpNotes: [
       '從左邊的節點面板把節點拖到畫布上，或點一下加進來；在右邊的屬性面板裡修改它。',

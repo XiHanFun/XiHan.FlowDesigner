@@ -129,12 +129,12 @@ core 层只管取值对不对；属性面板里用什么控件编辑它，由设
 
 ### 引导步骤
 
-`tourSteps` 往新手引导里加几步，与通用步骤、流程自己的两步一起按 `order` 排：通用步骤是 0–60 与收尾的设置（900），流程的是 100 起，扩展的写 200 起。
+`tourSteps` 往新手引导里加几步，与通用步骤、流程自己的三步一起按 `order` 排：通用步骤是 0–60 与收尾的设置（900），流程的是 100 起，扩展的写 200 起。
 
 <<< @/examples/snippets/tour-steps.ts#tour-steps
 
 - `id` 用扩展 id 加点加名字；不能与别的步骤重名，也不能用留给 designer-shell 的 `shell.` 前缀，否则给 `extensions` 赋值就抛 `DesignerExtensionError`。
-- `target` 指要高亮的目标：`{ panel }` 一块面板，`{ command }` 工具栏上的一条命令，`{ region }` 外框的区，`{ selector }` 设计器里的任意节点；不给就居中显示。目标看不见的那步自动跳过。
+- `target` 指要高亮的目标：`{ panel }` 一块面板，`{ command }` 工具栏上的一条命令，`{ region }` 外框的区，`{ menubar }` 菜单栏上的一张菜单（菜单 id，如 `file`、`view`，窄屏时落在「菜单」钮上），`{ selector }` 设计器里的任意节点；不给就居中显示。目标看不见的那步自动跳过，菜单栏关掉时指向菜单的那步也跳过。
 - `title`、`description` 可以是按上下文现算的函数，跟着语言变。
 
 ### 关于

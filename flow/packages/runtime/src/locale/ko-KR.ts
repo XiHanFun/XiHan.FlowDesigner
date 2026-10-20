@@ -53,7 +53,8 @@ export const flowKoKR: XhConfig = /* @__PURE__ */ flowLocale(designerShellKoKR, 
     startVariableCell: (row, column) => `${row}번째 변수의 ${column}`,
     tourSteps: {
       connect: { title: '연결', description: '노드 가장자리의 포트에서 다른 노드로 끌면 연결됩니다. 연결선을 선택하면 끝점을 끌어 다시 연결하거나 꺾인 점을 끌어 경로를 바꿀 수 있습니다.' },
-      autoLayout: { title: '자동 배치', description: '연결선 방향을 따라 노드를 층으로 나누어 늘어놓습니다. 방향과 간격은 설정의 「캔버스」 페이지에서 바꿉니다.' },
+      autoLayout: { title: '자동 배치', description: '연결선 방향을 따라 노드를 층으로 나누어 늘어놓습니다. 방향과 간격은 설정의 「캔버스」 페이지에서 바꿉니다.', menubarDescription: '연결선 방향을 따라 노드를 층으로 나누어 늘어놓습니다. 방향과 간격은 설정의 「캔버스」 페이지에서 바꿉니다. [보기] 메뉴에도 있으며 바로 옆에 [정렬 및 분포]가 있습니다.' },
+      export: { title: '이미지 내보내기', description: '흐름을 PNG 또는 SVG 이미지로 내보냅니다.', menubarDescription: '흐름을 PNG 또는 SVG 이미지로 내보냅니다. 둘 다 [파일] 메뉴에도 있습니다.' },
     },
     helpNotes: [
       '왼쪽 노드 패널에서 노드를 캔버스로 끌어 놓거나 클릭해서 추가합니다. 오른쪽 속성 패널에서 편집합니다.',
