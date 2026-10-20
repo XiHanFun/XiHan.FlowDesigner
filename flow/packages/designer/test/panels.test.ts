@@ -129,18 +129,23 @@ describe('工具栏', () => {
     expect([changes, regions().includes('status')]).toEqual([[['general.statusBar', false]], false])
   })
 
-  it('宿主写在设计器上的 slot="menubar-end" 放到菜单栏右边一段，后来加的也一样', async () => {
-    const title = document.createElement('span')
-    title.slot = 'menubar-end'
-    title.textContent = '请假审批'
-    const designer = await mount(element => element.append(title))
+  it('宿主写在设计器上的 slot="menubar-center" 放到菜单栏正中、menubar-end 放到右边、status-end 放到状态栏右端缩放比例的前面，后来加的也一样；状态栏关掉时跟着不显示', async () => {
+    const host = (slot: string, text: string): HTMLSpanElement => Object.assign(document.createElement('span'), { slot, textContent: text })
+    const title = host('menubar-center', '请假审批 · LEAVE-01')
+    const draft = host('menubar-end', '草稿')
+    const saved = host('status-end', '已保存')
+    const designer = await mount(element => element.append(title, draft, saved))
     await settleFrame(designer)
-    expect([title.parentElement!.getAttribute('data-zone'), title.closest('[data-region]')!.getAttribute('data-region')]).toEqual(['end', 'menubar'])
-    const state = document.createElement('span')
-    state.slot = 'menubar-end'
-    designer.append(state)
+    const place = (node: Element): (string | null | undefined)[] => [node.parentElement!.getAttribute('data-zone'), node.closest('[data-region]')?.getAttribute('data-region')]
+    expect([place(title), place(draft), place(saved)]).toEqual([['center', 'menubar'], ['end', 'menubar'], ['end', 'status']])
+    designer.append(host('status-end', '已连接'))
     await settleFrame(designer)
-    expect(state.closest('[data-region]')!.getAttribute('data-region')).toBe('menubar')
+    const texts = [...saved.parentElement!.children].map(node => node.textContent!)
+    expect(texts.slice(0, 2)).toEqual(['已保存', '已连接'])
+    expect(texts.at(-1)).toMatch(/%$/)
+    designer.settings = { 'general.statusBar': false }
+    await settleFrame(designer)
+    expect(saved.closest('[data-region]')).toBeNull()
   })
 
   it('画布有焦点时按 F10 把焦点交给菜单栏，再按 F10 回到画布', async () => {

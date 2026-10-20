@@ -28,9 +28,12 @@ export function customize(designer: HTMLElementTagNameMap['xh-flow-designer']): 
     ],
   }]
   const title = document.createElement('span')
-  title.slot = 'menubar-end'
-  title.textContent = '请假审批 · 已保存'
-  designer.append(title)
+  title.slot = 'menubar-center'
+  title.textContent = '请假审批 · LEAVE-01'
+  const saved = document.createElement('span')
+  saved.slot = 'status-end'
+  saved.textContent = '已保存'
+  designer.append(title, saved)
   // #endregion host-menubar
 
   // #region severity
