@@ -38,6 +38,7 @@ import {
   HistoryIcon,
   InfoIcon,
   ListTreeIcon,
+  MapIcon,
   MaximizeIcon,
   PanelLeftIcon,
   RedoIcon,
@@ -302,7 +303,7 @@ const BUILTIN_COMMANDS: readonly FlowDesignerCommand[] = [
       change: ({ designer }, key, value) => internalsOf(designer).changeSetting(key, value),
       policy: ({ designer }) => designer.settingsPolicy,
     },
-    icons: { save: SaveIcon, panels: PanelLeftIcon, settings: SettingsIcon, help: CircleHelpIcon, editJson: FileCodeIcon, panTool: HandIcon, about: InfoIcon, appearance: EyeIcon },
+    icons: { save: SaveIcon, panels: PanelLeftIcon, settings: SettingsIcon, help: CircleHelpIcon, editJson: FileCodeIcon, panTool: HandIcon, about: InfoIcon, appearance: EyeIcon, startTour: MapIcon },
   }),
   ...designerPanelCommands<FlowDesignerContext>({ panels: FRAME_PANELS, frame: context => context.frame }),
 ]
