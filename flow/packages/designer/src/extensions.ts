@@ -30,6 +30,7 @@ import {
   DistributeHorizontalIcon,
   DistributeVerticalIcon,
   EraserIcon,
+  EyeIcon,
   FileCodeIcon,
   FileImageIcon,
   FolderOpenIcon,
@@ -301,7 +302,7 @@ const BUILTIN_COMMANDS: readonly FlowDesignerCommand[] = [
       change: ({ designer }, key, value) => internalsOf(designer).changeSetting(key, value),
       policy: ({ designer }) => designer.settingsPolicy,
     },
-    icons: { save: SaveIcon, panels: PanelLeftIcon, settings: SettingsIcon, help: CircleHelpIcon, editJson: FileCodeIcon, panTool: HandIcon, about: InfoIcon },
+    icons: { save: SaveIcon, panels: PanelLeftIcon, settings: SettingsIcon, help: CircleHelpIcon, editJson: FileCodeIcon, panTool: HandIcon, about: InfoIcon, appearance: EyeIcon },
   }),
   ...designerPanelCommands<FlowDesignerContext>({ panels: FRAME_PANELS, frame: context => context.frame }),
 ]

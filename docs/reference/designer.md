@@ -158,6 +158,7 @@ declare function defineFlowDesigner(): void
 | `show-toolbar` | 工具栏 | — | — | 可用 |
 | `show-status-bar` | 状态栏 | — | — | 可用 |
 | `show-menubar` | 菜单栏 | — | — | 可用 |
+| `appearance` | 外观 | `EyeIcon` | — | 可用 |
 | `panel:palette` | 节点 | — | — | 可用 |
 | `panel:outline` | 流程结构 | — | — | 可用 |
 | `panel:properties` | 属性 | — | — | 可用 |

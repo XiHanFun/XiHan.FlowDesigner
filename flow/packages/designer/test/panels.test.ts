@@ -26,7 +26,7 @@ async function settleFrame(designer: XhFlowDesigner): Promise<void> {
 }
 
 /** 菜单栏的 <xh-menubar>：按数据铺的菜单与勾选。 */
-type MenubarHost = HTMLElement & { collection?: { value: string, label?: string, items?: { value: string }[] }[], checkboxValue?: string[] }
+type MenubarHost = HTMLElement & { collection?: { value: string, label?: string, items?: { value: string, children?: { value: string, kind?: string }[], checkboxValue?: string[] }[] }[], checkboxValue?: string[] }
 
 /** 设计器的外框：面板都在它里面，JSON 编辑框的问题列表不在。 */
 function frameOf(designer: Element): HTMLElement {
@@ -92,7 +92,7 @@ describe('工具栏', () => {
     }
   })
 
-  it('菜单栏：外框最上一条，文件、编辑、视图、帮助四张菜单；导出图片在文件里、设置收尾，对齐分布与自动布局在视图里、显示开关收尾', async () => {
+  it('菜单栏：外框最上一条，文件、编辑、视图、帮助四张菜单；导出图片在文件里、设置收尾，对齐分布与自动布局在视图里，面板与外观收尾、三条显示开关在外观子菜单里', async () => {
     const designer = await mount()
     const menubar = designer.querySelector<MenubarHost>('xh-menubar')!
     expect(menubar.closest('[data-part="region"]')!.getAttribute('data-region')).toBe('menubar')
@@ -100,9 +100,11 @@ describe('工具栏', () => {
     expect(menubar.collection!.map(node => [node.value, node.label])).toEqual([['file', 'File'], ['edit', 'Edit'], ['view', 'View'], ['help', 'Help']])
     expect(items('file')).toEqual(['save', 'export-png', 'export-svg', 'settings'])
     expect(items('edit')).toEqual(['undo', 'redo', 'cut', 'copy', 'paste', 'delete', 'duplicate', 'select-all', 'edit-json'])
-    expect(items('view')).toEqual(['zoom-in', 'zoom-out', 'zoom-to-fit', 'zoom-to-actual', 'pan-tool', 'panels', 'align-menu', 'auto-layout', 'show-toolbar', 'show-status-bar', 'show-menubar'])
+    expect(items('view')).toEqual(['zoom-in', 'zoom-out', 'zoom-to-fit', 'zoom-to-actual', 'pan-tool', 'align-menu', 'auto-layout', 'panels', 'appearance'])
     expect(items('help')).toEqual(['start-tour', 'help', 'shortcuts', 'about'])
-    expect(menubar.checkboxValue).toEqual(['view/show-toolbar', 'view/show-status-bar', 'view/show-menubar'])
+    const appearance = menubar.collection!.find(node => node.value === 'view')!.items!.find(item => item.value === 'view/appearance')!
+    const toggles = ['show-toolbar', 'show-status-bar', 'show-menubar'].map(id => `view/appearance/command:${id}`)
+    expect([appearance.children!.map(child => [child.value, child.kind]), appearance.checkboxValue]).toEqual([toggles.map(value => [value, 'checkbox']), toggles])
   })
 
   it('菜单栏的条目执行命令：保存派发 save；显示开关改设置并派发 settings-change，关掉菜单栏时外框不登记它', async () => {
@@ -115,11 +117,11 @@ describe('工具栏', () => {
     designer.addEventListener('settings-change', event => changes.push([(event as CustomEvent<{ key: string }>).detail.key, (event as CustomEvent<{ value: unknown }>).detail.value]))
     select('file', 'save')
     expect(saves).toHaveLength(1)
-    select('view', 'show-status-bar')
+    select('view', 'appearance/command:show-status-bar')
     await settleFrame(designer)
     const regions = (): string[] => (frameOf(designer) as HTMLElement & { regions: readonly { name: string }[] }).regions.map(region => region.name)
     expect([changes, regions().includes('status')]).toEqual([[['general.statusBar', false]], false])
-    select('view', 'show-menubar')
+    select('view', 'appearance/command:show-menubar')
     await settleFrame(designer)
     expect([changes.at(-1), regions().includes('menubar'), menubar.closest('[data-part="parked"]') !== null]).toEqual([['toolbar.menubar', false], false, true])
   })
