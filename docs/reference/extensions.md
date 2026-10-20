@@ -210,6 +210,7 @@ type FlowPropertyControl = PropertyControl | { readonly kind: string }
 | `required?` | `boolean` | 显示时必须填写，按 isFilled 判空。 |
 | `default?` | `JsonValue` | 新建时写入的缺省值；不给就不写。 |
 | `visibleWhen?` | `PropertyCondition` | 显示条件；缺省总是显示。 |
+| `enabledWhen?` | `PropertyCondition` | 可用条件，写法同 visibleWhen；不满足时照样显示、但只读。缺省总是可用。 |
 | `meta?` | `JsonObject` | 产品自用，内核不解释。 |
 
 ### PropertyCondition {#propertycondition}
@@ -340,6 +341,7 @@ type FlowDesignerCommand = DesignerCommand<FlowDesignerContext>
 | 方法 | 说明 |
 | --- | --- |
 | `enabled(context: Ctx): boolean` | 不给即总是可用。 |
+| `visible(context: Ctx): boolean` | 不给即总是存在；返回 false 时这条命令此刻不存在：工具栏、菜单栏、右键菜单与菜单命令里都不列它，快捷键不触发，执行也不跑（如只在开发者模式下才有的调试入口）。 |
 | `checked(context: Ctx): boolean` | 给了就是开关式命令，按钮与菜单项显示选中状态。 |
 | `run(context: Ctx): void` | 执行命令；按钮、菜单项与快捷键都只在命令此刻可用时调用它。弹层命令与菜单命令可以不给：工具栏上点它们是打开弹层或菜单，不调 run；给了 run，快捷键按下时调它（通常调工具栏的 open 打开同一份）。 |
 | `panel(context: Ctx): DesignerCommandPanel<Ctx>` | 弹层命令：每次打开时建出放进弹层的面板。 |

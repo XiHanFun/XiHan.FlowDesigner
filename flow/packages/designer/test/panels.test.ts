@@ -102,7 +102,7 @@ describe('工具栏', () => {
     const items = (menu: string): string[] => menubar.collection!.find(node => node.value === menu)!.items!.map(item => item.value.slice(menu.length + 1))
     expect(menubar.collection!.map(node => [node.value, node.label])).toEqual([['file', 'File'], ['edit', 'Edit'], ['view', 'View'], ['help', 'Help']])
     expect(items('file')).toEqual(['save', 'export-png', 'export-svg', 'settings'])
-    expect(items('edit')).toEqual(['undo', 'redo', 'cut', 'copy', 'paste', 'delete', 'duplicate', 'select-all', 'edit-json'])
+    expect(items('edit')).toEqual(['undo', 'redo', 'cut', 'copy', 'paste', 'delete', 'duplicate', 'select-all'])
     expect(items('view')).toEqual(['zoom-in', 'zoom-out', 'zoom-to-fit', 'zoom-to-actual', 'pan-tool', 'align-menu', 'auto-layout', 'panels', 'appearance'])
     expect(items('help')).toEqual(['start-tour', 'help', 'shortcuts', 'about'])
     const appearance = menubar.collection!.find(node => node.value === 'view')!.items!.find(item => item.value === 'view/appearance')!
@@ -699,6 +699,11 @@ describe('右键菜单', () => {
     rightClick(part(designer, 'edge-hit')[0]!)
     expect(items()).toEqual(['delete', 'clear-vertices(x)'])
 
+    rightClick(part(designer, 'viewport')[0]!, 600, 600)
+    expect(items()).toEqual(['paste(x)', 'select-all', 'auto-layout', 'zoom-to-fit'])
+    // 开发者模式开着时末尾多一条编辑 JSON
+    designer.settings = { 'general.developer': true }
+    await designer.updateComplete
     rightClick(part(designer, 'viewport')[0]!, 600, 600)
     expect(items()).toEqual(['paste(x)', 'select-all', 'auto-layout', 'zoom-to-fit', 'edit-json'])
   })
