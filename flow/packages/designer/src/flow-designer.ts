@@ -1313,8 +1313,9 @@ export class XhFlowDesigner extends XhReactiveElement {
     const menubar = createCommandMenubar<FlowDesignerContext>(doc, { menuIcon: MenuIcon })
     menubar.element.slot = 'menubar'
     frame.append(menubar.element, toolbar, palette.element, canvas, properties.element, issues.element, issueSummary, minimap.element)
-    // 宿主写在设计器上的 slot="menubar-end"（如模板标题与保存状态）转交给外框，放在菜单栏右边
-    forwardFrameSlots(this, frame, ['menubar-end'])
+    // 宿主写在设计器上的 slot="menubar-center"（模板标题）、slot="menubar-end" 与 slot="status-end"（保存状态）转交给外框：
+    // 标题在菜单栏正中，状态在状态栏右端、缩放比例的前面
+    forwardFrameSlots(this, frame, ['menubar-center', 'menubar-end', 'status-end'])
     const panels = createPanelHost<FlowDesignerContext>(frame, { commands: () => this.#model.commands })
     const selectionStatus = createStatusItem(doc, { value: '' })
     selectionStatus.element.slot = 'status-start'
