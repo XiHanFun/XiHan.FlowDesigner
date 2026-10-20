@@ -132,7 +132,7 @@ describe('扩展', () => {
     expect(menuItems(content)).toEqual(['cut', 'copy', 'duplicate', 'delete', 'acme.hello'])
     const shortcut = content.querySelector('[data-xh-part="item"][value="acme.hello"] [data-xh-part="item-shortcut"]')!
     expect(shortcut.textContent).toBe('Ctrl+Shift+H')
-    designer.querySelector('xh-context-menu')!.dispatchEvent(new CustomEvent('select', { detail: { value: 'acme.hello' } }))
+    designer.querySelector('xh-context-menu')!.dispatchEvent(new CustomEvent('item-select', { detail: { value: 'acme.hello' } }))
     expect(run).toHaveBeenCalledTimes(1)
 
     expect(key(designer, { key: 'H', ctrlKey: true, shiftKey: true }).defaultPrevented).toBe(true)

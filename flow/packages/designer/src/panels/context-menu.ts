@@ -25,7 +25,7 @@ export class ContextMenuPanel {
         createAuthoredElement(doc, 'div', { 'data-xh-part': 'positioner' }, [this.content]),
       ]),
     ])
-    this.element.addEventListener('select', (event) => {
+    this.element.addEventListener('item-select', (event) => {
       onSelect((event as CustomEvent<{ value: string }>).detail.value)
     })
   }
