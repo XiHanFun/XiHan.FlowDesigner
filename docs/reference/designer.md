@@ -362,7 +362,7 @@ type FlowBuiltinPropertyKey = 'label' | 'style.dashed'
 | `FLOW_DESIGNER_HELP_URL` | 常量 | 内置命令 help 打开的帮助页：流程文档站的设计器一页。 |
 | `FLOW_PANELS` | 常量 | 设计器登记的面板与画布浮动件的 id：宿主写 defaultLayout、settingsPolicy（layout.panels.&lt;面板 id&gt;）时用它，不手写字符串。 |
 | `FLOW_TOOLBAR_LAYOUT` | 常量 | 工具栏的缺省排列；commandLayout 没写 toolbar 时用它，再把 placement 含 toolbar 的扩展命令追加成一组。 |
-| `FLOW_TOUR_STEPS` | 常量 | 新手引导里流程自己的几步，排在通用步骤之后：连线（指向第一个端口）与自动布局。 |
+| `FLOW_TOUR_STEPS` | 常量 | 新手引导里流程自己的几步，排在通用步骤之后：连线（指向第一个端口）、自动布局与导出图片（指向工具栏上的钮）。 |
 | `FlowDesignerCommand` | 类型 | 设计器的命令。 |
 | `FlowDesignerContext` | 接口 | 命令、面板与扩展装上时拿到的上下文。 |
 | `FlowDesignerExporter` | 类型 | 导出器：把当前流程定义换成文件。 |

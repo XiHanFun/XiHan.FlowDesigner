@@ -15,7 +15,7 @@ import type { XhFlowDesigner } from './flow-designer'
 import type { FlowPropertyEditor } from './panels/properties'
 import { createFlowRuntimeModel, DEFAULT_FLOW_DESIGNER_TRANSLATIONS } from '@xihan-flow/runtime'
 import { DesignerExtensionError, extensionCommands, extensionEditors, snapshotHistory } from '@xihan-ui/designer-kit'
-import { collectMenubarMenus, collectPaletteSources, collectSettingsSections, collectTourSteps, createHistoryPanel, createOutlinePanel, designerHistoryCommands, designerMenubarLayout, designerMenubarMenus, designerPanelCommands, designerShellCommands } from '@xihan-ui/designer-shell'
+import { collectMenubarMenus, collectPaletteSources, collectSettingsSections, collectTourSteps, createHistoryPanel, createOutlinePanel, designerHistoryCommands, designerMenubarLayout, designerMenubarMenus, designerPanelCommands, designerShellCommands, menubarVisibleOf } from '@xihan-ui/designer-shell'
 import {
   AlignObjectsBottomIcon,
   AlignObjectsCenterIcon,
@@ -365,14 +365,21 @@ function tourStep(key: FlowTourStepKey, target: DesignerTourTarget, order: numbe
     target,
     order,
     title: ({ translations }) => translations.tourSteps[key].title,
-    description: ({ translations }) => translations.tourSteps[key].description,
+    description: ({ translations, settings }) => {
+      const text = translations.tourSteps[key]
+      return (menubarVisibleOf(settings) ? text.menubarDescription : undefined) ?? text.description
+    },
   }
 }
 
-/** 新手引导里流程自己的几步，排在通用步骤之后：连线（指向第一个端口）与自动布局。目标看不见的那步由零件跳过。 */
+/**
+ * 新手引导里流程自己的几步，排在通用步骤之后：连线（指向第一个端口）、自动布局与导出图片（指向工具栏上的钮）。
+ * 菜单栏显示着时，自动布局与导出图片的说明多一句它们也在「视图」「文件」菜单里。目标看不见的那步由零件跳过。
+ */
 export const FLOW_TOUR_STEPS: readonly DesignerTourStep<FlowDesignerContext>[] = [
   tourStep('connect', { selector: '[data-part="port"]' }, 100),
   tourStep('autoLayout', { command: 'auto-layout' }, 110),
+  tourStep('export', { command: 'export-png' }, 120),
 ]
 
 /** 设计器的内置扩展：内置命令、图片导出器、流程结构与历史记录两块面板、引导步骤。节点类型、连线属性等 core 层的内置部分在 FLOW_CORE_EXTENSION 里。 */

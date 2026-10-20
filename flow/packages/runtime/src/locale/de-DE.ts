@@ -53,7 +53,8 @@ export const flowDeDE: XhConfig = /* @__PURE__ */ flowLocale(designerShellDeDE, 
     startVariableCell: (row, column) => `${column} von Variable ${row}`,
     tourSteps: {
       connect: { title: 'Verbinden', description: 'Ziehen Sie von einem Anschluss am Rand eines Knotens zu einem anderen Knoten. Bei einer ausgewählten Verbindung ziehen Sie ihre Enden, um sie neu zu verbinden, oder ihre Knickpunkte, um den Verlauf zu ändern.' },
-      autoLayout: { title: 'Automatisch anordnen', description: 'Ordnet die Knoten in Ebenen entlang der Verbindungen an. Richtung und Abstände ändern Sie in den Einstellungen auf der Seite „Arbeitsfläche“.' },
+      autoLayout: { title: 'Automatisch anordnen', description: 'Ordnet die Knoten in Ebenen entlang der Verbindungen an. Richtung und Abstände ändern Sie in den Einstellungen auf der Seite „Arbeitsfläche“.', menubarDescription: 'Ordnet die Knoten in Ebenen entlang der Verbindungen an. Richtung und Abstände ändern Sie in den Einstellungen auf der Seite „Arbeitsfläche“. Sie finden den Befehl auch im Menü Ansicht, neben „Ausrichten und verteilen“.' },
+      export: { title: 'Als Bild exportieren', description: 'Speichert den Ablauf als PNG- oder SVG-Bild.', menubarDescription: 'Speichert den Ablauf als PNG- oder SVG-Bild. Beides finden Sie auch im Menü Datei.' },
     },
     helpNotes: [
       'Ziehen Sie Knoten aus dem Bereich „Knoten“ links auf die Arbeitsfläche oder klicken Sie einen an, um ihn hinzuzufügen. Bearbeiten Sie sie im Bereich „Eigenschaften“ rechts.',

@@ -53,7 +53,8 @@ export const flowPtBR: XhConfig = /* @__PURE__ */ flowLocale(designerShellPtBR, 
     startVariableCell: (row, column) => `${column} da variável ${row}`,
     tourSteps: {
       connect: { title: 'Conectar', description: 'Arraste de uma porta na borda de um nó até outro nó. Com uma conexão selecionada, arraste as pontas para reconectá-la ou as dobras para mudar o trajeto.' },
-      autoLayout: { title: 'Organizar automaticamente', description: 'Dispõe os nós em camadas seguindo as conexões. Mude a direção e o espaçamento na página Tela das configurações.' },
+      autoLayout: { title: 'Organizar automaticamente', description: 'Dispõe os nós em camadas seguindo as conexões. Mude a direção e o espaçamento na página Tela das configurações.', menubarDescription: 'Dispõe os nós em camadas seguindo as conexões. Mude a direção e o espaçamento na página Tela das configurações. Também fica no menu Exibir, ao lado de Alinhar e distribuir.' },
+      export: { title: 'Exportar imagem', description: 'Salva o fluxo como imagem PNG ou SVG.', menubarDescription: 'Salva o fluxo como imagem PNG ou SVG. As duas opções também ficam no menu Arquivo.' },
     },
     helpNotes: [
       'Arraste nós do painel Nós, à esquerda, para a tela, ou clique em um para adicioná-lo. Edite-os no painel Propriedades, à direita.',

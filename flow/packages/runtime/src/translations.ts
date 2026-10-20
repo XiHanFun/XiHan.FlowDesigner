@@ -157,13 +157,15 @@ export interface FlowHistoryTranslations {
   readonly editJson: string
 }
 
-/** 新手引导里流程自己的几步：连线与自动布局。 */
-export type FlowTourStepKey = 'connect' | 'autoLayout'
+/** 新手引导里流程自己的几步：连线、自动布局与导出图片。 */
+export type FlowTourStepKey = 'connect' | 'autoLayout' | 'export'
 
 /** 新手引导一步的文案。 */
 export interface FlowTourStepTranslations {
   readonly title: string
   readonly description: string
+  /** 菜单栏显示着时换用的说明：多一句这一步的命令也在哪张菜单里。 */
+  readonly menubarDescription?: string
 }
 
 /** 启动变量表的列：变量名、必填、缺省值、说明。 */

@@ -7,6 +7,7 @@
 
 import type { XhDesignerSettingsElement, XhDesignerTourElement } from '@xihan-ui/designer-shell'
 import type { FlowDesignerExtension, XhFlowDesigner } from '../src'
+import { FLOW_DESIGNER_EN_US } from '@xihan-flow/runtime'
 import { DesignerExtensionError } from '@xihan-ui/designer-kit'
 import { DESIGNER_SETTING_KEYS, DESIGNER_TOUR_DONE_KEY } from '@xihan-ui/designer-shell'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -75,10 +76,14 @@ describe('新手引导', () => {
     expect(tour(off).running).toBe(false)
   })
 
-  it('流程自己的几步排在通用步骤之后：连线与自动布局；startTour 与 start-tour 命令都能从头开始', async () => {
+  it('流程自己的几步排在通用步骤之后：连线、自动布局与导出图片；startTour 与 start-tour 命令都能从头开始', async () => {
     const designer = await mount()
-    expect(tour(designer).steps!.map(step => step.id)).toEqual(['flow.connect', 'flow.autoLayout'])
-    expect(tour(designer).steps!.map(step => step.title)).toEqual(['Connect', 'Auto layout'])
+    expect(tour(designer).steps!.map(step => [step.id, step.target, step.order])).toEqual([
+      ['flow.connect', { selector: '[data-part="port"]' }, 100],
+      ['flow.autoLayout', { command: 'auto-layout' }, 110],
+      ['flow.export', { command: 'export-png' }, 120],
+    ])
+    expect(tour(designer).steps!.map(step => step.title)).toEqual(['Connect', 'Auto layout', 'Export image'])
     expect(designer.startTour()).toBe(true)
     tour(designer).stop()
     designer.commandLayout = { toolbar: [['start-tour']] }
@@ -86,6 +91,18 @@ describe('新手引导', () => {
     designer.querySelector<HTMLButtonElement>('[data-part="command-bar"] button[value="start-tour"]')!.click()
     expect(tour(designer).running).toBe(true)
     tour(designer).stop()
+  })
+
+  it('菜单栏开着时，自动布局与导出图片的说明带上它们在「视图」「文件」菜单里；设置里关掉菜单栏时不提菜单', async () => {
+    const designer = await mount()
+    const descriptions = (): string[] => tour(designer).steps!.map(step => step.description)
+    const steps = FLOW_DESIGNER_EN_US.tourSteps
+    expect(descriptions()).toEqual([steps.connect.description, steps.autoLayout.menubarDescription, steps.export.menubarDescription])
+    expect([steps.autoLayout.menubarDescription, steps.export.menubarDescription]).toEqual([expect.stringContaining('View menu'), expect.stringContaining('File menu')])
+    designer.settings = { [DESIGNER_SETTING_KEYS.toolbarMenubar]: false }
+    await designer.updateComplete
+    expect(descriptions()).toEqual([steps.connect.description, steps.autoLayout.description, steps.export.description])
+    expect(descriptions().some(text => /menu/i.test(text))).toBe(false)
   })
 
   it('扩展的 tourSteps 并进来；步骤 id 重名或用了 shell. 前缀时赋值即抛错', async () => {
