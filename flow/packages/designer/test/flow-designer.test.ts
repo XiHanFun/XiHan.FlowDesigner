@@ -496,7 +496,7 @@ describe('<xh-flow-designer>', () => {
     expect(designer.canUndo).toBe(false)
   })
 
-  describe('自动适配', () => {
+  describe('自动摆视口', () => {
     const observers: FakeResizeObserver[] = []
 
     class FakeResizeObserver {
@@ -531,13 +531,13 @@ describe('<xh-flow-designer>', () => {
         observer.callback()
     }
 
-    it('首次拿到非零尺寸时适配，之后尺寸变化继续适配，编辑不触发适配', async () => {
+    it('首次拿到非零尺寸时按实际大小摆：放得下的方向居中，放不下的方向从左上留白处起；尺寸变化继续摆，编辑不触发', async () => {
       const designer = await mount()
       expect(designer.getViewport()).toEqual({ x: 0, y: 0, zoom: 1 })
       resize(designer, 600, 300)
       expect(designer.getViewport()).toEqual({ x: 50, y: 30, zoom: 1 })
       resize(designer, 300, 300)
-      expect(designer.getViewport().zoom).toBeCloseTo(252 / 500)
+      expect(designer.getViewport()).toEqual({ x: 24, y: 30, zoom: 1 })
       resize(designer, 600, 300)
       designer.addNode('task', { x: 1000, y: 20 })
       await designer.updateComplete
@@ -557,7 +557,7 @@ describe('<xh-flow-designer>', () => {
       expect(later.getViewport()).toBe(zoomed)
     })
 
-    it('在画布上按下指针后不再适配，zoomToFit 与重新装载都会重新开启', async () => {
+    it('在画布上按下指针后不再自动摆；zoomToFit 之后适合窗口并随尺寸重新适配，重新装载回到按实际大小', async () => {
       const designer = await mount()
       resize(designer, 600, 300)
       press(nodeElement(designer, 's'), 10, 10)
@@ -568,11 +568,13 @@ describe('<xh-flow-designer>', () => {
       expect(designer.getViewport().zoom).toBeCloseTo(252 / 500)
       resize(designer, 600, 300)
       expect(designer.getViewport()).toEqual({ x: 50, y: 30, zoom: 1 })
+      resize(designer, 300, 300)
+      expect(designer.getViewport().zoom).toBeCloseTo(252 / 500)
 
       designer.setViewport({ x: 1, y: 2, zoom: 1 })
       designer.schema = sample()
       await designer.updateComplete
-      expect(designer.getViewport()).toEqual({ x: 50, y: 30, zoom: 1 })
+      expect(designer.getViewport()).toEqual({ x: 24, y: 30, zoom: 1 })
     })
   })
 
