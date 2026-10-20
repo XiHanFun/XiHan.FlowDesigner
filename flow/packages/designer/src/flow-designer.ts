@@ -1205,6 +1205,8 @@ export class XhFlowDesigner extends XhReactiveElement {
     issues.element.headless = true
     const frame = createGeneratedElement(doc, 'xh-designer-frame', { 'data-part': 'frame' })
     frame.addEventListener('layout-change', this.#onLayoutChange)
+    // 拖动工具开关了：工具栏「拖动」钮的按下状态跟着重画
+    frame.addEventListener('canvas-tool-change', () => this.requestUpdate())
     toolbar.slot = 'toolbar'
     palette.element.slot = 'palette'
     canvas.slot = 'canvas'
@@ -1736,6 +1738,11 @@ export class XhFlowDesigner extends XhReactiveElement {
     if (event.button !== 0 || this.#gesture || this.#inSelectionBar(event))
       return
     this.#stopAutoView()
+    // 拖动工具开着：在哪儿按下都是平移，不选中、不挪对象
+    if (this.#layers?.frame.canvasTool === 'pan') {
+      this.#startPan(event, false)
+      return
+    }
     const target = event.target instanceof Element ? event.target : undefined
     const additive = event.shiftKey || event.ctrlKey || event.metaKey
     const handle = target?.closest<HTMLElement>(HANDLE_SELECTOR)
@@ -2060,7 +2067,8 @@ export class XhFlowDesigner extends XhReactiveElement {
     this.setViewport(panBy(this.#viewport, -dx, -dy))
   }
 
-  #startPan(event: PointerEvent): void {
+  /** 按住拖动平移视口；clearOnClick 为真时只点一下（没拖起来）取消选择。 */
+  #startPan(event: PointerEvent, clearOnClick = true): void {
     let last = { x: event.clientX, y: event.clientY }
     this.#track(event, 'pan', {
       onMove: (client) => {
@@ -2068,7 +2076,7 @@ export class XhFlowDesigner extends XhReactiveElement {
         last = client
       },
       onEnd: (active) => {
-        if (!active)
+        if (!active && clearOnClick)
           this.#editor.clearSelection()
       },
     })
@@ -2096,6 +2104,8 @@ export class XhFlowDesigner extends XhReactiveElement {
   }
 
   readonly #onDoubleClick = (event: MouseEvent): void => {
+    if (this.#layers?.frame.canvasTool === 'pan')
+      return
     const vertex = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-part="vertex-handle"]') : null
     if (vertex && this.contains(vertex)) {
       this.#removeVertex(vertex.dataset.edgeId!, Number(vertex.dataset.index))
