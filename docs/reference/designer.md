@@ -32,7 +32,7 @@
 
 | 属性 | 读写 | 类型 | 说明 |
 | --- | --- | --- | --- |
-| `schema` | 可读写 | `FlowDocument` | 流程定义。赋值时装载、清空撤销历史并重新自动适配（赋回当前这一份不重新装载）；读取时得到当前定义。 |
+| `schema` | 可读写 | `FlowDocument` | 流程定义。赋值时装载、清空撤销历史，视口按实际大小（100%）摆好（赋回当前这一份不重新装载）；读取时得到当前定义。 |
 | `extensions` | 可读写 | `readonly FlowDesignerExtension[] \| undefined` | 扩展：节点类型、节点渲染、属性编辑器、命令、面板、导入器与导出器都从这里来，内置扩展自动排在最前。赋值时当场合并查重，冲突抛 DesignerExtensionError、什么都不变；各扩展的 setup 在元素连上文档时调用、断开时清理。同一个扩展对象换了引用当作卸下再装上，宿主要保持引用稳定。 |
 | `canUndo` | 只读 | `boolean` | 有可以撤销的一步。 |
 | `canRedo` | 只读 | `boolean` | 有可以重做的一步。 |
@@ -68,7 +68,7 @@
 | `validate(): FlowIssue[]` | 按当前扩展与校验选项校验定义。 |
 | `getViewport(): Viewport` | 当前视口。 |
 | `getViewportCenter(): FlowPoint` | 视口中央的世界坐标；画布还没有尺寸时是原点。 |
-| `setViewport(viewport: Viewport): void` | 设置视口；此后尺寸变化不再自动适配。 |
+| `setViewport(viewport: Viewport): void` | 设置视口；此后尺寸变化不再自动摆视口。 |
 | `zoomToFit(): void` | 缩放并平移到让整张图落在视口中央，小图不放大到 100% 以上；此后尺寸变化时重新适配，直到设置视口或在画布上按下指针。 |
 | `zoomIn(): void` | 以视口中心放大一档。 |
 | `zoomOut(): void` | 以视口中心缩小一档。 |

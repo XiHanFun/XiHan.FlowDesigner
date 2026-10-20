@@ -386,7 +386,8 @@ export class XhFlowDesigner extends XhReactiveElement {
   #scene: FlowScene | undefined
   #sceneStale = true
   #viewport: Viewport = DEFAULT_VIEWPORT
-  #autoFit = true
+  /** 视口怎么自动摆：装载时按实际大小（actual），zoomToFit 之后适合窗口（fit）；设置视口或在画布上按下指针后不再自动摆。 */
+  #autoView: 'actual' | 'fit' | undefined = 'actual'
   #fitPending = true
   #gesture: Gesture | undefined
   #preview: ConnectPreview | undefined
@@ -480,7 +481,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     })
   }
 
-  /** 流程定义。赋值时装载、清空撤销历史并重新自动适配（赋回当前这一份不重新装载）；读取时得到当前定义。 */
+  /** 流程定义。赋值时装载、清空撤销历史，视口按实际大小（100%）摆好（赋回当前这一份不重新装载）；读取时得到当前定义。 */
   get schema(): FlowDocument {
     return this.#editor.document
   }
@@ -488,7 +489,7 @@ export class XhFlowDesigner extends XhReactiveElement {
   set schema(value: FlowDocument) {
     if (value === this.#editor.document)
       return
-    this.#startAutoFit()
+    this.#startAutoView('actual')
     this.#editor.load(value)
   }
 
@@ -887,15 +888,15 @@ export class XhFlowDesigner extends XhReactiveElement {
     return this.#viewportCenter()
   }
 
-  /** 设置视口；此后尺寸变化不再自动适配。 */
+  /** 设置视口；此后尺寸变化不再自动摆视口。 */
   setViewport(viewport: Viewport): void {
-    this.#stopAutoFit()
+    this.#stopAutoView()
     this.#moveTo(viewport)
   }
 
   /** 缩放并平移到让整张图落在视口中央，小图不放大到 100% 以上；此后尺寸变化时重新适配，直到设置视口或在画布上按下指针。 */
   zoomToFit(): void {
-    this.#startAutoFit()
+    this.#startAutoView('fit')
     this.#fitIfPending()
   }
 
@@ -1585,18 +1586,18 @@ export class XhFlowDesigner extends XhReactiveElement {
       layers.transform.append(layers.selectionBar.element)
   }
 
-  #startAutoFit(): void {
-    this.#autoFit = true
+  #startAutoView(mode: 'actual' | 'fit'): void {
+    this.#autoView = mode
     this.#fitPending = true
   }
 
-  #stopAutoFit(): void {
-    this.#autoFit = false
+  #stopAutoView(): void {
+    this.#autoView = undefined
     this.#fitPending = false
   }
 
   #onResize(): void {
-    if (!this.#autoFit)
+    if (this.#autoView === undefined)
       return
     this.#fitPending = true
     this.#fitIfPending()
@@ -1608,7 +1609,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     if (!this.#fitPending || !bounds || !size)
       return false
     this.#fitPending = false
-    this.#moveTo(fitRect(bounds, size, { padding: FIT_PADDING }))
+    this.#moveTo(this.#autoView === 'fit' ? fitRect(bounds, size, { padding: FIT_PADDING }) : actualView(bounds, size, FIT_PADDING))
     return true
   }
 
@@ -1734,7 +1735,7 @@ export class XhFlowDesigner extends XhReactiveElement {
   readonly #onPointerDown = (event: PointerEvent): void => {
     if (event.button !== 0 || this.#gesture || this.#inSelectionBar(event))
       return
-    this.#stopAutoFit()
+    this.#stopAutoView()
     const target = event.target instanceof Element ? event.target : undefined
     const additive = event.shiftKey || event.ctrlKey || event.metaKey
     const handle = target?.closest<HTMLElement>(HANDLE_SELECTOR)
@@ -2184,7 +2185,7 @@ export class XhFlowDesigner extends XhReactiveElement {
       return
     event.preventDefault()
     if (this.#import(importSources(event.dataTransfer, 'drop'), this.clientToWorld(event.clientX, event.clientY)))
-      this.#stopAutoFit()
+      this.#stopAutoView()
   }
 
   /** 把来源交给第一个接下的导入器，导入是异步的；没有导入器接下时返回 false。 */
@@ -2230,7 +2231,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     }, { offset: 0 })
   }
 
-  /** 整份流程定义换掉当前定义，记一步撤销，清空选择，视口随后适配。 */
+  /** 整份流程定义换掉当前定义，记一步撤销，清空选择，视口随后按实际大小摆好。 */
   #replaceDocument(document: FlowDocument, importer: string): void {
     const read = readDocument(document)
     if (!read.ok || !readFlowFragment(read.document.nodes, read.document.edges))
@@ -2239,10 +2240,10 @@ export class XhFlowDesigner extends XhReactiveElement {
     this.#applyDocument(read.document)
   }
 
-  /** 整份换上一份读入过的定义（core 的 replaceDocument，记一步撤销）：清空选择，视口随后适配。 */
+  /** 整份换上一份读入过的定义（core 的 replaceDocument，记一步撤销）：清空选择，视口随后按实际大小摆好。 */
   #applyDocument(document: FlowDocument): void {
     this.#editor.clearSelection()
-    this.#startAutoFit()
+    this.#startAutoView('actual')
     this.#editor.execute([{ type: 'replaceDocument', document }])
   }
 
@@ -2339,6 +2340,15 @@ export function defineFlowDesigner(): void {
   defineDesignerShellElement('xh-designer-transform', XhDesignerTransformElement)
   defineDesignerShellElement('xh-designer-settings', XhDesignerSettingsElement)
   registerElement(FLOW_DESIGNER_TAG, XhFlowDesigner)
+}
+
+/**
+ * 按实际大小（100%）摆的视口：整张图在某个方向上连同两边的 padding 放得下就居中，放不下就让它的起点留出 padding
+ * 贴在那一边。
+ */
+function actualView(bounds: FlowRect, size: { readonly width: number, readonly height: number }, padding: number): Viewport {
+  const axis = (start: number, length: number, room: number): number => length + padding * 2 <= room ? (room - length) / 2 - start : padding - start
+  return { x: axis(bounds.x, bounds.width, size.width), y: axis(bounds.y, bounds.height, size.height), zoom: 1 }
 }
 
 /** 父元素里 data-* 等于 value 的直接子元素。 */
