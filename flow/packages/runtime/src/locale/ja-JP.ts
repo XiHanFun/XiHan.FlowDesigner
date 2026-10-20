@@ -53,8 +53,8 @@ export const flowJaJP: XhConfig = /* @__PURE__ */ flowLocale(designerShellJaJP, 
     startVariableCell: (row, column) => `${row} 番目の変数の${column}`,
     tourSteps: {
       connect: { title: '接続', description: 'ノードの端にあるポートから別のノードへドラッグすると接続されます。接続線を選択すると、端点をドラッグしてつなぎ替えたり、折れ点をドラッグして経路を変えたりできます。' },
-      autoLayout: { title: '自動レイアウト', description: '接続線の向きに沿ってノードを層状に並べます。向きと間隔は設定の「キャンバス」ページで変更します。', menubarDescription: '接続線の向きに沿ってノードを層状に並べます。向きと間隔は設定の「キャンバス」ページで変更します。「表示」メニューにもあり、隣に「整列と分布」があります。' },
-      export: { title: '画像のエクスポート', description: 'フローを PNG または SVG 画像として書き出します。', menubarDescription: 'フローを PNG または SVG 画像として書き出します。どちらも「ファイル」メニューにもあります。' },
+      autoLayout: { title: '自動レイアウト', description: '接続線の向きに沿ってノードを層状に並べます。向きと間隔は設定の「キャンバス」ページで変更します。「表示」メニューにもあり、隣に「整列と分布」があります。' },
+      export: { title: '画像のエクスポート', description: 'フローを PNG または SVG 画像として書き出します。どちらも「ファイル」メニューにもあります。' },
     },
     helpNotes: [
       '左のノードパネルからノードをキャンバスにドラッグするか、クリックして追加します。右のプロパティパネルで編集します。',

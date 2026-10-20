@@ -72,19 +72,22 @@ describe('工具栏', () => {
     expect(toolbarItem(designer, 'zoom-to-fit').getAttribute('aria-label')).toBe('Zoom to fit')
   })
 
-  it('末组只留面板；设置与帮助在菜单栏里，关掉菜单栏时回到末组：设置打开设置对话框，帮助在新窗口打开文档站的设计器一页', async () => {
+  it('末组只留面板，设置与帮助只在菜单栏里（菜单栏常开，设置里写 toolbar.menubar 也不起作用）：设置打开设置对话框，帮助在新窗口打开文档站的设计器一页', async () => {
     const designer = await mount()
     const groups = (): string[][] => Array.from(designer.querySelectorAll('[data-part="command-bar"] [data-xh-part="group"]'), group => Array.from(group.querySelectorAll('button'), button => button.value))
     expect(groups().at(-1)).toEqual(['panels'])
     designer.settings = { 'toolbar.menubar': false }
-    await designer.updateComplete
-    expect(groups().at(-1)).toEqual(['panels', 'settings', 'help'])
-    toolbarItem(designer, 'settings').click()
+    await settleFrame(designer)
+    const regions = (frameOf(designer) as HTMLElement & { regions: readonly { name: string }[] }).regions.map(region => region.name)
+    expect([groups().at(-1), regions.includes('menubar')]).toEqual([['panels'], true])
+    const menubar = designer.querySelector<MenubarHost>('xh-menubar')!
+    const select = (menu: string, id: string): void => void menubar.dispatchEvent(new CustomEvent('item-select', { detail: { menu, value: `${menu}/${id}` } }))
+    select('file', 'settings')
     await designer.updateComplete
     expect(designer.querySelector<HTMLElement & { open?: boolean }>('xh-designer-settings')!.open).toBe(true)
     const open = vi.spyOn(window, 'open').mockReturnValue(null)
     try {
-      toolbarItem(designer, 'help').click()
+      select('help', 'help')
       expect(open).toHaveBeenCalledWith(FLOW_DESIGNER_HELP_URL, '_blank', 'noopener,noreferrer')
     }
     finally {
@@ -92,7 +95,7 @@ describe('工具栏', () => {
     }
   })
 
-  it('菜单栏：外框最上一条，文件、编辑、视图、帮助四张菜单；导出图片在文件里、设置收尾，对齐分布与自动布局在视图里，面板与外观收尾、三条显示开关在外观子菜单里', async () => {
+  it('菜单栏：外框最上一条，文件、编辑、视图、帮助四张菜单；导出图片在文件里、设置收尾，对齐分布与自动布局在视图里，面板与外观收尾、两条显示开关在外观子菜单里', async () => {
     const designer = await mount()
     const menubar = designer.querySelector<MenubarHost>('xh-menubar')!
     expect(menubar.closest('[data-part="region"]')!.getAttribute('data-region')).toBe('menubar')
@@ -103,11 +106,11 @@ describe('工具栏', () => {
     expect(items('view')).toEqual(['zoom-in', 'zoom-out', 'zoom-to-fit', 'zoom-to-actual', 'pan-tool', 'align-menu', 'auto-layout', 'panels', 'appearance'])
     expect(items('help')).toEqual(['start-tour', 'help', 'shortcuts', 'about'])
     const appearance = menubar.collection!.find(node => node.value === 'view')!.items!.find(item => item.value === 'view/appearance')!
-    const toggles = ['show-toolbar', 'show-status-bar', 'show-menubar'].map(id => `view/appearance/command:${id}`)
+    const toggles = ['show-toolbar', 'show-status-bar'].map(id => `view/appearance/command:${id}`)
     expect([appearance.children!.map(child => [child.value, child.kind]), appearance.checkboxValue]).toEqual([toggles.map(value => [value, 'checkbox']), toggles])
   })
 
-  it('菜单栏的条目执行命令：保存派发 save；显示开关改设置并派发 settings-change，关掉菜单栏时外框不登记它', async () => {
+  it('菜单栏的条目执行命令：保存派发 save；显示开关改设置并派发 settings-change，关掉状态栏时外框不登记它', async () => {
     const designer = await mount()
     const menubar = designer.querySelector<MenubarHost>('xh-menubar')!
     const select = (menu: string, id: string): void => void menubar.dispatchEvent(new CustomEvent('item-select', { detail: { menu, value: `${menu}/${id}` } }))
@@ -121,9 +124,6 @@ describe('工具栏', () => {
     await settleFrame(designer)
     const regions = (): string[] => (frameOf(designer) as HTMLElement & { regions: readonly { name: string }[] }).regions.map(region => region.name)
     expect([changes, regions().includes('status')]).toEqual([[['general.statusBar', false]], false])
-    select('view', 'appearance/command:show-menubar')
-    await settleFrame(designer)
-    expect([changes.at(-1), regions().includes('menubar'), menubar.closest('[data-part="parked"]') !== null]).toEqual([['toolbar.menubar', false], false, true])
   })
 
   it('宿主写在设计器上的 slot="menubar-end" 放到菜单栏右边一段，后来加的也一样', async () => {

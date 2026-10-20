@@ -53,8 +53,8 @@ export const flowZhCN: XhConfig = /* @__PURE__ */ flowLocale(designerShellZhCN, 
     startVariableCell: (row, column) => `第 ${row} 个变量的${column}`,
     tourSteps: {
       connect: { title: '连线', description: '从节点边上的端口拖到另一个节点就连上了。选中连线后可以拖端点改连、拖拐点调整走向。' },
-      autoLayout: { title: '自动布局', description: '按连线方向把节点分层排开。方向与间距在设置的「画布」一页里改。', menubarDescription: '按连线方向把节点分层排开。方向与间距在设置的「画布」一页里改。「视图」菜单里也有它，旁边是「对齐与分布」。' },
-      export: { title: '导出图片', description: '把流程导出成 PNG 或 SVG 图片。', menubarDescription: '把流程导出成 PNG 或 SVG 图片；「文件」菜单里也有这两条。' },
+      autoLayout: { title: '自动布局', description: '按连线方向把节点分层排开。方向与间距在设置的「画布」一页里改。「视图」菜单里也有它，旁边是「对齐与分布」。' },
+      export: { title: '导出图片', description: '把流程导出成 PNG 或 SVG 图片；「文件」菜单里也有这两条。' },
     },
     helpNotes: [
       '从左边的节点面板把节点拖到画布上，或点一下加进来；在右边的属性面板里改它。',

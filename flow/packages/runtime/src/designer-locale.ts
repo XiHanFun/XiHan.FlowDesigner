@@ -81,8 +81,8 @@ export const FLOW_DESIGNER_EN_US: FlowDesignerLocale = {
   startVariableCell: (row, column) => `${column} of variable ${row}`,
   tourSteps: {
     connect: { title: 'Connect', description: 'Drag from a port on the edge of a node to another node. With a connection selected, drag its ends to reconnect it or drag its bends to reroute it.' },
-    autoLayout: { title: 'Auto layout', description: 'Arranges the nodes in layers along the connections. Change the direction and spacing on the Canvas page of the settings.', menubarDescription: 'Arranges the nodes in layers along the connections. Change the direction and spacing on the Canvas page of the settings. It is also in the View menu, next to Align and distribute.' },
-    export: { title: 'Export image', description: 'Saves the flow as a PNG or SVG image.', menubarDescription: 'Saves the flow as a PNG or SVG image. Both are also in the File menu.' },
+    autoLayout: { title: 'Auto layout', description: 'Arranges the nodes in layers along the connections. Change the direction and spacing on the Canvas page of the settings. It is also in the View menu, next to Align and distribute.' },
+    export: { title: 'Export image', description: 'Saves the flow as a PNG or SVG image. Both are also in the File menu.' },
   },
   helpNotes: [
     'Drag nodes from the Nodes panel on the left onto the canvas, or click one to add it. Edit them in the Properties panel on the right.',
