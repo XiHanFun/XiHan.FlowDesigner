@@ -86,10 +86,6 @@ export interface FlowDesignerTranslations {
   readonly statusDocument: (nodes: number, edges: number) => string
   /** 状态栏：选中一个节点时写它的位置与尺寸（世界坐标，取整）。 */
   readonly statusGeometry: (x: number, y: number, width: number, height: number) => string
-  /** 顶栏插入快捷钮那一条工具栏的可访问名。 */
-  readonly insertToolbar: string
-  /** 顶栏插入快捷钮的名字，入参是节点类型的显示名；钮上图标下面只写显示名。 */
-  readonly insertNode: (label: string) => string
   /** 选中节点时浮在选中框上的选中工具条的可访问名。 */
   readonly selectionToolbar: string
   /** 内置命令：对齐与分布菜单，点开列出六种对齐与两种分布。 */
@@ -163,8 +159,8 @@ export interface FlowHistoryTranslations {
   readonly editJson: string
 }
 
-/** 新手引导里流程自己的几步：顶栏的插入钮、连线与自动布局。 */
-export type FlowTourStepKey = 'insert' | 'connect' | 'autoLayout'
+/** 新手引导里流程自己的几步：连线与自动布局。 */
+export type FlowTourStepKey = 'connect' | 'autoLayout'
 
 /** 新手引导一步的文案。 */
 export interface FlowTourStepTranslations {

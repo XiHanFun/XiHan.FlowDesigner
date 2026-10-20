@@ -207,53 +207,6 @@ describe('外框卡片', () => {
   })
 })
 
-describe('顶栏', () => {
-  const quick: FlowDesignerExtension = {
-    id: 'test',
-    nodeTypes: definitions.map(definition => definition.type === 'task' ? { ...definition, quickInsert: 2 } : definition.type === 'end' ? { ...definition, quickInsert: 1, maxCount: 2 } : definition),
-  }
-
-  function headerItems(designer: Element): HTMLButtonElement[] {
-    return Array.from(designer.querySelectorAll<HTMLButtonElement>('[slot="header-center"] button[data-xh-part="item"]'))
-  }
-
-  it('节点类型给了 quickInsert 就在顶栏放插入钮：按它排，钮上写显示名，名字是「Add …」；点了新建并选中', async () => {
-    const designer = await mount(element => (element.extensions = [quick]))
-    await settleFrame(designer)
-    const frame = designer.querySelector<HTMLElement & { showsPanel: (name: string) => boolean }>('xh-designer-frame')!
-    expect(frame.showsPanel('header')).toBe(true)
-    expect(headerItems(designer).map(item => [item.value, item.querySelector('[data-part="label"]')!.textContent, item.getAttribute('aria-label')])).toEqual([
-      ['insert:end', '结束', 'Add 结束'],
-      ['insert:task', '任务', 'Add 任务'],
-    ])
-    headerItems(designer)[1]!.click()
-    const added = designer.schema.nodes.at(-1)!
-    expect([added.type, designer.getSelection().nodes]).toEqual(['task', [added.id]])
-  })
-
-  it('只读时、或已到 maxCount 时插入钮不可用', async () => {
-    const designer = await mount(element => (element.extensions = [quick]))
-    designer.addNode('end')
-    await settleFrame(designer)
-    expect(headerItems(designer).map(item => item.disabled)).toEqual([true, false])
-    designer.readonly = true
-    await settleFrame(designer)
-    expect(headerItems(designer).map(item => item.disabled)).toEqual([true, true])
-  })
-
-  it('commandLayout 把 header 排空、或没有常用节点类型时没有顶栏', async () => {
-    const designer = await mount(element => (element.extensions = [quick]))
-    await settleFrame(designer)
-    const frame = designer.querySelector<HTMLElement & { showsPanel: (name: string) => boolean }>('xh-designer-frame')!
-    designer.commandLayout = { header: [] }
-    await settleFrame(designer)
-    expect([headerItems(designer), frame.showsPanel('header')]).toEqual([[], false])
-    const plain = await mount()
-    await settleFrame(plain)
-    expect(plain.querySelector('[slot="header-center"]')).toBeNull()
-  })
-})
-
 describe('状态栏', () => {
   function status(designer: Element, zone: 'start' | 'end'): string {
     const item = designer.querySelector(`[slot="status-${zone}"][data-part="status-item"], [data-zone="${zone}"] > [data-part="status-item"]`)!

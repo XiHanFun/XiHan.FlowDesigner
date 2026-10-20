@@ -241,8 +241,6 @@ interface Layers {
   /** 工具栏区里的容器，放命令工具栏。 */
   readonly toolbar: HTMLElement
   readonly commandBar: CommandToolbar<FlowDesignerContext>
-  /** 顶栏中段的插入快捷钮：有 header 位置的命令时才放进外框。 */
-  readonly headerBar: CommandToolbar<FlowDesignerContext>
   /** 选中节点时浮在选中框上的选中工具条：可编辑、有选中的节点、排列不空时放进变换覆盖层。 */
   readonly selectionBar: CommandToolbar<FlowDesignerContext>
   readonly palette: PalettePanel
@@ -1166,8 +1164,6 @@ export class XhFlowDesigner extends XhReactiveElement {
     menu.trigger.addEventListener('keydown', this.#onKeyDown)
     canvas.append(menu.element)
     const commandBar = createCommandToolbar<FlowDesignerContext>(doc)
-    const headerBar = createCommandToolbar<FlowDesignerContext>(doc, { display: 'stacked' })
-    headerBar.element.slot = 'header-center'
     const selectionBar = createCommandToolbar<FlowDesignerContext>(doc)
     selectionBar.element.slot = 'toolbar'
     const toolbar = createGeneratedElement(doc, 'div')
@@ -1237,7 +1233,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     root.addEventListener('dblclick', this.#onDoubleClick)
     root.addEventListener('contextmenu', this.#onContextMenu)
     root.addEventListener('wheel', this.#onWheel, { passive: false })
-    this.#layers = { frame, canvas, root, world, edges, labels, nodes, ports, handles, overlay, dropPreview, transform, toolbar, commandBar, headerBar, selectionBar, palette, properties, issues, minimap, menu, panels, settings, tour, jsonEditor, selectionStatus, zoomStatus }
+    this.#layers = { frame, canvas, root, world, edges, labels, nodes, ports, handles, overlay, dropPreview, transform, toolbar, commandBar, selectionBar, palette, properties, issues, minimap, menu, panels, settings, tour, jsonEditor, selectionStatus, zoomStatus }
     panels.assign(this.#model.extensions, this.#context())
     this.#prepareMenu(menu, 'blank')
     return this.#layers
@@ -1551,15 +1547,6 @@ export class XhFlowDesigner extends XhReactiveElement {
     if (sourceKey !== this.#toolbarSourceKey) {
       this.#toolbarSourceKey = sourceKey
       layers.settings.toolbar = source
-    }
-    const header = arrangeCommands('header', commands, [], this.commandLayout)
-    if (header.length > 0) {
-      layers.headerBar.update(header, commands, context, t.insertToolbar)
-      if (!layers.headerBar.element.isConnected)
-        layers.frame.append(layers.headerBar.element)
-    }
-    else {
-      layers.headerBar.element.remove()
     }
     this.#renderSelectionBar(layers, context, t)
     if (this.#shows('palette'))

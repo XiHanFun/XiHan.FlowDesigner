@@ -92,12 +92,6 @@ describe('xihanWorkflow 节点类型', () => {
     expect(model.controls[XIHAN_WORKFLOW_ASSIGNEE_RULES]).toBeDefined()
   })
 
-  it('人工任务、条件分支、并行分支、汇聚与结束标为常用，设计器顶栏给它们放插入钮', () => {
-    const types = createFlowModel(extensions).nodeTypes.types
-    const quick = types.filter(type => type.quickInsert !== undefined).sort((a, b) => a.quickInsert! - b.quickInsert!)
-    expect(quick.map(type => type.type)).toEqual(['UserTask', 'Decision', 'Parallel', 'Join', 'End'])
-  })
-
   it('每种活动都配了图标，图标各不相同，是能直接画的图标记录', () => {
     const types = createFlowModel(extensions).nodeTypes.types
     expect(types.filter(type => type.icon === undefined).map(type => type.type)).toEqual([])
