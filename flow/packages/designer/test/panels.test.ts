@@ -688,24 +688,24 @@ describe('右键菜单', () => {
     const designer = await mountMenu()
     rightClick(designer.querySelector('[data-part="node"][data-node-id="t"]')!)
     const menu = designer.querySelector('xh-context-menu')!
-    menu.dispatchEvent(new CustomEvent('select', { detail: { value: 'copy' } }))
+    menu.dispatchEvent(new CustomEvent('item-select', { detail: { value: 'copy' } }))
     rightClick(part(designer, 'viewport')[0]!, 600, 600)
     expect(items()[0]).toBe('paste')
-    menu.dispatchEvent(new CustomEvent('select', { detail: { value: 'paste' } }))
+    menu.dispatchEvent(new CustomEvent('item-select', { detail: { value: 'paste' } }))
     expect(designer.schema.nodes).toHaveLength(4)
 
     designer.readonly = true
     await designer.updateComplete
     rightClick(designer.querySelector('[data-part="node"][data-node-id="t"]')!)
     expect(items()).toEqual(['cut(x)', 'copy', 'duplicate(x)', 'delete(x)'])
-    menu.dispatchEvent(new CustomEvent('select', { detail: { value: 'delete' } }))
-    menu.dispatchEvent(new CustomEvent('select', { detail: { value: 'cut' } }))
+    menu.dispatchEvent(new CustomEvent('item-select', { detail: { value: 'delete' } }))
+    menu.dispatchEvent(new CustomEvent('item-select', { detail: { value: 'cut' } }))
     expect(designer.schema.nodes).toHaveLength(4)
 
     designer.readonly = false
     await designer.updateComplete
     designer.select({ nodes: ['t'] })
-    menu.dispatchEvent(new CustomEvent('select', { detail: { value: 'cut' } }))
+    menu.dispatchEvent(new CustomEvent('item-select', { detail: { value: 'cut' } }))
     expect(designer.schema.nodes.map(node => node.id)).not.toContain('t')
   })
 
@@ -803,7 +803,7 @@ describe('连线编辑', () => {
     designer.undo()
     await designer.updateComplete
     const menu = designer.querySelector('xh-context-menu')!
-    menu.dispatchEvent(new CustomEvent('select', { detail: { value: 'clear-vertices' } }))
+    menu.dispatchEvent(new CustomEvent('item-select', { detail: { value: 'clear-vertices' } }))
     expect(designer.schema.edges[0]).not.toHaveProperty('vertices')
   })
 })
