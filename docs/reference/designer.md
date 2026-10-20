@@ -277,7 +277,6 @@ const FLOW_PANELS = { palette: 'palette', outline: 'outline', properties: 'prope
 | `settingsSnap` | `string` | 设置：吸附对齐开关的标签。 |
 | `settingsSnapHint` | `string` | 设置：吸附对齐开关的说明。 |
 | `statusZoom` | `string` | 状态栏：缩放一项的标签。 |
-| `insertToolbar` | `string` | 顶栏插入快捷钮那一条工具栏的可访问名。 |
 | `selectionToolbar` | `string` | 选中节点时浮在选中框上的选中工具条的可访问名。 |
 | `alignMenu` | `string` | 内置命令：对齐与分布菜单，点开列出六种对齐与两种分布。 |
 | `flow` | `string` | 不落在节点或连线上的问题（如节点个数）所属的对象名。 |
@@ -301,7 +300,6 @@ const FLOW_PANELS = { palette: 'palette', outline: 'outline', properties: 'prope
 | `statusSelected(count: number): string` | 状态栏：选中多个对象时左边写的话。 |
 | `statusDocument(nodes: number, edges: number): string` | 状态栏：什么都没选中时左边写流程里有多少节点与连线。 |
 | `statusGeometry(x: number, y: number, width: number, height: number): string` | 状态栏：选中一个节点时写它的位置与尺寸（世界坐标，取整）。 |
-| `insertNode(label: string): string` | 顶栏插入快捷钮的名字，入参是节点类型的显示名；钮上图标下面只写显示名。 |
 | `startVariableCell(row: number, column: string): string` | 启动变量表里一格的可访问名：第几个变量（从 1 起）、哪一列。 |
 
 ### FlowDesignerLocale {#flowdesignerlocale}
@@ -357,7 +355,7 @@ type FlowBuiltinPropertyKey = 'label' | 'style.dashed'
 | `FLOW_DESIGNER_HELP_URL` | 常量 | 内置命令 help 打开的帮助页：流程文档站的设计器一页。 |
 | `FLOW_PANELS` | 常量 | 设计器登记的面板与画布浮动件的 id：宿主写 defaultLayout、settingsPolicy（layout.panels.&lt;面板 id&gt;）时用它，不手写字符串。 |
 | `FLOW_TOOLBAR_LAYOUT` | 常量 | 工具栏的缺省排列；commandLayout 没写 toolbar 时用它，再把 placement 含 toolbar 的扩展命令追加成一组。 |
-| `FLOW_TOUR_STEPS` | 常量 | 新手引导里流程自己的几步，排在通用步骤之后：顶栏的插入钮、连线（指向第一个端口）与自动布局。 |
+| `FLOW_TOUR_STEPS` | 常量 | 新手引导里流程自己的几步，排在通用步骤之后：连线（指向第一个端口）与自动布局。 |
 | `FlowDesignerCommand` | 类型 | 设计器的命令。 |
 | `FlowDesignerContext` | 接口 | 命令、面板与扩展装上时拿到的上下文。 |
 | `FlowDesignerExporter` | 类型 | 导出器：把当前流程定义换成文件。 |

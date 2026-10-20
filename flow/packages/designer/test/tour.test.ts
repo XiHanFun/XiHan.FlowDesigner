@@ -75,10 +75,10 @@ describe('新手引导', () => {
     expect(tour(off).running).toBe(false)
   })
 
-  it('流程自己的几步排在通用步骤之后：插入节点、连线与自动布局；startTour 与 start-tour 命令都能从头开始', async () => {
+  it('流程自己的几步排在通用步骤之后：连线与自动布局；startTour 与 start-tour 命令都能从头开始', async () => {
     const designer = await mount()
-    expect(tour(designer).steps!.map(step => step.id)).toEqual(['flow.insert', 'flow.connect', 'flow.autoLayout'])
-    expect(tour(designer).steps!.map(step => step.title)).toEqual(['Insert nodes', 'Connect', 'Auto layout'])
+    expect(tour(designer).steps!.map(step => step.id)).toEqual(['flow.connect', 'flow.autoLayout'])
+    expect(tour(designer).steps!.map(step => step.title)).toEqual(['Connect', 'Auto layout'])
     expect(designer.startTour()).toBe(true)
     tour(designer).stop()
     designer.commandLayout = { toolbar: [['start-tour']] }
