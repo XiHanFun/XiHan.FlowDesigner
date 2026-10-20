@@ -25,9 +25,15 @@ function apply(designer: XhFlowDesigner, value: JsonValue): void {
 }
 
 describe('编辑 JSON', () => {
-  it('按 Ctrl / ⌘ + Shift + J 打开对话框，写出当前流程定义；空白处的右键菜单末尾也有这一条', async () => {
-    const designer = await mount()
-    part(designer, 'viewport')[0]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'J', ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true }))
+  it('开发者模式开着时按 Ctrl / ⌘ + Shift + J 打开对话框，写出当前流程定义；空白处的右键菜单末尾也有这一条；关着时快捷键不响应', async () => {
+    const press = (designer: XhFlowDesigner): void => void part(designer, 'viewport')[0]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'J', ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true }))
+    const closed = await mount()
+    press(closed)
+    await closed.updateComplete
+    expect(editor(closed).open).not.toBe(true)
+    unmountAll()
+    const designer = await mount(element => (element.settings = { 'general.developer': true }))
+    press(designer)
     await designer.updateComplete
     expect([editor(designer).open, editor(designer).value, editor(designer).readonly]).toEqual([true, designer.schema, false])
     expect(flowMenuLayout('blank', 0).at(-1)).toEqual(['edit-json'])

@@ -36,6 +36,7 @@ import type { PropertyEditorLayer } from '@xihan-ui/designer-kit/properties'
 import type {
   CommandMenubar,
   CommandToolbar,
+  DesignerAutosave,
   DesignerCommandLayout,
   DesignerCommandsTranslations,
   DesignerFrameEventMap,
@@ -97,8 +98,11 @@ import {
   applyToolbarCustomization,
   arrangeCommands,
   arrangeMenubar,
+  autoSaveOf,
   createCommandMenubar,
   createCommandToolbar,
+  createDesignerAutosave,
+  createDesignerDebugLogger,
   createDesignerSettingsHost,
   createPanelHost,
   createStatusItem,
@@ -314,6 +318,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     settings: { attribute: false },
     settingsPolicy: { attribute: false },
     settingsStorageKey: { attribute: 'settings-storage-key', converter: { fromAttribute: (value: string | null) => value ?? undefined } },
+    draftKey: { attribute: 'draft-key', converter: { fromAttribute: (value: string | null) => value ?? undefined } },
     translations: { attribute: false },
   }
 
@@ -363,6 +368,12 @@ export class XhFlowDesigner extends XhReactiveElement {
    * 标了 secret 的条目不存；读写失败派发 settings-storage-error。不给就不读写。同名 attribute settings-storage-key。
    */
   declare settingsStorageKey: string | undefined
+  /**
+   * 自动保存草稿的键：区分同一页、同一种设计器里的不同流程（宿主写流程 id）；不给时按页面地址区分。
+   * 设置里开着自动保存时，未保存的修改停手约一秒存成这台浏览器里的草稿；下次装进同一个键的流程、和草稿不一样时问恢复还是丢弃。
+   * 同名 attribute draft-key。
+   */
+  declare draftKey: string | undefined
   /** 元素自己的文案，压在全局配置之上。 */
   declare translations: Partial<FlowDesignerTranslations> | undefined
 
@@ -435,6 +446,29 @@ export class XhFlowDesigner extends XhReactiveElement {
   #tourChecked = false
   /** 清空历史前的确认框服务：第一次要弹时建，元素移出文档时释放。 */
   #dialogs: DialogService | undefined
+  /** 调试日志：开发者模式与渲染日志都开着时记每次重画与导出图片的耗时。 */
+  readonly #debug = createDesignerDebugLogger({ name: FLOW_DESIGNER_TAG, settings: () => this.#resolvedSettings })
+  /** 自动保存本机草稿。 */
+  readonly #autosave: DesignerAutosave = createDesignerAutosave({
+    root: this,
+    kind: FLOW_DESIGNER_TAG,
+    key: () => this.draftKey,
+    enabled: () => autoSaveOf(this.#resolvedSettings),
+    snapshot: () => this.#editor.document as unknown as JsonValue,
+    restore: (document) => {
+      const read = readDocument(document)
+      if (read.ok)
+        this.#applyDocument(read.document)
+    },
+    confirm: (options) => {
+      this.#dialogs ??= createDialogService()
+      return this.#dialogs.confirm(options)
+    },
+    translations: () => this.#commandTranslations(),
+  })
+
+  /** 宿主在元素连上文档之前装进的流程：连上以后再看有没有草稿。 */
+  #draftCheckPending = false
   /** 流程结构面板悬停的那一行在画布上标出的对象。 */
   #highlight: FlowOutlineTarget | undefined
   /** 流程结构的树：定义、文案或模型换了才重排。 */
@@ -471,6 +505,7 @@ export class XhFlowDesigner extends XhReactiveElement {
       }
       if (change.cause === 'save') {
         this.#syncDirty()
+        this.#autosave.changed(this.#editor.history.dirty)
         return
       }
       this.#sceneStale = true
@@ -491,13 +526,26 @@ export class XhFlowDesigner extends XhReactiveElement {
       }
       else if (change.cause === 'reset') {
         this.#emitSchemaChange([], 'load')
+        this.#checkDraft()
       }
       else if (change.cause === 'execute' || change.cause === 'undo' || change.cause === 'redo') {
         this.#emitSchemaChange(change.operations, change.cause)
       }
       this.#syncDirty()
+      if (change.cause !== 'reset')
+        this.#autosave.changed(this.#editor.history.dirty)
       this.#scheduleIssues()
     })
+  }
+
+  /** 宿主装进了一份流程：同一个草稿键下有和它不一样的草稿就问恢复还是丢弃；还没连上文档时等连上再问。 */
+  #checkDraft(): void {
+    if (!this.isConnected) {
+      this.#draftCheckPending = true
+      return
+    }
+    this.#draftCheckPending = false
+    void this.#autosave.loaded(this.#editor.document as unknown as JsonValue)
   }
 
   /** 流程定义。赋值时装载、清空撤销历史，视口按实际大小（100%）摆好（赋回当前这一份不重新装载）；读取时得到当前定义。 */
@@ -581,6 +629,8 @@ export class XhFlowDesigner extends XhReactiveElement {
     }
     this.#host.assign(this.#extensions ?? NO_EXTENSIONS)
     this.requestUpdate()
+    if (this.#draftCheckPending)
+      void this.updateComplete.then(() => this.#checkDraft())
   }
 
   override disconnectedCallback(): void {
@@ -589,6 +639,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     this.#settingsHost = undefined
     this.#dialogs?.dispose()
     this.#dialogs = undefined
+    this.#autosave.dispose()
     for (const type of CLIPBOARD_EVENTS)
       this.ownerDocument.removeEventListener(type, this.#onClipboard)
     this.#resizeObserver?.disconnect()
@@ -597,6 +648,16 @@ export class XhFlowDesigner extends XhReactiveElement {
   }
 
   protected override update(changed: PropertyValues): void {
+    if (!this.#debug.enabled('render')) {
+      this.#update(changed)
+      return
+    }
+    const reasons = [...changed.keys()].map(String).join(', ')
+    this.#debug.measure('render', `update: ${reasons === '' ? 'requestUpdate' : reasons}`, () => this.#update(changed))
+  }
+
+  /** 一次重画：设置、场景、画布上的各层、面板与引导。 */
+  #update(changed: PropertyValues): void {
     super.update(changed)
     const layers = this.#ensureLayers()
     const t = this.#translations()
@@ -1055,6 +1116,13 @@ export class XhFlowDesigner extends XhReactiveElement {
   async #renderImage(format: FlowImageFormat, options: FlowImageExportOptions): Promise<Blob> {
     if (format !== 'svg' && format !== 'png')
       throw new RangeError(`[flow-designer] no image format "${String(format)}"`)
+    const end = this.#debug.start('render', `export image: ${format}`)
+    const blob = await this.#renderImageNow(format, options)
+    end(() => ({ bytes: blob.size }))
+    return blob
+  }
+
+  async #renderImageNow(format: 'svg' | 'png', options: FlowImageExportOptions): Promise<Blob> {
     await this.updateComplete
     const scene = this.#scene
     if (!scene)
