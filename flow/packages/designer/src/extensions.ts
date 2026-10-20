@@ -15,7 +15,7 @@ import type { XhFlowDesigner } from './flow-designer'
 import type { FlowPropertyEditor } from './panels/properties'
 import { createFlowRuntimeModel, DEFAULT_FLOW_DESIGNER_TRANSLATIONS } from '@xihan-flow/runtime'
 import { DesignerExtensionError, extensionCommands, extensionEditors, snapshotHistory } from '@xihan-ui/designer-kit'
-import { collectMenubarMenus, collectPaletteSources, collectSettingsSections, collectTourSteps, createHistoryPanel, createOutlinePanel, designerHistoryCommands, designerMenubarLayout, designerMenubarMenus, designerPanelCommands, designerShellCommands, menubarVisibleOf } from '@xihan-ui/designer-shell'
+import { collectMenubarMenus, collectPaletteSources, collectSettingsSections, collectTourSteps, createHistoryPanel, createOutlinePanel, designerHistoryCommands, designerMenubarLayout, designerMenubarMenus, designerPanelCommands, designerShellCommands } from '@xihan-ui/designer-shell'
 import {
   AlignObjectsBottomIcon,
   AlignObjectsCenterIcon,
@@ -365,16 +365,13 @@ function tourStep(key: FlowTourStepKey, target: DesignerTourTarget, order: numbe
     target,
     order,
     title: ({ translations }) => translations.tourSteps[key].title,
-    description: ({ translations, settings }) => {
-      const text = translations.tourSteps[key]
-      return (menubarVisibleOf(settings) ? text.menubarDescription : undefined) ?? text.description
-    },
+    description: ({ translations }) => translations.tourSteps[key].description,
   }
 }
 
 /**
  * 新手引导里流程自己的几步，排在通用步骤之后：连线（指向第一个端口）、自动布局与导出图片（指向工具栏上的钮）。
- * 菜单栏显示着时，自动布局与导出图片的说明多一句它们也在「视图」「文件」菜单里。目标看不见的那步由零件跳过。
+ * 自动布局与导出图片的说明带一句它们也在「视图」「文件」菜单里。目标看不见的那步由零件跳过。
  */
 export const FLOW_TOUR_STEPS: readonly DesignerTourStep<FlowDesignerContext>[] = [
   tourStep('connect', { selector: '[data-part="port"]' }, 100),
@@ -409,7 +406,7 @@ function withPanelCommands(commands: DesignerCommandTable<FlowDesignerContext>, 
 
 /**
  * 工具栏的缺省排列；commandLayout 没写 toolbar 时用它，再把 placement 含 toolbar 的扩展命令追加成一组。
- * 设置与帮助在菜单栏里，工具栏末组只留面板；有导入器、或菜单栏关掉时的变化见 flowToolbarLayout。
+ * 设置与帮助在菜单栏里，工具栏末组只留面板；有导入器时的变化见 flowToolbarLayout。
  */
 export const FLOW_TOOLBAR_LAYOUT: readonly (readonly string[])[] = [
   ['undo', 'redo'],
@@ -420,13 +417,9 @@ export const FLOW_TOOLBAR_LAYOUT: readonly (readonly string[])[] = [
   ['panels'],
 ]
 
-/**
- * 工具栏此刻的缺省排列：有导入器时在 FLOW_TOOLBAR_LAYOUT 前面多一组打开文件；菜单栏关掉（menubar 为假）时末组放回设置与帮助，
- * 它们才有入口。
- */
-export function flowToolbarLayout(hasImporters: boolean, menubar: boolean = true): (readonly string[])[] {
-  const groups = [...FLOW_TOOLBAR_LAYOUT.slice(0, -1), menubar ? FLOW_TOOLBAR_LAYOUT.at(-1)! : [...FLOW_TOOLBAR_LAYOUT.at(-1)!, 'settings', 'help']]
-  return hasImporters ? [['open-file'], ...groups] : groups
+/** 工具栏此刻的缺省排列：有导入器时在 FLOW_TOOLBAR_LAYOUT 前面多一组打开文件。 */
+export function flowToolbarLayout(hasImporters: boolean): (readonly string[])[] {
+  return hasImporters ? [['open-file'], ...FLOW_TOOLBAR_LAYOUT] : [...FLOW_TOOLBAR_LAYOUT]
 }
 
 /** 菜单栏的缺省排列：designer-shell 四张菜单的缺省排列；没有导入器时文件菜单里不列打开文件，与工具栏一致。 */

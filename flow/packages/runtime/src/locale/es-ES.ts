@@ -53,8 +53,8 @@ export const flowEsES: XhConfig = /* @__PURE__ */ flowLocale(designerShellEsES, 
     startVariableCell: (row, column) => `${column} de la variable ${row}`,
     tourSteps: {
       connect: { title: 'Conectar', description: 'Arrastra desde un puerto del borde de un nodo hasta otro nodo. Con una conexión seleccionada, arrastra sus extremos para volver a conectarla o sus vértices para cambiar el recorrido.' },
-      autoLayout: { title: 'Organizar automáticamente', description: 'Coloca los nodos en capas siguiendo las conexiones. Cambia la dirección y el espaciado en la página Lienzo de los ajustes.', menubarDescription: 'Coloca los nodos en capas siguiendo las conexiones. Cambia la dirección y el espaciado en la página Lienzo de los ajustes. También está en el menú Ver, junto a Alinear y distribuir.' },
-      export: { title: 'Exportar imagen', description: 'Guarda el flujo como imagen PNG o SVG.', menubarDescription: 'Guarda el flujo como imagen PNG o SVG. Ambas opciones están también en el menú Archivo.' },
+      autoLayout: { title: 'Organizar automáticamente', description: 'Coloca los nodos en capas siguiendo las conexiones. Cambia la dirección y el espaciado en la página Lienzo de los ajustes. También está en el menú Ver, junto a Alinear y distribuir.' },
+      export: { title: 'Exportar imagen', description: 'Guarda el flujo como imagen PNG o SVG. Ambas opciones están también en el menú Archivo.' },
     },
     helpNotes: [
       'Arrastra nodos desde el panel Nodos de la izquierda al lienzo o haz clic en uno para añadirlo. Edítalos en el panel Propiedades de la derecha.',

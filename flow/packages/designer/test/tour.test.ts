@@ -93,16 +93,12 @@ describe('新手引导', () => {
     tour(designer).stop()
   })
 
-  it('菜单栏开着时，自动布局与导出图片的说明带上它们在「视图」「文件」菜单里；设置里关掉菜单栏时不提菜单', async () => {
+  it('自动布局与导出图片的说明带上它们在「视图」「文件」菜单里（菜单栏常开）', async () => {
     const designer = await mount()
-    const descriptions = (): string[] => tour(designer).steps!.map(step => step.description)
     const steps = FLOW_DESIGNER_EN_US.tourSteps
-    expect(descriptions()).toEqual([steps.connect.description, steps.autoLayout.menubarDescription, steps.export.menubarDescription])
-    expect([steps.autoLayout.menubarDescription, steps.export.menubarDescription]).toEqual([expect.stringContaining('View menu'), expect.stringContaining('File menu')])
-    designer.settings = { [DESIGNER_SETTING_KEYS.toolbarMenubar]: false }
-    await designer.updateComplete
-    expect(descriptions()).toEqual([steps.connect.description, steps.autoLayout.description, steps.export.description])
-    expect(descriptions().some(text => /menu/i.test(text))).toBe(false)
+    expect(tour(designer).steps!.map(step => step.description)).toEqual([steps.connect.description, steps.autoLayout.description, steps.export.description])
+    expect([steps.autoLayout.description, steps.export.description]).toEqual([expect.stringContaining('View menu'), expect.stringContaining('File menu')])
+    expect(Object.values(steps).some(step => 'menubarDescription' in step)).toBe(false)
   })
 
   it('扩展的 tourSteps 并进来；步骤 id 重名或用了 shell. 前缀时赋值即抛错', async () => {

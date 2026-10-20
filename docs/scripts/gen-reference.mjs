@@ -549,7 +549,7 @@ function shortcutText(keys) {
 /**
  * designer-shell 的内置命令：...designerShellCommands({ save, frame, openSettings, helpUrl, startTour, openJsonEditor, settings, icons }) 给了哪个选项就有哪几条，
  * 文案在共用一桶里，先后与 designer-shell 的一致；给了 frame 时除「面板」外还有显示或隐藏所有面板、还原面板显隐、恢复默认布局与拖动，
- * 给了 openSettings 时除「设置」外还有快捷键与关于，给了 settings 时有工具栏、状态栏、菜单栏三条显示开关与收着它们的「外观」（快捷键与 designer-shell 的一致）。
+ * 给了 openSettings 时除「设置」外还有快捷键与关于，给了 settings 时有工具栏、状态栏两条显示开关与收着它们的「外观」（快捷键与 designer-shell 的一致）。
  */
 const SHELL_COMMANDS = [
   { id: 'save', label: 'save', option: 'save', shortcut: ['Mod', 'S'] },
@@ -566,7 +566,6 @@ const SHELL_COMMANDS = [
   { id: 'start-tour', label: 'startTour', option: 'startTour', shortcut: [] },
   { id: 'show-toolbar', label: 'showToolbar', option: 'settings', shortcut: [] },
   { id: 'show-status-bar', label: 'showStatusBar', option: 'settings', shortcut: [] },
-  { id: 'show-menubar', label: 'showMenubar', option: 'settings', shortcut: [] },
   { id: 'appearance', label: 'appearance', option: 'settings', shortcut: [] },
 ]
 

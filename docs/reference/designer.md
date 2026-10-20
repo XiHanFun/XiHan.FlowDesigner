@@ -157,7 +157,6 @@ declare function defineFlowDesigner(): void
 | `start-tour` | 开始引导 | — | — | 可用 |
 | `show-toolbar` | 工具栏 | — | — | 可用 |
 | `show-status-bar` | 状态栏 | — | — | 可用 |
-| `show-menubar` | 菜单栏 | — | — | 可用 |
 | `appearance` | 外观 | `EyeIcon` | — | 可用 |
 | `panel:palette` | 节点 | — | — | 可用 |
 | `panel:outline` | 流程结构 | — | — | 可用 |
@@ -168,7 +167,7 @@ declare function defineFlowDesigner(): void
 
 ### FLOW_TOOLBAR_LAYOUT {#flow_toolbar_layout}
 
-工具栏的缺省排列；commandLayout 没写 toolbar 时用它，再把 placement 含 toolbar 的扩展命令追加成一组。设置与帮助在菜单栏里，工具栏末组只留面板；有导入器、或菜单栏关掉时的变化见 flowToolbarLayout。
+工具栏的缺省排列；commandLayout 没写 toolbar 时用它，再把 placement 含 toolbar 的扩展命令追加成一组。设置与帮助在菜单栏里，工具栏末组只留面板；有导入器时的变化见 flowToolbarLayout。
 
 | 组 | 命令 |
 | --- | --- |
@@ -182,10 +181,10 @@ declare function defineFlowDesigner(): void
 ### flowToolbarLayout() {#flowtoolbarlayout}
 
 ```ts
-declare function flowToolbarLayout(hasImporters: boolean, menubar?: boolean): (readonly string[])[]
+declare function flowToolbarLayout(hasImporters: boolean): (readonly string[])[]
 ```
 
-工具栏此刻的缺省排列：有导入器时在 FLOW_TOOLBAR_LAYOUT 前面多一组打开文件；菜单栏关掉（menubar 为假）时末组放回设置与帮助，它们才有入口。
+工具栏此刻的缺省排列：有导入器时在 FLOW_TOOLBAR_LAYOUT 前面多一组打开文件。
 
 ### flowMenuLayout() {#flowmenulayout}
 
@@ -379,7 +378,7 @@ type FlowBuiltinPropertyKey = 'label' | 'style.dashed'
 | `FlowPaletteSource` | 类型 | 物料来源：往物料面板里加的几组；条目被激活时 at 没有，拖到画布上放下时 at 是松手处的世界坐标。 |
 | `flowSelectionLayout` | 函数 | 选中工具条（命令落点 selection:&lt;主体&gt;）的缺省排列：都有创建副本、复制与删除；几个节点时前面多一个对齐与分布菜单（align-menu，单条对齐命令照样能经 commandLayout 排上来）。 |
 | `FlowSelectionSubject` | 类型 | 选中工具条落在哪类选中上：一个节点，或几个节点。 |
-| `flowToolbarLayout` | 函数 | 工具栏此刻的缺省排列：有导入器时在 FLOW_TOOLBAR_LAYOUT 前面多一组打开文件；菜单栏关掉（menubar 为假）时末组放回设置与帮助，它们才有入口。 |
+| `flowToolbarLayout` | 函数 | 工具栏此刻的缺省排列：有导入器时在 FLOW_TOOLBAR_LAYOUT 前面多一组打开文件。 |
 
 ### flow-designer
 

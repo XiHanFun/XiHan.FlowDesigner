@@ -111,7 +111,6 @@ import {
   designerLayoutPolicy,
   forwardFrameSlots,
   importSources,
-  menubarVisibleOf,
   registerDropTarget,
   renderCommandMenu,
   resolveSettings,
@@ -1530,14 +1529,13 @@ export class XhFlowDesigner extends XhReactiveElement {
     }
     const statusBar = this.#statusBarOn()
     const toolbarShown = toolbarVisibleOf(this.#resolvedSettings)
-    const menubarShown = menubarVisibleOf(this.#resolvedSettings)
-    const key = JSON.stringify([regions, t.minimap, statusBar, toolbarShown, menubarShown])
+    const key = JSON.stringify([regions, t.minimap, statusBar, toolbarShown])
     if (key !== this.#frameRegionsKey || this.#frameRegionsModel !== this.#model) {
       this.#frameRegionsKey = key
       this.#frameRegionsModel = this.#model
       this.#frameRegionList = [
         ...DESIGNER_FRAME_REGIONS
-          .filter(region => (statusBar || region.name !== 'status') && (toolbarShown || region.name !== 'toolbar') && (menubarShown || region.name !== 'menubar'))
+          .filter(region => (statusBar || region.name !== 'status') && (toolbarShown || region.name !== 'toolbar'))
           .map(region => ({ ...region, ...regions[region.name] })),
         { name: 'minimap', position: 'overlay', anchor: 'bottom-end', title: t.minimap, icon: MapIcon },
         ...this.#model.extensions.flatMap(extension => (extension.panels ?? []).map(panel => panel.region)),
@@ -1557,7 +1555,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     const context: FlowDesignerContext = { designer: this, translations: t, commandTranslations: shared, settings: this.#resolvedSettings, frame: layers.frame }
     const { commands } = this.#model
     layers.commandBar.setDisplay(toolbarDisplayOf(this.#resolvedSettings))
-    const arranged = arrangeCommands('toolbar', commands, flowToolbarLayout(this.canImport, menubarVisibleOf(this.#resolvedSettings)), this.commandLayout)
+    const arranged = arrangeCommands('toolbar', commands, flowToolbarLayout(this.canImport), this.commandLayout)
     layers.commandBar.update(applyToolbarCustomization(arranged, toolbarCustomizationOf(this.#resolvedSettings)), commands, context, shared.toolbar)
     layers.menubar.update(arrangeMenubar(this.#model.menubarMenus, commands, flowMenubarLayout(commands, this.canImport), this.commandLayout), commands, context, shared)
     // 设置对话框的「工具栏」页按宿主排好的这一份列出按钮表，用户的定制压在它上面
