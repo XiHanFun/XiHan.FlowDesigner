@@ -143,14 +143,21 @@ declare function defineFlowDesigner(): void
 | `zoom-to-actual` | 实际大小 | `ZoomResetIcon` | — | 可用 |
 | `export-png` | 导出 PNG | `FileImageIcon` | — | 可用 |
 | `export-svg` | 导出 SVG | `FileCodeIcon` | — | 可用 |
+| `save` | 保存 | `SaveIcon` | `Ctrl / ⌘ + S` | 可用 |
 | `panels` | 面板 | `PanelLeftIcon` | — | 可用 |
 | `panels-toggle-all` | 显示或隐藏所有面板 | — | `Ctrl / ⌘ + \` | 可用 |
 | `panels-restore` | 还原面板显隐 | — | `Ctrl / ⌘ + Shift + \` | 可用 |
 | `layout-reset` | 恢复默认布局 | — | — | 可用 |
-| `settings` | 设置 | `SettingsIcon` | — | 可用 |
+| `pan-tool` | 拖动 | `HandIcon` | `H` | 可用 |
+| `settings` | 设置 | `SettingsIcon` | `Ctrl / ⌘ + ,` | 可用 |
+| `shortcuts` | 快捷键 | — | — | 可用 |
+| `about` | 关于 | `InfoIcon` | — | 可用 |
 | `edit-json` | 编辑 JSON | `FileCodeIcon` | `Ctrl / ⌘ + Shift + J` | 可用 |
 | `help` | 帮助 | `CircleHelpIcon` | — | 可用 |
 | `start-tour` | 开始引导 | — | — | 可用 |
+| `show-toolbar` | 工具栏 | — | — | 可用 |
+| `show-status-bar` | 状态栏 | — | — | 可用 |
+| `show-menubar` | 菜单栏 | — | — | 可用 |
 | `panel:palette` | 节点 | — | — | 可用 |
 | `panel:outline` | 流程结构 | — | — | 可用 |
 | `panel:properties` | 属性 | — | — | 可用 |
@@ -160,7 +167,7 @@ declare function defineFlowDesigner(): void
 
 ### FLOW_TOOLBAR_LAYOUT {#flow_toolbar_layout}
 
-工具栏的缺省排列；commandLayout 没写 toolbar 时用它，再把 placement 含 toolbar 的扩展命令追加成一组。有导入器时前面再加一组打开文件，见 flowToolbarLayout。
+工具栏的缺省排列；commandLayout 没写 toolbar 时用它，再把 placement 含 toolbar 的扩展命令追加成一组。设置与帮助在菜单栏里，工具栏末组只留面板；有导入器、或菜单栏关掉时的变化见 flowToolbarLayout。
 
 | 组 | 命令 |
 | --- | --- |
@@ -169,15 +176,15 @@ declare function defineFlowDesigner(): void
 | 3 | `align-left` `align-center` `align-right` `align-top` `align-middle` `align-bottom` `distribute-horizontal` `distribute-vertical` `auto-layout` |
 | 4 | `pan-tool` `zoom-out` `zoom-in` `zoom-to-fit` `zoom-to-actual` |
 | 5 | `export-png` `export-svg` |
-| 6 | `panels` `settings` `help` |
+| 6 | `panels` |
 
 ### flowToolbarLayout() {#flowtoolbarlayout}
 
 ```ts
-declare function flowToolbarLayout(hasImporters: boolean): (readonly string[])[]
+declare function flowToolbarLayout(hasImporters: boolean, menubar?: boolean): (readonly string[])[]
 ```
 
-工具栏此刻的缺省排列：有导入器时在 FLOW_TOOLBAR_LAYOUT 前面多一组打开文件。
+工具栏此刻的缺省排列：有导入器时在 FLOW_TOOLBAR_LAYOUT 前面多一组打开文件；菜单栏关掉（menubar 为假）时末组放回设置与帮助，它们才有入口。
 
 ### flowMenuLayout() {#flowmenulayout}
 
@@ -284,7 +291,6 @@ const FLOW_PANELS = { palette: 'palette', outline: 'outline', properties: 'prope
 | `startVariableAdd` | `string` | 启动变量表的新增按钮。 |
 | `tourSteps` | `Readonly<Record<FlowTourStepKey, FlowTourStepTranslations>>` | 新手引导里流程自己的几步：标题与说明。 |
 | `helpNotes` | `readonly string[]` | 设置对话框「帮助」页的几段操作说明。 |
-| `shortcutSave` | `string` | 快捷键页：Ctrl / ⌘ + S 一行的说明。 |
 | `shortcutNudge` | `string` | 快捷键页：方向键一行按流程的做法改写的说明。 |
 | `shortcutCancel` | `string` | 快捷键页：Esc 一行按流程的做法改写的说明。 |
 | `shortcutContextMenu` | `string` | 快捷键页：Shift + F10 与菜单键一行的说明。 |
@@ -366,12 +372,13 @@ type FlowBuiltinPropertyKey = 'label' | 'style.dashed'
 | `FlowImportDocument` | 接口 | 导入的整份流程定义：换掉当前定义并记一步撤销，视口随后适配。 |
 | `FlowImportFragment` | 接口 | 导入的片段：一组节点与连线，整体挪到落点后按粘贴的规则换新 id 放进流程定义，选中它们并记一步撤销。 |
 | `FlowImportResult` | 类型 | 导入的结果：一个片段，或一整份流程定义。 |
+| `flowMenubarLayout` | 函数 | 菜单栏的缺省排列：designer-shell 四张菜单的缺省排列；没有导入器时文件菜单里不列打开文件，与工具栏一致。 |
 | `flowMenuLayout` | 函数 | 右键菜单的缺省排列：节点菜单在选中两个以上时加对齐，三个以上时加分布；空白处的末尾是编辑 JSON。 |
 | `FlowMenuSubject` | 类型 | 右键菜单落在哪类对象上。 |
 | `FlowPaletteSource` | 类型 | 物料来源：往物料面板里加的几组；条目被激活时 at 没有，拖到画布上放下时 at 是松手处的世界坐标。 |
 | `flowSelectionLayout` | 函数 | 选中工具条（命令落点 selection:&lt;主体&gt;）的缺省排列：都有创建副本、复制与删除；几个节点时前面多一个对齐与分布菜单（align-menu，单条对齐命令照样能经 commandLayout 排上来）。 |
 | `FlowSelectionSubject` | 类型 | 选中工具条落在哪类选中上：一个节点，或几个节点。 |
-| `flowToolbarLayout` | 函数 | 工具栏此刻的缺省排列：有导入器时在 FLOW_TOOLBAR_LAYOUT 前面多一组打开文件。 |
+| `flowToolbarLayout` | 函数 | 工具栏此刻的缺省排列：有导入器时在 FLOW_TOOLBAR_LAYOUT 前面多一组打开文件；菜单栏关掉（menubar 为假）时末组放回设置与帮助，它们才有入口。 |
 
 ### flow-designer
 

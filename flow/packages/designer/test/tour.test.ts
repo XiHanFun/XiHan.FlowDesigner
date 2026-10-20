@@ -115,22 +115,23 @@ describe('帮助、快捷键与关于', () => {
     tour(designer).stop()
   })
 
-  it('快捷键表从命令表生成，流程自己那组末尾补上剪贴板三键、Backspace 删除、右键菜单与保存，重做那行带上 Ctrl + Y；通用里去掉空格，方向键与 Esc 按流程的做法改写', async () => {
+  it('快捷键表从命令表生成，流程自己那组末尾补上剪贴板三键、Backspace 删除与右键菜单，保存是外壳命令归通用；重做那行带上 Ctrl + Y；通用里去掉空格、有 F10，方向键与 Esc 按流程的做法改写', async () => {
     const designer = await mount()
     const source = settings(designer).shortcuts!
     const designerRows = source.groups.find(group => group.id === 'designer')!.rows
-    expect(designerRows.slice(-6).map(row => [row.label, row.keys])).toEqual([
+    expect(designerRows.slice(-5).map(row => [row.label, row.keys])).toEqual([
       ['Copy', [['Mod', 'C']]],
       ['Cut', [['Mod', 'X']]],
       ['Paste', [['Mod', 'V']]],
       ['Delete', [['Backspace']]],
       ['Open the context menu', [['Shift', 'F10'], ['ContextMenu']]],
-      ['Save', [['Mod', 'S']]],
     ])
+    expect(source.groups.find(group => group.id === 'common')!.rows.find(row => row.label === 'Save')!.keys).toEqual([['Mod', 'S']])
     expect(source.groups.find(group => group.id === 'edit')!.rows.find(row => row.label === 'Redo')!.keys).toEqual([['Mod', 'Shift', 'Z'], ['Ctrl', 'Y']])
     expect(source.commonKeys!.map(key => [key.id, key.label])).toEqual([
       ['nudge', 'Move the selected nodes; pan the canvas when no node is selected'],
       ['nudgeLarge', undefined],
+      ['menubar', undefined],
       ['selectionToolbar', undefined],
       ['cancel', 'Cancel the drag in progress'],
     ])

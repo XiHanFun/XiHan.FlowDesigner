@@ -7,14 +7,15 @@
 
 import type { FlowDocument, FlowEdge, FlowNode, FlowOperation, FlowPoint, FlowRuleContext } from '@xihan-flow/core'
 import type { FlowDesignerTranslations, FlowImageExportOptions, FlowImageFormat, FlowRuntimeExtension, FlowRuntimeModel, FlowTourStepKey } from '@xihan-flow/runtime'
+import type { JsonValue } from '@xihan-ui/core/json'
 import type { DesignerCommand, DesignerExporter, DesignerImporter, History } from '@xihan-ui/designer-kit'
 import type { PropertyEditorLayer, PropertyEditorTable } from '@xihan-ui/designer-kit/properties'
-import type { DesignerCommandsTranslations, DesignerCommandTable, DesignerHistoryConfirm, DesignerHistoryTranslations, DesignerOutlineNode, DesignerPaletteSource, DesignerSettings, DesignerSettingsSection, DesignerShellExtension, DesignerTourStep, DesignerTourTarget, XhDesignerFrameElement } from '@xihan-ui/designer-shell'
+import type { DesignerCommandsTranslations, DesignerCommandTable, DesignerHistoryConfirm, DesignerHistoryTranslations, DesignerMenubarMenu, DesignerOutlineNode, DesignerPaletteSource, DesignerSettings, DesignerSettingsSection, DesignerShellExtension, DesignerTourStep, DesignerTourTarget, XhDesignerFrameElement } from '@xihan-ui/designer-shell'
 import type { XhFlowDesigner } from './flow-designer'
 import type { FlowPropertyEditor } from './panels/properties'
 import { createFlowRuntimeModel, DEFAULT_FLOW_DESIGNER_TRANSLATIONS } from '@xihan-flow/runtime'
 import { DesignerExtensionError, extensionCommands, extensionEditors, snapshotHistory } from '@xihan-ui/designer-kit'
-import { collectPaletteSources, collectSettingsSections, collectTourSteps, createHistoryPanel, createOutlinePanel, designerHistoryCommands, designerPanelCommands, designerShellCommands } from '@xihan-ui/designer-shell'
+import { collectMenubarMenus, collectPaletteSources, collectSettingsSections, collectTourSteps, createHistoryPanel, createOutlinePanel, designerHistoryCommands, designerMenubarLayout, designerMenubarMenus, designerPanelCommands, designerShellCommands } from '@xihan-ui/designer-shell'
 import {
   AlignObjectsBottomIcon,
   AlignObjectsCenterIcon,
@@ -34,10 +35,12 @@ import {
   FolderOpenIcon,
   HandIcon,
   HistoryIcon,
+  InfoIcon,
   ListTreeIcon,
   MaximizeIcon,
   PanelLeftIcon,
   RedoIcon,
+  SaveIcon,
   ScissorsIcon,
   SettingsIcon,
   SquareDashedIcon,
@@ -134,6 +137,10 @@ export interface FlowDesignerInternals {
   readonly outline: () => readonly DesignerOutlineNode[]
   /** 在画布上标出一个节点或一条连线，undefined 撤掉。 */
   readonly highlight: (target: FlowOutlineTarget | undefined) => void
+  /** 派发 save。 */
+  readonly save: () => void
+  /** 改一条设置：换成新的 settings，给了存储键就存起来，再派发 settings-change。 */
+  readonly changeSetting: (key: string, value: JsonValue) => void
 }
 
 /** 流程结构里一行对应的对象。 */
@@ -208,8 +215,9 @@ export const FLOW_PANELS = { palette: 'palette', outline: 'outline', properties:
 const FRAME_PANELS = [FLOW_PANELS.palette, FLOW_PANELS.properties, FLOW_PANELS.issues, FLOW_PANELS.minimap]
 
 /**
- * 内置命令：打开文件、撤销重做、剪贴板、选择、对齐分布、布局、缩放、导出图片，以及 designer-shell 内置的面板、设置、帮助、
- * 开始引导与编辑 JSON，各带图标；
+ * 内置命令：打开文件、撤销重做、剪贴板、选择、对齐分布、布局、缩放、导出图片，以及 designer-shell 内置的保存、面板、拖动、
+ * 设置、快捷键、关于、帮助、开始引导、编辑 JSON 与工具栏、状态栏、菜单栏的显示开关，各带图标；导出图片落在文件菜单，
+ * 自动布局与对齐分布菜单落在视图菜单；
  * 每块面板另有一条开关命令。四款都有的通用命令取 designer-shell 的共用文案，流程专属的取设计器文案；会删掉内容的删除写 danger 语气。
  */
 const BUILTIN_COMMANDS: readonly FlowDesignerCommand[] = [
@@ -257,10 +265,11 @@ const BUILTIN_COMMANDS: readonly FlowDesignerCommand[] = [
     id: 'align-menu',
     label: text('alignMenu'),
     icon: AlignObjectsLeftIcon,
+    placement: ['menubar:view'],
     enabled: editable(d => selectedNodes(d) >= 2),
     menu: () => ['align-left', 'align-center', 'align-right', 'align-top', 'align-middle', 'align-bottom', 'separator', 'distribute-horizontal', 'distribute-vertical'],
   },
-  { id: 'auto-layout', label: text('autoLayout'), icon: WorkflowIcon, enabled: editable(d => d.schema.nodes.length > 0), run: ({ designer }) => designer.autoLayout() },
+  { id: 'auto-layout', label: text('autoLayout'), icon: WorkflowIcon, placement: ['menubar:view'], enabled: editable(d => d.schema.nodes.length > 0), run: ({ designer }) => designer.autoLayout() },
   {
     id: 'clear-vertices',
     label: text('clearVertices'),
@@ -277,16 +286,22 @@ const BUILTIN_COMMANDS: readonly FlowDesignerCommand[] = [
   { id: 'zoom-in', label: shared('zoomIn'), icon: ZoomInIcon, shortcut: ['+'], run: ({ designer }) => designer.zoomIn() },
   { id: 'zoom-to-fit', label: shared('zoomToFit'), icon: MaximizeIcon, shortcut: ['0'], run: ({ designer }) => designer.zoomToFit() },
   { id: 'zoom-to-actual', label: shared('zoomToActual'), icon: ZoomResetIcon, run: ({ designer }) => designer.zoomToActual() },
-  { id: 'export-png', label: text('exportPng'), icon: FileImageIcon, enabled: ({ designer }) => designer.schema.nodes.length > 0, run: ({ designer }) => void saveImage(designer, 'png') },
-  { id: 'export-svg', label: text('exportSvg'), icon: FileCodeIcon, enabled: ({ designer }) => designer.schema.nodes.length > 0, run: ({ designer }) => void saveImage(designer, 'svg') },
+  { id: 'export-png', label: text('exportPng'), icon: FileImageIcon, placement: ['menubar:file'], enabled: ({ designer }) => designer.schema.nodes.length > 0, run: ({ designer }) => void saveImage(designer, 'png') },
+  { id: 'export-svg', label: text('exportSvg'), icon: FileCodeIcon, placement: ['menubar:file'], enabled: ({ designer }) => designer.schema.nodes.length > 0, run: ({ designer }) => void saveImage(designer, 'svg') },
   ...designerShellCommands<FlowDesignerContext>({
     translations: context => context.commandTranslations,
+    save: ({ designer }) => internalsOf(designer).save(),
     frame: context => context.frame,
-    openSettings: ({ designer }) => designer.openSettings(),
+    openSettings: ({ designer }, section) => designer.openSettings(section),
     helpUrl: () => FLOW_DESIGNER_HELP_URL,
     startTour: ({ designer }) => designer.startTour(),
     openJsonEditor: ({ designer }) => designer.openJsonEditor(),
-    icons: { panels: PanelLeftIcon, settings: SettingsIcon, help: CircleHelpIcon, editJson: FileCodeIcon, panTool: HandIcon },
+    settings: {
+      read: context => context.settings,
+      change: ({ designer }, key, value) => internalsOf(designer).changeSetting(key, value),
+      policy: ({ designer }) => designer.settingsPolicy,
+    },
+    icons: { save: SaveIcon, panels: PanelLeftIcon, settings: SettingsIcon, help: CircleHelpIcon, editJson: FileCodeIcon, panTool: HandIcon, about: InfoIcon },
   }),
   ...designerPanelCommands<FlowDesignerContext>({ panels: FRAME_PANELS, frame: context => context.frame }),
 ]
@@ -386,7 +401,7 @@ function withPanelCommands(commands: DesignerCommandTable<FlowDesignerContext>, 
 
 /**
  * 工具栏的缺省排列；commandLayout 没写 toolbar 时用它，再把 placement 含 toolbar 的扩展命令追加成一组。
- * 有导入器时前面再加一组打开文件，见 flowToolbarLayout。
+ * 设置与帮助在菜单栏里，工具栏末组只留面板；有导入器、或菜单栏关掉时的变化见 flowToolbarLayout。
  */
 export const FLOW_TOOLBAR_LAYOUT: readonly (readonly string[])[] = [
   ['undo', 'redo'],
@@ -394,12 +409,24 @@ export const FLOW_TOOLBAR_LAYOUT: readonly (readonly string[])[] = [
   ['align-left', 'align-center', 'align-right', 'align-top', 'align-middle', 'align-bottom', 'distribute-horizontal', 'distribute-vertical', 'auto-layout'],
   ['pan-tool', 'zoom-out', 'zoom-in', 'zoom-to-fit', 'zoom-to-actual'],
   ['export-png', 'export-svg'],
-  ['panels', 'settings', 'help'],
+  ['panels'],
 ]
 
-/** 工具栏此刻的缺省排列：有导入器时在 FLOW_TOOLBAR_LAYOUT 前面多一组打开文件。 */
-export function flowToolbarLayout(hasImporters: boolean): (readonly string[])[] {
-  return hasImporters ? [['open-file'], ...FLOW_TOOLBAR_LAYOUT] : [...FLOW_TOOLBAR_LAYOUT]
+/**
+ * 工具栏此刻的缺省排列：有导入器时在 FLOW_TOOLBAR_LAYOUT 前面多一组打开文件；菜单栏关掉（menubar 为假）时末组放回设置与帮助，
+ * 它们才有入口。
+ */
+export function flowToolbarLayout(hasImporters: boolean, menubar: boolean = true): (readonly string[])[] {
+  const groups = [...FLOW_TOOLBAR_LAYOUT.slice(0, -1), menubar ? FLOW_TOOLBAR_LAYOUT.at(-1)! : [...FLOW_TOOLBAR_LAYOUT.at(-1)!, 'settings', 'help']]
+  return hasImporters ? [['open-file'], ...groups] : groups
+}
+
+/** 菜单栏的缺省排列：designer-shell 四张菜单的缺省排列；没有导入器时文件菜单里不列打开文件，与工具栏一致。 */
+export function flowMenubarLayout(commands: DesignerCommandTable<FlowDesignerContext>, hasImporters: boolean): Record<string, string[][]> {
+  const layout = designerMenubarLayout(commands)
+  if (!hasImporters && layout.file)
+    layout.file = layout.file.map(group => group.filter(id => id !== 'open-file')).filter(group => group.length > 0)
+  return layout
 }
 
 /** 选中工具条落在哪类选中上：一个节点，或几个节点。只选了连线时没有选中工具条。 */
@@ -453,9 +480,14 @@ export interface FlowDesignerModel {
   readonly tourSteps: readonly DesignerTourStep<FlowDesignerContext>[]
   /** 各扩展的物料来源，按 order 排。 */
   readonly paletteSources: readonly FlowPaletteSource[]
+  /** 菜单栏上的菜单：designer-shell 内置的文件、编辑、视图、帮助在前，各扩展登记的在后。 */
+  readonly menubarMenus: readonly DesignerMenubarMenu<FlowDesignerContext>[]
 }
 
-/** 合出设计器用的模型；editors 是垫在各扩展之下的内建编辑器。任何一处重名（含引导步骤 id 重名或用了 shell. 前缀、物料来源 id 重名）都抛 DesignerExtensionError。 */
+/**
+ * 合出设计器用的模型；editors 是垫在各扩展之下的内建编辑器。任何一处重名（含引导步骤 id 重名或用了 shell. 前缀、物料来源 id 重名、
+ * 菜单栏的菜单 id 重名）都抛 DesignerExtensionError。
+ */
 export function createFlowDesignerModel(extensions: readonly FlowDesignerExtension[], editors?: PropertyEditorLayer<FlowPropertyEditor>): FlowDesignerModel {
   const list = [FLOW_DESIGNER_EXTENSION, ...extensions]
   const runtime = createFlowRuntimeModel(list)
@@ -472,5 +504,6 @@ export function createFlowDesignerModel(extensions: readonly FlowDesignerExtensi
     settings: collectSettingsSections([{ id: FLOW_DESIGNER_EXTENSION.id, settings: [{ id: FLOW_SETTINGS_SECTION, label: FLOW_SETTINGS_SECTION, items: [] }] }, ...all]).slice(1),
     tourSteps: collectTourSteps(all),
     paletteSources: collectPaletteSources(all),
+    menubarMenus: collectMenubarMenus(designerMenubarMenus<FlowDesignerContext>({ translations: context => context.commandTranslations }), all),
   }
 }
