@@ -24,8 +24,6 @@
 | `settings` | — | `DesignerSettings \| undefined` | 设置的值：扁平的键值，键是「分区 id.条目 id」，如 general.theme、flow.snap；没写的键取条目的缺省值。赋值即生效；用户在设置对话框里改了以后设计器换成新的一份并派发 settings-change。 |
 | `settingsPolicy` | — | `DesignerSettingsPolicy \| undefined` | 宿主对设置条目的管控：键是条目键或分区 id，hidden 不显示，locked 只读、说明换成「由所在系统管理」。 |
 | `settingsStorageKey` | `settings-storage-key` | `string \| undefined` | 设置存在根所在窗口 localStorage 的哪个键下：给了，连上文档时若没赋 settings 就从这里读，用户改了设置就写回去，标了 secret 的条目不存；读写失败派发 settings-storage-error。不给就不读写。同名 attribute settings-storage-key。 |
-| `brands` | — | `readonly PropertySwatchOption[] \| undefined` | 设置里主题色的预设：value 是品牌 id（写成设计器根上的 data-brand），color 是色板格子的颜色。不给且没给 registerBrand 时没有主题色这一项。 |
-| `registerBrand` | — | `((id: string, color: string) => () => void) \| undefined` | 注册自定义主题色，形状与 @xihan-ui/tokens 的 registerBrand 相同；给了才许在设置里自定义主题色。 |
 | `translations` | — | `Partial<FlowDesignerTranslations> \| undefined` | 元素自己的文案，压在全局配置之上。 |
 
 ### 存取器
@@ -37,6 +35,7 @@
 | `canUndo` | 只读 | `boolean` | 有可以撤销的一步。 |
 | `canRedo` | 只读 | `boolean` | 有可以重做的一步。 |
 | `canPaste` | 只读 | `boolean` | 剪贴板里有内容，paste() 能贴出东西。 |
+| `xhConfig` | 只读 | `XhConfig` | 设计器这棵子树的配置：设置里选了语言时是这一语言的 UI、designer-shell 与流程语言包，跟随页面时是空对象。设计器自己、里面的元素与它弹出的浮层都按它取 locale 与文案，页面别处不受影响。 |
 | `canImport` | 只读 | `boolean` | 装了导入器：粘贴与拖进画布的外部内容、openFile() 选的文件都交给它们。 |
 | `dirty` | 只读 | `boolean` | 有未保存的修改。 |
 

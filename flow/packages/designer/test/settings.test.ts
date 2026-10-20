@@ -45,11 +45,12 @@ function panelSwitch(name: string): HTMLElement {
 
 describe('设置', () => {
   // 头一条要冷启动七页的设置对话框，机器忙时超过缺省的 5 秒
-  it('openSettings 打开设置对话框：基础、布局、工具栏在前，画布在后，帮助、快捷键、关于在最后；画布分区列出自动布局与吸附，基础里有状态栏', { timeout: 15_000 }, async () => {
+  it('openSettings 打开设置对话框：基础、语言、布局、工具栏在前，画布在后，帮助、快捷键、关于在最后；画布分区列出自动布局与吸附，基础里有主题色与状态栏', { timeout: 15_000 }, async () => {
     const designer = await mount()
     designer.openSettings('flow')
     await settle(designer)
-    expect(pages()).toEqual(['general', 'layout', 'toolbar', 'flow', 'help', 'shortcuts', 'about'])
+    expect(pages()).toEqual(['general', 'language', 'layout', 'toolbar', 'flow', 'help', 'shortcuts', 'about'])
+    expect([row('general.brand') !== null, row('language.locale') !== null]).toEqual([true, true])
     expect(['layoutDirection', 'nodeGap', 'layerGap', 'snap'].map(id => row(`flow.${id}`) !== null)).toEqual([true, true, true, true])
     expect(row('flow.minimap')).toBeNull()
     expect([row('general.theme') !== null, row('general.statusBar') !== null]).toEqual([true, true])
@@ -62,7 +63,7 @@ describe('设置', () => {
     })
     designer.openSettings()
     await settle(designer)
-    expect(pages()).toEqual(['layout', 'toolbar', 'flow', 'help', 'shortcuts', 'about'])
+    expect(pages()).toEqual(['language', 'layout', 'toolbar', 'flow', 'help', 'shortcuts', 'about'])
     expect(row('flow.snap')!.querySelector('xh-field')!.hasAttribute('read-only')).toBe(true)
   })
 
@@ -103,11 +104,11 @@ describe('设置', () => {
     expect([FLOW_SETTINGS_SECTION, Object.values(FLOW_SETTING_KEYS).every(key => key.startsWith(`${FLOW_SETTINGS_SECTION}.`))]).toEqual(['flow', true])
   })
 
-  it('主题与主题色落在设计器元素上：亮暗写 data-theme，预设主题色写 data-brand，跟随页面时去掉', async () => {
+  it('主题与主题色落在设计器元素上：亮暗写 data-theme，预设主题色写 data-brand（主题色内置，宿主不传预设），跟随页面时去掉', async () => {
     const designer = await mount((element) => {
-      element.brands = [{ value: 'green', color: '#16a34a' }]
       element.settings = { 'general.theme': 'dark' }
     })
+    expect(['brands', 'registerBrand'].some(name => name in designer)).toBe(false)
     expect(designer.getAttribute('data-theme')).toBe('dark')
     designer.settings = { 'general.brand': 'green' }
     await designer.updateComplete
@@ -115,6 +116,24 @@ describe('设置', () => {
     designer.settings = {}
     await designer.updateComplete
     expect([designer.hasAttribute('data-theme'), designer.hasAttribute('data-brand')]).toEqual([false, false])
+  })
+
+  it('设置里选了语言：设计器根交出这一语言的配置，设计器自己、外壳零件与 UI 元素的文案都换，页面别处照旧；跟随页面换回来', async () => {
+    const designer = await mount()
+    const label = (): string | null => designer.querySelector('[data-part="command-bar"] xh-toolbar [data-xh-part="root"]')!.getAttribute('aria-label')
+    const name = (id: string): string | null => designer.querySelector(`[data-part="command-bar"] button[value="${id}"]`)!.getAttribute('aria-label')
+    expect([label(), name('undo'), name('auto-layout')]).toEqual(['Designer actions', 'Undo', 'Auto layout'])
+    designer.settings = { [DESIGNER_SETTING_KEYS.language]: 'zh-CN' }
+    for (let round = 0; round < 20 && designer.xhConfig.locale !== 'zh-CN'; round++)
+      await new Promise(resolve => setTimeout(resolve, 10))
+    await designer.updateComplete
+    await designer.updateComplete
+    expect([designer.xhConfig.locale, label(), name('undo'), name('auto-layout')]).toEqual(['zh-CN', '设计器操作', '撤销', '自动布局'])
+    expect(designer.xhConfig.translations).toHaveProperty(['xh-flow-designer'])
+    designer.settings = {}
+    await designer.updateComplete
+    await designer.updateComplete
+    expect([designer.xhConfig, label()]).toEqual([{}, 'Designer actions'])
   })
 
   it('给了 settingsStorageKey：没赋 settings 时从存储读，对话框里改了就写回；读出的不是对象时派发 settings-storage-error', async () => {
@@ -140,7 +159,7 @@ describe('设置', () => {
     const designer = await mount(element => (element.extensions = [nodes, { id: 'acme', settings: [section] }]))
     designer.openSettings('acme')
     await settle(designer)
-    expect(pages()).toEqual(['general', 'layout', 'toolbar', 'flow', 'acme', 'help', 'shortcuts', 'about'])
+    expect(pages()).toEqual(['general', 'language', 'layout', 'toolbar', 'flow', 'acme', 'help', 'shortcuts', 'about'])
     expect(row('acme.token')!.querySelector('xh-password-input')).not.toBeNull()
     const before = designer.extensions
     for (const id of ['flow', 'general', 'layout', 'toolbar', 'help', 'shortcuts', 'about']) {

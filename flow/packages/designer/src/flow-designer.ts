@@ -32,7 +32,7 @@ import type { FlowDesignerTranslations, FlowImageExportOptions, FlowImageFormat,
 import type { JsonValue } from '@xihan-ui/core/json'
 import type { VisualEnvironmentStorageError } from '@xihan-ui/core/visual-environment'
 import type { AlignMode, DesignerImportSource, DistributeAxis, ExecuteOptions, ExtensionHost, Viewport } from '@xihan-ui/designer-kit'
-import type { PropertyEditorLayer, PropertySwatchOption } from '@xihan-ui/designer-kit/properties'
+import type { PropertyEditorLayer } from '@xihan-ui/designer-kit/properties'
 import type {
   CommandMenubar,
   CommandToolbar,
@@ -43,6 +43,7 @@ import type {
   DesignerHistoryTranslations,
   DesignerIssueItem,
   DesignerJsonEditorEventMap,
+  DesignerLanguage,
   DesignerLayout,
   DesignerLayoutPolicy,
   DesignerOutlineNode,
@@ -60,6 +61,7 @@ import type {
   PanRequestDetail,
 } from '@xihan-ui/designer-shell'
 import type { PointerSession } from '@xihan-ui/pointer'
+import type { XhConfig } from '@xihan-ui/web-components'
 import type { KeyedChildren, PropertyValues } from '@xihan-ui/web-components/authoring'
 import type { DialogService } from '@xihan-ui/web-components/services'
 import type { FlowAutoLayoutOptions, FlowClipboard, FlowEditor, FlowSelection } from './editor'
@@ -132,8 +134,10 @@ import {
   XhDesignerTourElement,
   XhDesignerTransformElement,
 } from '@xihan-ui/designer-shell'
+import { loadDesignerLocale } from '@xihan-ui/designer-shell/language'
 import { CircleAlertIcon, LayoutGridIcon, MapIcon, MenuIcon, SlidersHorizontalIcon } from '@xihan-ui/icons'
 import { createPointerSession, resolveSessionDoc, shouldActivate, wheelPixels } from '@xihan-ui/pointer'
+import { mergeXhConfig } from '@xihan-ui/web-components'
 import {
   BOOLEAN_CONVERTER,
   createGeneratedElement,
@@ -213,6 +217,19 @@ export interface FlowDesignerEventMap {
 const LAYOUT_DIRECTIONS: readonly unknown[] = ['TB', 'BT', 'LR', 'RL']
 
 const EMPTY_SCHEMA: FlowDocument = { version: 1, nodes: [], edges: [] }
+
+/** 跟随页面时设计器这棵子树的配置。 */
+const FOLLOW_PAGE: XhConfig = Object.freeze({})
+
+/**
+ * 设置里选了语言时这台设计器用的配置：UI 与 designer-shell 的同语言包，再并上流程自己的同语言包（按需加载）。
+ */
+async function loadFlowLocale(language: DesignerLanguage): Promise<XhConfig> {
+  const [shared, flow] = await Promise.all([loadDesignerLocale(language), import('@xihan-flow/runtime/locale')])
+  const pack = flow[`flow${language[0]!.toUpperCase()}${language.slice(1).replace('-', '')}` as keyof typeof flow] as XhConfig
+  return mergeXhConfig(shared, pack)
+}
+
 const NO_EXTENSIONS: readonly FlowDesignerExtension[] = []
 const ZOOM_STEP = 1.2
 const PAN_STEP = 48
@@ -297,8 +314,6 @@ export class XhFlowDesigner extends XhReactiveElement {
     settings: { attribute: false },
     settingsPolicy: { attribute: false },
     settingsStorageKey: { attribute: 'settings-storage-key', converter: { fromAttribute: (value: string | null) => value ?? undefined } },
-    brands: { attribute: false },
-    registerBrand: { attribute: false },
     translations: { attribute: false },
   }
 
@@ -348,10 +363,6 @@ export class XhFlowDesigner extends XhReactiveElement {
    * 标了 secret 的条目不存；读写失败派发 settings-storage-error。不给就不读写。同名 attribute settings-storage-key。
    */
   declare settingsStorageKey: string | undefined
-  /** 设置里主题色的预设：value 是品牌 id（写成设计器根上的 data-brand），color 是色板格子的颜色。不给且没给 registerBrand 时没有主题色这一项。 */
-  declare brands: readonly PropertySwatchOption[] | undefined
-  /** 注册自定义主题色，形状与 @xihan-ui/tokens 的 registerBrand 相同；给了才许在设置里自定义主题色。 */
-  declare registerBrand: ((id: string, color: string) => () => void) | undefined
   /** 元素自己的文案，压在全局配置之上。 */
   declare translations: Partial<FlowDesignerTranslations> | undefined
 
@@ -539,6 +550,14 @@ export class XhFlowDesigner extends XhReactiveElement {
   /** 剪贴板里有内容，paste() 能贴出东西。 */
   get canPaste(): boolean {
     return this.#editor.hasClipboard
+  }
+
+  /**
+   * 设计器这棵子树的配置：设置里选了语言时是这一语言的 UI、designer-shell 与流程语言包，跟随页面时是空对象。
+   * 设计器自己、里面的元素与它弹出的浮层都按它取 locale 与文案，页面别处不受影响。
+   */
+  get xhConfig(): XhConfig {
+    return this.#settingsHost?.localeConfig ?? FOLLOW_PAGE
   }
 
   /** 装了导入器：粘贴与拖进画布的外部内容、openFile() 选的文件都交给它们。 */
@@ -1417,22 +1436,22 @@ export class XhFlowDesigner extends XhReactiveElement {
   }
 
   /**
-   * 设置：建好设置宿主（主题色预设、注册函数或存储键变了就重建），给了存储键又没赋 settings 时从存储读；settings 变了
-   * 把主题与主题色落到设计器上；算出此刻生效的设置，交给设置对话框。
+   * 设置：建好设置宿主（存储键变了就重建），给了存储键又没赋 settings 时从存储读；settings 变了把主题、主题色与语言
+   * 落到设计器上；算出此刻生效的设置，交给设置对话框。
    */
   #syncSettings(layers: Layers, t: FlowDesignerTranslations, changed: PropertyValues): void {
-    const options = [this.brands, this.registerBrand, this.settingsStorageKey]
+    const options = [this.settingsStorageKey]
     let fresh = false
     if (!this.#settingsHost || options.some((value, index) => value !== this.#settingsHostOptions[index])) {
       this.#settingsHost?.dispose()
       this.#settingsHostOptions = options
       const storageKey = this.settingsStorageKey
+      const locale = { locale: loadFlowLocale, onLocaleChange: () => this.requestUpdate() }
       this.#settingsHost = storageKey === undefined
-        ? createDesignerSettingsHost({ root: this, brands: this.brands, registerBrand: this.registerBrand })
+        ? createDesignerSettingsHost({ root: this, ...locale })
         : createDesignerSettingsHost({
             root: this,
-            brands: this.brands,
-            registerBrand: this.registerBrand,
+            ...locale,
             storageKey,
             onStorageError: detail => emitEvent(this, 'settings-storage-error', detail),
           })
@@ -1450,12 +1469,10 @@ export class XhFlowDesigner extends XhReactiveElement {
     }
     this.#resolvedSettings = resolveSettings(this.#settingsSectionList, this.settings)
     const dialog = layers.settings
-    const general = { brands: this.brands, customBrand: this.registerBrand !== undefined }
     const policy: DesignerSettingsPolicy = { ...this.settingsPolicy }
-    const dialogKey = JSON.stringify([general.brands, general.customBrand, policy])
+    const dialogKey = JSON.stringify(policy)
     if (dialogKey !== this.#settingsDialogKey) {
       this.#settingsDialogKey = dialogKey
-      dialog.general = general
       dialog.policy = policy
     }
     if (dialog.sections !== this.#settingsSectionList)
