@@ -67,6 +67,12 @@ function toolbarItems(designer: Element): string[] {
   return Array.from(designer.querySelectorAll<HTMLButtonElement>('[data-part="command-bar"] button[data-xh-part="item"]'), item => item.value)
 }
 
+/** 菜单栏「文件」菜单里的命令 id。 */
+function fileMenuItems(designer: Element): string[] {
+  const menubar = designer.querySelector<HTMLElement & { collection?: { value: string, items?: { value: string }[] }[] }>('xh-menubar')!
+  return menubar.collection!.find(menu => menu.value === 'file')!.items!.map(item => item.value.slice('file/'.length))
+}
+
 /** 记下问过的来源，返回 accepts 的结果。 */
 function record(asked: string[], id: string, source: DesignerImportSource, accepts: boolean): boolean {
   asked.push(`${id}:${source.mime}`)
@@ -90,10 +96,11 @@ function chooseFile(file: File | undefined): { opened: () => number, accept: () 
 }
 
 describe('导入', () => {
-  it('没有导入器时：不能导入，工具栏没有打开文件，外部文本的粘贴与拖放都不接', async () => {
+  it('没有导入器时：不能导入，工具栏与文件菜单里都没有打开文件，外部文本的粘贴与拖放都不接', async () => {
     const designer = await mount()
     expect(designer.canImport).toBe(false)
     expect(toolbarItems(designer)).not.toContain('open-file')
+    expect(fileMenuItems(designer)).not.toContain('open-file')
     focusCanvas(designer)
     expect(paste(transfer({ 'text/plain': 'hello' })).defaultPrevented).toBe(false)
     expect(drag(designer, 'dragover', transfer({ 'text/plain': 'hello' }), 10, 10).defaultPrevented).toBe(false)
@@ -216,10 +223,11 @@ describe('导入', () => {
 })
 
 describe('打开文件', () => {
-  it('有导入器时工具栏最前多一组打开文件；选中的文件交给导入器，片段放在视口中央', async () => {
+  it('有导入器时工具栏最前多一组打开文件，文件菜单里保存后面也有；选中的文件交给导入器，片段放在视口中央', async () => {
     const seen: DesignerImportSource[] = []
     const designer = await mount(d => d.extensions = [nodes, withImporters(importer('file', source => seen.push(source) > 0 && source.kind === 'file', () => FRAGMENT))])
     expect(toolbarItems(designer)[0]).toBe('open-file')
+    expect(fileMenuItems(designer).slice(0, 2)).toEqual(['save', 'open-file'])
     placeCanvas(designer, 800, 600)
     designer.setViewport({ x: 0, y: 0, zoom: 1 })
     const file = new File(['{}'], 'leave.json', { type: 'application/json' })
@@ -316,9 +324,9 @@ describe('导出', () => {
     expect(designer.querySelector('[data-part="node"][data-node-id="t"]')!.hasAttribute('data-selected')).toBe(true)
   })
 
-  it('导出 PNG 与导出 SVG 一组，排在面板、设置与帮助之前；流程图是空的时不可用', async () => {
+  it('导出 PNG 与导出 SVG 一组，排在末组的面板之前；流程图是空的时不可用', async () => {
     const designer = await mount()
-    expect(toolbarItems(designer).slice(-5)).toEqual(['export-png', 'export-svg', 'panels', 'settings', 'help'])
+    expect(toolbarItems(designer).slice(-3)).toEqual(['export-png', 'export-svg', 'panels'])
     designer.schema = { version: 1, nodes: [], edges: [] }
     await designer.updateComplete
     expect(designer.querySelector<HTMLButtonElement>('[data-part="command-bar"] button[value="export-svg"]')!.disabled).toBe(true)

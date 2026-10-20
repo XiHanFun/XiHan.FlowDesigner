@@ -34,6 +34,7 @@ import type { VisualEnvironmentStorageError } from '@xihan-ui/core/visual-enviro
 import type { AlignMode, DesignerImportSource, DistributeAxis, ExecuteOptions, ExtensionHost, Viewport } from '@xihan-ui/designer-kit'
 import type { PropertyEditorLayer, PropertySwatchOption } from '@xihan-ui/designer-kit/properties'
 import type {
+  CommandMenubar,
   CommandToolbar,
   DesignerCommandLayout,
   DesignerCommandsTranslations,
@@ -93,6 +94,8 @@ import {
 import {
   applyToolbarCustomization,
   arrangeCommands,
+  arrangeMenubar,
+  createCommandMenubar,
   createCommandToolbar,
   createDesignerSettingsHost,
   createPanelHost,
@@ -106,7 +109,9 @@ import {
   DESIGNER_SHELL_COMMANDS,
   DESIGNER_TOUR_DONE_KEY,
   designerLayoutPolicy,
+  forwardFrameSlots,
   importSources,
+  menubarVisibleOf,
   registerDropTarget,
   renderCommandMenu,
   resolveSettings,
@@ -128,7 +133,7 @@ import {
   XhDesignerTourElement,
   XhDesignerTransformElement,
 } from '@xihan-ui/designer-shell'
-import { CircleAlertIcon, LayoutGridIcon, MapIcon, SlidersHorizontalIcon } from '@xihan-ui/icons'
+import { CircleAlertIcon, LayoutGridIcon, MapIcon, MenuIcon, SlidersHorizontalIcon } from '@xihan-ui/icons'
 import { createPointerSession, resolveSessionDoc, shouldActivate, wheelPixels } from '@xihan-ui/pointer'
 import {
   BOOLEAN_CONVERTER,
@@ -145,7 +150,7 @@ import { defineXhElement, XhCheckboxElement, XhContextMenuElement, XhFieldArrayE
 import { createDialogService } from '@xihan-ui/web-components/services'
 import { encodeFlowClipboard, readFlowClipboard, readFlowFragment, writeFlowClipboard } from './clipboard'
 import { createFlowEditor } from './editor'
-import { createFlowDesignerModel, DESIGNER_INTERNALS, FLOW_DESIGNER_EXTENSION, flowMenuLayout, flowSelectionLayout, flowToolbarLayout, IMAGE_RENDERERS } from './extensions'
+import { createFlowDesignerModel, DESIGNER_INTERNALS, FLOW_DESIGNER_EXTENSION, flowMenubarLayout, flowMenuLayout, flowSelectionLayout, flowToolbarLayout, IMAGE_RENDERERS } from './extensions'
 import { describeFlowOperations, identitiesIn, nodesLabel } from './history-labels'
 import { ContextMenuPanel } from './panels/context-menu'
 import { flowIssueItems, IssuesPanel } from './panels/issues'
@@ -238,6 +243,8 @@ interface Layers {
   readonly overlay: SVGSVGElement
   readonly dropPreview: HTMLElement
   readonly transform: XhDesignerTransformElement
+  /** 菜单栏：放进外框的菜单栏区，窄屏时收成一颗「菜单」钮。 */
+  readonly menubar: CommandMenubar<FlowDesignerContext>
   /** 工具栏区里的容器，放命令工具栏。 */
   readonly toolbar: HTMLElement
   readonly commandBar: CommandToolbar<FlowDesignerContext>
@@ -440,6 +447,8 @@ export class XhFlowDesigner extends XhReactiveElement {
         this.#highlight = target
         this.requestUpdate()
       },
+      save: () => emitEvent(this, 'save', {}),
+      changeSetting: (key, value) => this.#commitSettings({ key, value, settings: { ...this.settings, [key]: value } }),
     })
     this.grid = 16
     this.#editor.subscribe((change) => {
@@ -646,7 +655,6 @@ export class XhFlowDesigner extends XhReactiveElement {
         { label: shared.paste, keys: [['Mod', 'V']] },
         { label: shared.delete, keys: [['Backspace']] },
         { label: t.shortcutContextMenu, keys: [['Shift', 'F10'], ['ContextMenu']] },
-        { label: t.shortcutSave, keys: [['Mod', 'S']] },
       ],
     })
     const about = { product: t.label, version: FLOW_VERSION, license: 'MIT', rows: model.list.flatMap(extension => extension.about ?? []) }
@@ -1216,7 +1224,11 @@ export class XhFlowDesigner extends XhReactiveElement {
     const issueSummary = issues.element.summary
     issueSummary.slot = 'issues-actions'
     minimap.element.slot = 'minimap'
-    frame.append(toolbar, palette.element, canvas, properties.element, issues.element, issueSummary, minimap.element)
+    const menubar = createCommandMenubar<FlowDesignerContext>(doc, { menuIcon: MenuIcon })
+    menubar.element.slot = 'menubar'
+    frame.append(menubar.element, toolbar, palette.element, canvas, properties.element, issues.element, issueSummary, minimap.element)
+    // 宿主写在设计器上的 slot="menubar-end"（如模板标题与保存状态）转交给外框，放在菜单栏右边
+    forwardFrameSlots(this, frame, ['menubar-end'])
     const panels = createPanelHost<FlowDesignerContext>(frame, { commands: () => this.#model.commands })
     const selectionStatus = createStatusItem(doc, { value: '' })
     selectionStatus.element.slot = 'status-start'
@@ -1236,7 +1248,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     root.addEventListener('dblclick', this.#onDoubleClick)
     root.addEventListener('contextmenu', this.#onContextMenu)
     root.addEventListener('wheel', this.#onWheel, { passive: false })
-    this.#layers = { frame, canvas, root, world, edges, labels, nodes, ports, handles, overlay, dropPreview, transform, toolbar, commandBar, selectionBar, palette, properties, issues, minimap, menu, panels, settings, tour, jsonEditor, selectionStatus, zoomStatus }
+    this.#layers = { frame, canvas, root, world, edges, labels, nodes, ports, handles, overlay, dropPreview, transform, menubar, toolbar, commandBar, selectionBar, palette, properties, issues, minimap, menu, panels, settings, tour, jsonEditor, selectionStatus, zoomStatus }
     panels.assign(this.#model.extensions, this.#context())
     this.#prepareMenu(menu, 'blank')
     return this.#layers
@@ -1496,7 +1508,7 @@ export class XhFlowDesigner extends XhReactiveElement {
 
   /**
    * 外框的命名区：工具栏与画布带上本地化的区名（分隔条的无障碍名称要用）；物料、属性与问题画成卡片，面板头写标题、
-   * 图标与帮助，属性面板的副标题是当前编辑的对象；小地图是画布右下角的浮动件。设置里关了状态栏或工具栏时不登记它们。
+   * 图标与帮助，属性面板的副标题是当前编辑的对象；小地图是画布右下角的浮动件。设置里关了菜单栏、工具栏或状态栏时不登记它们。
    * 后面接扩展面板的区。
    */
   #frameRegions(t: FlowDesignerTranslations, toolbar: string, layers: Layers): readonly DesignerFrameRegion[] {
@@ -1518,12 +1530,15 @@ export class XhFlowDesigner extends XhReactiveElement {
     }
     const statusBar = this.#statusBarOn()
     const toolbarShown = toolbarVisibleOf(this.#resolvedSettings)
-    const key = JSON.stringify([regions, t.minimap, statusBar, toolbarShown])
+    const menubarShown = menubarVisibleOf(this.#resolvedSettings)
+    const key = JSON.stringify([regions, t.minimap, statusBar, toolbarShown, menubarShown])
     if (key !== this.#frameRegionsKey || this.#frameRegionsModel !== this.#model) {
       this.#frameRegionsKey = key
       this.#frameRegionsModel = this.#model
       this.#frameRegionList = [
-        ...DESIGNER_FRAME_REGIONS.filter(region => (statusBar || region.name !== 'status') && (toolbarShown || region.name !== 'toolbar')).map(region => ({ ...region, ...regions[region.name] })),
+        ...DESIGNER_FRAME_REGIONS
+          .filter(region => (statusBar || region.name !== 'status') && (toolbarShown || region.name !== 'toolbar') && (menubarShown || region.name !== 'menubar'))
+          .map(region => ({ ...region, ...regions[region.name] })),
         { name: 'minimap', position: 'overlay', anchor: 'bottom-end', title: t.minimap, icon: MapIcon },
         ...this.#model.extensions.flatMap(extension => (extension.panels ?? []).map(panel => panel.region)),
       ]
@@ -1542,8 +1557,9 @@ export class XhFlowDesigner extends XhReactiveElement {
     const context: FlowDesignerContext = { designer: this, translations: t, commandTranslations: shared, settings: this.#resolvedSettings, frame: layers.frame }
     const { commands } = this.#model
     layers.commandBar.setDisplay(toolbarDisplayOf(this.#resolvedSettings))
-    const arranged = arrangeCommands('toolbar', commands, flowToolbarLayout(this.canImport), this.commandLayout)
+    const arranged = arrangeCommands('toolbar', commands, flowToolbarLayout(this.canImport, menubarVisibleOf(this.#resolvedSettings)), this.commandLayout)
     layers.commandBar.update(applyToolbarCustomization(arranged, toolbarCustomizationOf(this.#resolvedSettings)), commands, context, shared.toolbar)
+    layers.menubar.update(arrangeMenubar(this.#model.menubarMenus, commands, flowMenubarLayout(commands, this.canImport), this.commandLayout), commands, context, shared)
     // 设置对话框的「工具栏」页按宿主排好的这一份列出按钮表，用户的定制压在它上面
     const source = toolbarSettingsSource(arranged, commands, context)
     const sourceKey = JSON.stringify(source)
@@ -2292,19 +2308,8 @@ export class XhFlowDesigner extends XhReactiveElement {
       event.preventDefault()
       return
     }
-    const command = event.ctrlKey || event.metaKey
-    if (command && !event.altKey && this.#onCommandKey(event))
+    if (!event.ctrlKey && !event.metaKey && !event.altKey && this.#onPlainKey(event))
       event.preventDefault()
-    else if (!command && !event.altKey && this.#onPlainKey(event))
-      event.preventDefault()
-  }
-
-  /** 没有命令占用的修饰键组合：Ctrl / ⌘ + S 派发 save。 */
-  #onCommandKey(event: KeyboardEvent): boolean {
-    if (event.key.toLowerCase() !== 's')
-      return false
-    emitEvent(this, 'save', {})
-    return true
   }
 
   /** 没有命令占用的单键：Backspace 删除，= 与按着 Shift 的 + 放大，方向键微移选中的节点或平移视口。 */

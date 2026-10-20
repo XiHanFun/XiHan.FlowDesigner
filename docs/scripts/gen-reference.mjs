@@ -547,18 +547,26 @@ function shortcutText(keys) {
 }
 
 /**
- * designer-shell 的内置命令：...designerShellCommands({ frame, openSettings, helpUrl, startTour, openJsonEditor, icons }) 给了哪个选项就有哪几条，文案在共用一桶里；
- * 给了 frame 时除「面板」外还有显示或隐藏所有面板、还原面板显隐与恢复默认布局三条（快捷键与 designer-shell 的一致）。
+ * designer-shell 的内置命令：...designerShellCommands({ save, frame, openSettings, helpUrl, startTour, openJsonEditor, settings, icons }) 给了哪个选项就有哪几条，
+ * 文案在共用一桶里，先后与 designer-shell 的一致；给了 frame 时除「面板」外还有显示或隐藏所有面板、还原面板显隐、恢复默认布局与拖动，
+ * 给了 openSettings 时除「设置」外还有快捷键与关于，给了 settings 时有工具栏、状态栏、菜单栏三条显示开关（快捷键与 designer-shell 的一致）。
  */
 const SHELL_COMMANDS = [
+  { id: 'save', label: 'save', option: 'save', shortcut: ['Mod', 'S'] },
   { id: 'panels', label: 'panels', option: 'frame', shortcut: [] },
   { id: 'panels-toggle-all', label: 'panelsToggleAll', option: 'frame', shortcut: ['Mod', '\\'] },
   { id: 'panels-restore', label: 'panelsRestore', option: 'frame', shortcut: ['Mod', 'Shift', '\\'] },
   { id: 'layout-reset', label: 'layoutReset', option: 'frame', shortcut: [] },
-  { id: 'settings', label: 'settings', option: 'openSettings', shortcut: [] },
+  { id: 'pan-tool', label: 'panTool', option: 'frame', shortcut: ['H'] },
+  { id: 'settings', label: 'settings', option: 'openSettings', shortcut: ['Mod', ','] },
+  { id: 'shortcuts', label: 'shortcuts', option: 'openSettings', shortcut: [] },
+  { id: 'about', label: 'about', option: 'openSettings', shortcut: [] },
   { id: 'edit-json', label: 'editJson', option: 'openJsonEditor', shortcut: ['Mod', 'Shift', 'J'] },
   { id: 'help', label: 'help', option: 'helpUrl', shortcut: [] },
   { id: 'start-tour', label: 'startTour', option: 'startTour', shortcut: [] },
+  { id: 'show-toolbar', label: 'showToolbar', option: 'settings', shortcut: [] },
+  { id: 'show-status-bar', label: 'showStatusBar', option: 'settings', shortcut: [] },
+  { id: 'show-menubar', label: 'showMenubar', option: 'settings', shortcut: [] },
 ]
 
 function shellCommands(call) {

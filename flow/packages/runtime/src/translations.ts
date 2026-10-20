@@ -102,8 +102,6 @@ export interface FlowDesignerTranslations {
   readonly tourSteps: Readonly<Record<FlowTourStepKey, FlowTourStepTranslations>>
   /** 设置对话框「帮助」页的几段操作说明。 */
   readonly helpNotes: readonly string[]
-  /** 快捷键页：Ctrl / ⌘ + S 一行的说明。 */
-  readonly shortcutSave: string
   /** 快捷键页：方向键一行按流程的做法改写的说明。 */
   readonly shortcutNudge: string
   /** 快捷键页：Esc 一行按流程的做法改写的说明。 */

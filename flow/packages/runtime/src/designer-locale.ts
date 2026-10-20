@@ -89,7 +89,6 @@ export const FLOW_DESIGNER_EN_US: FlowDesignerLocale = {
     'Drag empty space to pan the canvas, Shift-drag to select an area, and hold Ctrl / ⌘ while scrolling to zoom.',
     'Ctrl / ⌘ + S asks the host system to save the flow; the designer does not save on its own.',
   ],
-  shortcutSave: 'Save',
   shortcutNudge: 'Move the selected nodes; pan the canvas when no node is selected',
   shortcutCancel: 'Cancel the drag in progress',
   shortcutContextMenu: 'Open the context menu',

@@ -270,6 +270,7 @@ type PropertyCondition = { readonly path: JsonPath, readonly equals: JsonValue }
 | `tourSteps?` | `readonly DesignerTourStep<Ctx>[]` | 新手引导的步骤：与 designer-shell 的通用步骤、各款的步骤一起按 order 排；id 不能重名，见 collectTourSteps。 |
 | `paletteSources?` | `readonly DesignerPaletteSource<Ctx, At>[]` | 物料来源：往物料面板里加的几组，排在各款内置分组之后；id 不能重名，见 collectPaletteSources。At 是各款的落点信息。 |
 | `about?` | `readonly { readonly label: string, readonly value: string }[]` | 「关于」页里的几行，如附加包的版本与授权；各款把它们接在自己那几行后面。 |
+| `menubarMenus?` | `readonly DesignerMenubarMenu<Ctx>[]` | 菜单栏上加的菜单：id 不能与内置的文件、编辑、视图、帮助或别的扩展的重名，见 collectMenubarMenus；命令经 placement 的 menubar:&lt;id&gt; 落进去。 |
 
 ### FlowDesignerContext {#flowdesignercontext}
 
@@ -289,7 +290,7 @@ type PropertyCondition = { readonly path: JsonPath, readonly equals: JsonValue }
 declare function createFlowDesignerModel(extensions: readonly FlowDesignerExtension[], editors?: PropertyEditorLayer<FlowPropertyEditor>): FlowDesignerModel
 ```
 
-合出设计器用的模型；editors 是垫在各扩展之下的内建编辑器。任何一处重名（含引导步骤 id 重名或用了 shell. 前缀、物料来源 id 重名）都抛 DesignerExtensionError。
+合出设计器用的模型；editors 是垫在各扩展之下的内建编辑器。任何一处重名（含引导步骤 id 重名或用了 shell. 前缀、物料来源 id 重名、菜单栏的菜单 id 重名）都抛 DesignerExtensionError。
 
 ### FlowDesignerModel {#flowdesignermodel}
 
@@ -307,6 +308,7 @@ declare function createFlowDesignerModel(extensions: readonly FlowDesignerExtens
 | `settings` | `readonly DesignerSettingsSection[]` | 各扩展登记的设置分区，按扩展顺序。 |
 | `tourSteps` | `readonly DesignerTourStep<FlowDesignerContext>[]` | 新手引导里设计器与各扩展的步骤，按登记顺序；designer-shell 的通用步骤由零件自带。 |
 | `paletteSources` | `readonly FlowPaletteSource[]` | 各扩展的物料来源，按 order 排。 |
+| `menubarMenus` | `readonly DesignerMenubarMenu<FlowDesignerContext>[]` | 菜单栏上的菜单：designer-shell 内置的文件、编辑、视图、帮助在前，各扩展登记的在后。 |
 
 ## 命令
 
@@ -347,10 +349,10 @@ type FlowDesignerCommand = DesignerCommand<FlowDesignerContext>
 ### DesignerCommandPlacement {#designercommandplacement}
 
 ```ts
-type DesignerCommandPlacement = 'toolbar' | `menu:${string}` | `selection:${string}`
+type DesignerCommandPlacement = 'toolbar' | `menubar:${string}` | `menu:${string}` | `selection:${string}`
 ```
 
-命令出现的位置：工具栏；某种主体的右键菜单（主体由各款定，如 node、edge、element、card、blank）；或选中某种主体时浮在选中框上的选中工具条（主体同样由各款定，如 element、text、node、multiple）。
+命令出现的位置：工具栏；菜单栏上的某张菜单（菜单 id，如 file、edit、view、help，或各款与扩展登记的）；某种主体的右键菜单（主体由各款定，如 node、edge、element、card、blank）；或选中某种主体时浮在选中框上的选中工具条（主体同样由各款定，如 element、text、node、multiple）。
 
 ## 导入与导出
 
@@ -506,10 +508,10 @@ type FlowDesignerExporter = DesignerExporter<FlowExportContext>
 ### DesignerFramePosition {#designerframeposition}
 
 ```ts
-type DesignerFramePosition = 'top' | 'start' | 'center' | 'end' | 'bottom' | 'status' | 'overlay'
+type DesignerFramePosition = 'menubar' | 'top' | 'start' | 'center' | 'end' | 'bottom' | 'status' | 'overlay'
 ```
 
-区的位置：最上一条、中间一行的左、中、右、中间一列的下方、最下的状态栏，以及画布浮动件。左、右、下三个位置上的区是面板，这里写的是它缺省停的栏，用户可以挪。
+区的位置：最上的菜单栏、下面一条（工具栏）、中间一行的左、中、右、中间一列的下方、最下的状态栏，以及画布浮动件。左、右、下三个位置上的区是面板，这里写的是它缺省停的栏，用户可以挪。
 
 ## 属性编辑器
 
