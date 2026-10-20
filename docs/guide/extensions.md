@@ -97,7 +97,7 @@ core 层只管取值对不对；属性面板里用什么控件编辑它，由设
 
 <<< @/examples/demos/extension.ts#panel
 
-- `region` 是面板占的区：`name` 不能与外框的区（`header`、`toolbar`、`canvas`、`status`）、内置面板（`FLOW_PANELS` 里的物料、流程结构、属性、问题、历史记录与小地图）或别的扩展的重名；`position` 是 `start`、`end`、`bottom` 之一，即左栏、右栏、下栏，同一栏的面板上下排列。
+- `region` 是面板占的区：`name` 不能与外框的区（`toolbar`、`canvas`、`status`）、内置面板（`FLOW_PANELS` 里的物料、流程结构、属性、问题、历史记录与小地图）或别的扩展的重名；`position` 是 `start`、`end`、`bottom` 之一，即左栏、右栏、下栏，同一栏的面板上下排列。
 - 写了 `title` 才画成卡片：面板头写标题，带收起、「更多」（换栏、调序、浮出、收成标题条、隐藏）与关闭钮，按住面板头能拖到别处；`icon` 用在工具栏「面板」菜单与浮出小窗的标题栏，`help` 是面板头的说明，`defaultHidden` 缺省不显示。卡片的做法见 XiHan.UI 的[面板卡片](https://ui.docs.xihanfun.com/runtime/designer-shell#面板卡片)。
 - `create` 在给 `extensions` 赋值、装上这个扩展时调用一次；之后设计器每次更新都调用 `update`，扩展被换下前调用 `destroy`。
 - 扩展面板与内置面板一样进布局：能换栏、浮出、收起与隐藏，记在设置的 `layout.panels` 里；每块各有一条开关命令 `panel:<区名>`。
