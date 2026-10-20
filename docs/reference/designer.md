@@ -154,7 +154,7 @@ declare function defineFlowDesigner(): void
 | `about` | 关于 | `InfoIcon` | — | 可用 |
 | `edit-json` | 编辑 JSON | `FileCodeIcon` | `Ctrl / ⌘ + Shift + J` | 可用 |
 | `help` | 帮助 | `CircleHelpIcon` | — | 可用 |
-| `start-tour` | 开始引导 | — | — | 可用 |
+| `start-tour` | 开始引导 | `MapIcon` | — | 可用 |
 | `show-toolbar` | 工具栏 | — | — | 可用 |
 | `show-status-bar` | 状态栏 | — | — | 可用 |
 | `appearance` | 外观 | `EyeIcon` | — | 可用 |

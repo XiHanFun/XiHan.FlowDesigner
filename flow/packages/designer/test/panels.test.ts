@@ -26,7 +26,7 @@ async function settleFrame(designer: XhFlowDesigner): Promise<void> {
 }
 
 /** 菜单栏的 <xh-menubar>：按数据铺的菜单与勾选。 */
-type MenubarHost = HTMLElement & { collection?: { value: string, label?: string, items?: { value: string, children?: { value: string, kind?: string }[], checkboxValue?: string[] }[] }[], checkboxValue?: string[] }
+type MenubarHost = HTMLElement & { collection?: { value: string, label?: string, items?: { value: string, icon?: unknown, children?: { value: string, kind?: string }[], checkboxValue?: string[] }[] }[], checkboxValue?: string[] }
 
 /** 设计器的外框：面板都在它里面，JSON 编辑框的问题列表不在。 */
 function frameOf(designer: Element): HTMLElement {
@@ -95,7 +95,7 @@ describe('工具栏', () => {
     }
   })
 
-  it('菜单栏：外框最上一条，文件、编辑、视图、帮助四张菜单；导出图片在文件里、设置收尾，对齐分布与自动布局在视图里，面板与外观收尾、两条显示开关在外观子菜单里', async () => {
+  it('菜单栏：外框最上一条，文件、编辑、视图、帮助四张菜单；导出图片在文件里、设置收尾，对齐分布与自动布局在视图里，面板与外观收尾、两条显示开关在外观子菜单里；条目都带图标，快捷键例外', async () => {
     const designer = await mount()
     const menubar = designer.querySelector<MenubarHost>('xh-menubar')!
     expect(menubar.closest('[data-part="region"]')!.getAttribute('data-region')).toBe('menubar')
@@ -105,6 +105,9 @@ describe('工具栏', () => {
     expect(items('edit')).toEqual(['undo', 'redo', 'cut', 'copy', 'paste', 'delete', 'duplicate', 'select-all'])
     expect(items('view')).toEqual(['zoom-in', 'zoom-out', 'zoom-to-fit', 'zoom-to-actual', 'pan-tool', 'align-menu', 'auto-layout', 'panels', 'appearance'])
     expect(items('help')).toEqual(['start-tour', 'help', 'shortcuts', 'about'])
+    // 菜单栏上的条目都带图标；快捷键例外（图标包没有键盘图标，图标列留位后文字照样对齐）
+    const plain = menubar.collection!.flatMap(node => node.items!.filter(item => item.icon === undefined).map(item => item.value))
+    expect(plain).toEqual(['help/shortcuts'])
     const appearance = menubar.collection!.find(node => node.value === 'view')!.items!.find(item => item.value === 'view/appearance')!
     const toggles = ['show-toolbar', 'show-status-bar'].map(id => `view/appearance/command:${id}`)
     expect([appearance.children!.map(child => [child.value, child.kind]), appearance.checkboxValue]).toEqual([toggles.map(value => [value, 'checkbox']), toggles])
