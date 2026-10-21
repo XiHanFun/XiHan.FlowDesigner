@@ -1,0 +1,7 @@
+interface:
+  display_name: "XiHan.FlowDesigner 测试审查"
+  short_description: "审查流程设计器测试的价值、重复与脆弱点"
+  default_prompt: "使用 $xihan-flow-test-review 审查这些测试是否值得保留。"
+
+policy:
+  allow_implicit_invocation: true

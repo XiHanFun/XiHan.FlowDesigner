@@ -1,0 +1,7 @@
+interface:
+  display_name: "XiHan.FlowDesigner 工作流引擎预设"
+  short_description: "让 xihan-workflow 预设与 XiHan.Framework 工作流引擎保持一一对应"
+  default_prompt: "使用 $xihan-flow-workflow-preset 核对预设与工作流引擎是否一致。"
+
+policy:
+  allow_implicit_invocation: true

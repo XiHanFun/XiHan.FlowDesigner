@@ -1,0 +1,7 @@
+interface:
+  display_name: "XiHan.FlowDesigner Issue 回复"
+  short_description: "调查流程设计器 Issue 并起草有依据的回复"
+  default_prompt: "使用 $xihan-flow-issue-reply 调查这个 Issue 并起草回复。"
+
+policy:
+  allow_implicit_invocation: true

@@ -18,12 +18,27 @@ XiHan.FlowDesigner 是框架无关的流程设计器，以原生 Web Components 
 | Web Components | Light DOM | 对外交付形态 |
 | ESLint + oxlint | @antfu/eslint-config | Lint |
 
+## 开始前必须做
+
+按任务读取 `.agents/skills/` 下对应的技能（`.claude/skills` 链接到这里），只加载用得上的：
+
+| 技能 | 用途 |
+| --- | --- |
+| `designer-development` | 实现、修复流程定义、查看器、设计器与扩展点：分层、对外契约、复用 XiHan.UI、门禁 |
+| `workflow-preset` | 让 XiHan 工作流引擎预设跟上 XiHan.Framework 工作流的活动与定义，跑一致性用例 |
+| `docs-site` | 文档站的正文、示例、参考页、导航、更新日志与机读资产 |
+| `test-review` | 审查测试是否有效、重复或锁定实现细节 |
+| `version-release` | 定版本、rc 预发布、打标签发 npm、发完核对 dist-tags |
+| `commit-msg` · `create-pr` · `changelog-collect` · `issue-reply` | 提交信息、PR、更新日志与 Issue 回复 |
+
 ## 目录结构
 
 ```text
 /
 ├─ AGENTS.md
 ├─ CLAUDE.md -> AGENTS.md         # Claude Code 仓库指令入口
+├─ .agents/skills/                # 按任务划分的仓库技能
+├─ .claude/skills -> ../.agents/skills  # Claude Code 技能入口
 ├─ .github/ .gitee/ .gitcode/     # 三平台 Issue / PR 模板，GitHub 另有 CI 与发版工作流
 ├─ docs/                            # 产品文档站（VitePress，独立的 pnpm 项目）
 └─ flow/                           # pnpm monorepo 根
