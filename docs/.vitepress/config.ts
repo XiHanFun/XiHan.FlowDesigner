@@ -17,7 +17,7 @@ const keywords = '曦寒,曦寒懿,流程设计器,流程图,审批流,工作流
 const sourceRoot = fileURLToPath(new URL('../', import.meta.url))
 
 /** 读一份 package.json。 */
-function manifest(path: string): { dependencies?: Record<string, string>, peerDependencies?: Record<string, string> } {
+function manifest(path: string): { version: string, dependencies?: Record<string, string>, peerDependencies?: Record<string, string> } {
   return JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8'))
 }
 
@@ -106,6 +106,11 @@ const nav: DefaultTheme.NavItem[] = [
       { text: '参与', link: 'https://docs.xihanfun.com/cosmos/contributing' },
       { text: '赞助', link: 'https://docs.xihanfun.com/cosmos/sponsor' },
     ],
+  },
+  // 三个包锁步同版，版本号取 core 的
+  {
+    text: `v${manifest('../../flow/packages/core/package.json').version}`,
+    items: [{ text: '更新日志', link: '/changelog' }],
   },
 ]
 

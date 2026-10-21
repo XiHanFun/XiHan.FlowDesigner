@@ -115,12 +115,21 @@ XiHan.FlowDesigner 是框架无关的流程设计器，以原生 Web Components 
 做法照 XiHan.UI：changesets 记变更，main 上的 `v<版本>` 标签触发 `.github/workflows/release.yml` 发 npm。说明见 `flow/.changeset/README.md`。
 
 - 三个公开包经 changesets 的 `fixed` 组锁步同版；`scripts/release/check-version-lock.mjs` 核对。
-- 使用者能感知的改动附一份变更集（`pnpm changeset`），中文、官方口径；CI、测试、文档站、脚本、README 不写。首发之前的改动由 `.changeset/first-release.md` 一并概括。
-- 定版本用 `flow/scripts/release/VersionUpgrade.bat`（或 `pwsh scripts/release/VersionUpgrade.ps1`）：消费变更集、写各包 CHANGELOG，可进出预发布通道；不提交、不打标签、不推送，`-DryRun` 只打印计划。同一笔补文档站「更新日志」页（`docs/changelog.md`）这一版的一节；这一页在首发那一笔新建并加进导航，首发之前不建，也不写发布前的铺垫。
+- 使用者能感知的改动附一份变更集（`pnpm changeset`），中文、官方口径；CI、测试、文档站、脚本、README 不写。
+- 定版本用 `flow/scripts/release/VersionUpgrade.bat`（或 `pwsh scripts/release/VersionUpgrade.ps1`）：消费变更集、写各包 CHANGELOG，可进出预发布通道；不提交、不打标签、不推送，`-DryRun` 只打印计划。同一笔在 `docs/changelog.md` 补这一版的一节，导航上的版本号取 core 的版本。
 - release.yml 先核对标签（在 main 的历史里；标签号等于包版本且与 `.changeset/pre.json` 一致，`check-release-tag.mjs`），再构建、`gate:publish`、`changeset publish`（带 provenance），然后 `scripts/release/smoke.mjs --version` 冒烟，最后调 `deploy-docs.yml` 部署文档站。deploy-docs 只部署已经发布的版本：当前版本有标签、main 上的包与标签一致、这个版本已在 npm 上。
 - npm 包的版本不建 GitHub Release。
 - main 只接收发版；两次发版之间挑进 main 的纯文档修正，进了 main 以后立刻把 main 合回 dev。
 - 合并 main、打标签、发布都只在用户明确要求时执行。
+
+发一个版本照这六步，每一步都在用户要求发版之后才做：
+
+1. 在 `flow/` 跑 VersionUpgrade：定版本、消费变更集、写各包 CHANGELOG。
+2. 在 `docs/changelog.md` 补这一版的一节。
+3. 门禁全跑后提交 `build: v<版本>`：`flow/` 的 lint、build、typecheck、test、`gate:publish`、`smoke --pack`，`docs/` 的 gate:gen、check:examples、lint、typecheck、build，`git diff --check`。
+4. 推 dev，等 CI 全绿。
+5. `git fetch . dev:main` 把 main 快进到 dev，推 main，等 CI 全绿。
+6. 在 main 上打 `v<版本>` 标签并推送；Release 发完后用 `npm view @xihan-flow/designer dist-tags` 核对。
 
 ## 分支与 worktree
 

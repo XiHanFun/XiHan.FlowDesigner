@@ -1,0 +1,13 @@
+{
+  "mode": "pre",
+  "tag": "rc",
+  "initialVersions": {
+    "@xihan-flow/core": "0.0.0",
+    "@xihan-flow/designer": "0.0.0",
+    "@xihan-flow/runtime": "0.0.0",
+    "@xihan-flow/playground": "0.0.0"
+  },
+  "changesets": [
+    "first-release"
+  ]
+}
