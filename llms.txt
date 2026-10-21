@@ -6,10 +6,10 @@
 
 ## 机读资产
 
-- [llms-full.txt](https://flow.docs.xihanfun.com/llms-full.txt): 全部 17 页正文
+- [llms-full.txt](https://flow.docs.xihanfun.com/llms-full.txt): 全部 19 页正文
 - [llms-guide.txt](https://flow.docs.xihanfun.com/llms-guide.txt): 6 页指南
 - [llms-reference.txt](https://flow.docs.xihanfun.com/llms-reference.txt): 7 页参考
-- 每页 Markdown：把站点地址后缀成 `.md`，如 https://flow.docs.xihanfun.com/guide/designer.md
+- 每页 Markdown：把站点地址后缀成 `.md`，如 https://flow.docs.xihanfun.com/ai/agents.md
 
 ## 开始
 
@@ -17,6 +17,11 @@
 - [曦寒流程设计器](https://flow.docs.xihanfun.com/): 框架无关的流程图查看与设计
 - [介绍](https://flow.docs.xihanfun.com/introduction): 曦寒流程设计器（XiHan.FlowDesigner）是一款框架无关的流程设计器：以原生 Web Components 交付，用查看器显示流程与每个节点的运行状态，用设计器可视化编辑流程。
 - [快速开始](https://flow.docs.xihanfun.com/quickstart): 这一页在任意前端项目里装上运行时，把一张费用审批流显示出来，再逐步标出各节点的运行状态。
+
+## AI 辅助开发
+
+- [For Agents](https://flow.docs.xihanfun.com/ai/agents): 在项目里接入曦寒流程设计器时，怎样让 Claude Code、Cursor、Codex、GitHub Copilot 这类 AI 编程工具写出符合约定的代码。
+- [LLMs.txt](https://flow.docs.xihanfun.com/ai/llms): 文档站在构建时产出一组给大语言模型读的机读资产，内容与站点正文同源。
 
 ## 指南
 

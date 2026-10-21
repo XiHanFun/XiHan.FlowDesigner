@@ -1,6 +1,6 @@
 # 曦寒流程设计器 · 全站正文
 
-共 17 页。索引见 https://flow.docs.xihanfun.com/llms.txt
+共 19 页。索引见 https://flow.docs.xihanfun.com/llms.txt
 
 ---
 
@@ -279,6 +279,105 @@ setXhConfig(mergeXhConfig(zhCN, flowZhCN))
 - [查看器](./guide/viewer)：运行状态、高亮、定位与事件。
 - [设计器](./guide/designer)：可视化编辑流程定义，撤销与保存。
 - [介绍](./introduction)：包与入口、工作流程。
+
+---
+
+来源：https://flow.docs.xihanfun.com/ai/agents
+
+# For Agents
+
+在项目里接入曦寒流程设计器时，怎样让 Claude Code、Cursor、Codex、GitHub Copilot 这类 AI 编程工具写出符合约定的代码。
+
+流程设计器没有单独的命令行或 MCP 服务端。AI 工具需要的资料分三处：本站的[机读文档](./llms)、流程用到的 [XiHan.UI](https://ui.docs.xihanfun.com/ai/agents) 的 MCP 服务端，以及改流程仓库本身时读的仓库根 `AGENTS.md`。
+
+## 复制这段提示词
+
+把下面这段放进对话，或补进你项目的 `AGENTS.md`：
+
+```text
+这个项目用曦寒流程设计器（@xihan-flow/core、@xihan-flow/runtime、@xihan-flow/designer），以原生 Web Components 交付。
+API 以项目里装的版本为准，不要凭记忆写：先读 https://flow.docs.xihanfun.com/llms.txt，按需读其中列出的页面（站点地址后加 .md 取 Markdown）。
+- 流程定义是纯 JSON，属性叫 schema，变化事件叫 schema-change；节点类型、属性、规则、命令、面板都经 extensions 登记，不改设计器源码。
+- 查看器用 defineFlowViewer() 注册，设计器用 defineFlowDesigner() 注册；样式引 @xihan-ui/styles，设计器另引 @xihan-ui/designer-shell/style.css 与 @xihan-flow/designer/style.css。
+- 对接 XiHan.Framework 工作流引擎时装 @xihan-flow/core/presets/xihan-workflow 预设，用 toWorkflowDefinition / fromWorkflowDefinition 与引擎定义互转。
+- 保存、权限与取数归宿主：设计器不发网络请求；保存前看 validate()，服务端用 validateDocument 复核。
+用到 XiHan.UI 的组件、令牌与语言包时，读 https://ui.docs.xihanfun.com/llms.txt，或接入 XiHan.UI 的 MCP 服务端。
+```
+
+## 要装的包
+
+| 包 | 什么时候装 |
+| --- | --- |
+| `@xihan-flow/core` | 都要：流程定义的类型、读入、校验与编辑操作，以及 XiHan 工作流引擎预设 |
+| `@xihan-flow/runtime` | 显示流程、标出运行状态：`<xh-flow-viewer>` |
+| `@xihan-flow/designer` | 编辑流程：`<xh-flow-designer>` |
+| `@xihan-ui/styles` | 设计令牌与组件皮肤，查看器与设计器的样式都取自它 |
+| `@xihan-ui/designer-shell` | 用设计器时引它的样式表 |
+
+流程各包用到的 `@xihan-ui/*` 写在 peerDependencies 里，pnpm 与 npm 7 起会自动装上；项目里自己也用 XiHan.UI 时，流程与项目共用同一份。安装命令与第一个示例见[快速开始](../quickstart)。
+
+## 关键约定
+
+- **模板即数据**：流程定义是纯 JSON，不含也不执行代码；导入别人给的定义不会注入脚本。从存储或接口取回的定义先交给 `readDocument` 检查字段，见[流程定义结构](../guide/schema)。
+- **经扩展登记，不改源码**：节点类型、属性与编辑方式、校验规则、节点渲染、命令、面板、物料来源、设置分区、引导步骤与导入导出，都写进 `extensions`，见[扩展](../guide/extensions)。
+- **数据由宿主提供**：查看器与设计器不发网络请求；模板的保存、权限、受理人这类业务数据与服务端复核都归宿主，见[与宿主集成](../guide/host)。
+- **样式只取令牌**：元素用 Light DOM，颜色、间距、圆角都取 XiHan.UI 的设计令牌，宿主换主题或主题色，流程跟着变。
+- **文案按语言包合并**：流程的语言包（如 `flowZhCN`）与 XiHan.UI 同一语言的语言包合并后全局设置，见[快速开始](../quickstart)。
+- **工作流引擎预设**：`@xihan-flow/core/presets/xihan-workflow` 把 XiHan.Framework 工作流引擎的每种活动做成一个节点类型，属性键与引擎读的一致，规则与引擎发布时的检查对齐，见 [XiHan 工作流引擎预设](../guide/xihan-workflow)。
+
+## 改流程仓库本身
+
+给 XiHan.FlowDesigner 提交代码时，仓库根的 `AGENTS.md` 写明了目录结构、常用命令、分层与依赖、硬性约定、发版与提交规范；`CLAUDE.md` 链接到它，Claude Code 与 Codex 打开仓库即可读到。Cursor、GitHub Copilot 等工具可以在各自的规则文件里写一句「先读仓库根的 AGENTS.md」。
+
+## 相关
+
+- [LLMs.txt](./llms) · [快速开始](../quickstart) · [扩展](../guide/extensions) · [与宿主集成](../guide/host)
+- [XiHan.UI 的 AI 辅助开发](https://ui.docs.xihanfun.com/ai/agents) · [XiHan.Framework 的 AI 辅助开发](https://framework.docs.xihanfun.com/ai/agents)
+
+---
+
+来源：https://flow.docs.xihanfun.com/ai/llms
+
+# LLMs.txt
+
+文档站在构建时产出一组给大语言模型读的机读资产，内容与站点正文同源。AI 工具读取它们即可了解流程设计器的用法、扩展点与 API。
+
+## 可用资源
+
+| 文件 | 说明 |
+| --- | --- |
+| [llms.txt](https://flow.docs.xihanfun.com/llms.txt) | 索引：全部页面的标题、一句话摘要与地址，以及下列资产的入口 |
+| [llms-full.txt](https://flow.docs.xihanfun.com/llms-full.txt) | 全站正文 |
+| [llms-guide.txt](https://flow.docs.xihanfun.com/llms-guide.txt) | 指南：流程定义结构、查看器、设计器、扩展、XiHan 工作流引擎预设与宿主集成 |
+| [llms-reference.txt](https://flow.docs.xihanfun.com/llms-reference.txt) | 参考：流程定义类型、问题码与各包的 API |
+
+**单页 Markdown**：任何一页的站点地址后加 `.md` 即可取到这一页的 Markdown，如 [quickstart.md](https://flow.docs.xihanfun.com/quickstart.md)、[guide/designer.md](https://flow.docs.xihanfun.com/guide/designer.md)。每页正文上方的「取本页 Markdown」也指向它。机读正文里，示例代码已经展开成代码块。
+
+流程的元素、样式与语言包建立在 XiHan.UI 之上，对接的工作流引擎在 XiHan.Framework 里，两者各有一套机读资产：
+
+| 站点 | 索引 |
+| --- | --- |
+| 视图组件 | [ui.docs.xihanfun.com/llms.txt](https://ui.docs.xihanfun.com/llms.txt) |
+| 开发框架 | [framework.docs.xihanfun.com/llms.txt](https://framework.docs.xihanfun.com/llms.txt) |
+
+## 在 AI 工具中使用
+
+所有工具都可以用同一段提示词：
+
+```text
+阅读 https://flow.docs.xihanfun.com/llms.txt 了解曦寒流程设计器；用到 XiHan.UI 的组件、令牌与语言包时再读 https://ui.docs.xihanfun.com/llms.txt，对接工作流引擎时再读 https://framework.docs.xihanfun.com/llms.txt。按需读取其中列出的页面（站点地址后加 .md 取 Markdown），以文档和项目里装的版本为准。
+```
+
+| 工具 | 做法 |
+| --- | --- |
+| Claude Code | 写进项目的 `CLAUDE.md`，或用 `/memory` 记下 |
+| Cursor | 在对话中用 `@Docs` 添加上面的索引，或写进 `.cursor/rules` |
+| Codex | 写进项目的 `AGENTS.md` |
+| GitHub Copilot | 写进 `.github/copilot-instructions.md` |
+
+## 相关
+
+- [For Agents](./agents)
 
 ---
 
