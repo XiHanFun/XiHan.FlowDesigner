@@ -1,0 +1,3 @@
+# Claude Code 的本机文件：worktree 与个人设置不入库
+.claude/worktrees/
+.claude/settings.local.json

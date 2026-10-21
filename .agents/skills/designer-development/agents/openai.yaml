@@ -1,0 +1,7 @@
+interface:
+  display_name: "XiHan.FlowDesigner 设计器开发"
+  short_description: "按分层与约定实现、修复流程定义、查看器、设计器与扩展点"
+  default_prompt: "使用 $xihan-flow-designer-development 实现这项流程设计器改动。"
+
+policy:
+  allow_implicit_invocation: true

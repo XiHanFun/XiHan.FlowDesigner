@@ -1,0 +1,7 @@
+interface:
+  display_name: "XiHan.FlowDesigner 创建 PR"
+  short_description: "按仓库模板准备或创建流程设计器的 Pull Request"
+  default_prompt: "使用 $xihan-flow-create-pr 为当前分支准备 PR 标题与正文。"
+
+policy:
+  allow_implicit_invocation: true

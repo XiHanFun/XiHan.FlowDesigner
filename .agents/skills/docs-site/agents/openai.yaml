@@ -1,0 +1,7 @@
+interface:
+  display_name: "XiHan.FlowDesigner 文档站"
+  short_description: "写流程设计器文档站的正文、示例、参考页与机读资产并跑门禁"
+  default_prompt: "使用 $xihan-flow-docs-site 修改流程设计器文档站。"
+
+policy:
+  allow_implicit_invocation: true
