@@ -430,6 +430,8 @@ export class XhFlowDesigner extends XhReactiveElement {
   /** 节点 id → 落在它上面的问题里最严重的那一级。 */
   #issueLevels = new Map<string, 'error' | 'warning'>()
   #resizeObserver: ResizeObserver | undefined
+  /** ResizeObserver 量出的画布尺寸；null 表示还没量过。 */
+  #sizeCache: { width: number, height: number } | undefined | null = null
   #settingsHost: DesignerSettingsHost | undefined
   #settingsHostOptions: readonly unknown[] = []
   #settingsSectionsKey = ''
@@ -643,6 +645,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     for (const type of CLIPBOARD_EVENTS)
       this.ownerDocument.removeEventListener(type, this.#onClipboard)
     this.#resizeObserver?.disconnect()
+    this.#sizeCache = null
     this.#cancelGesture()
     this.#host.dispose()
   }
@@ -672,7 +675,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     else
       this.removeAttribute('data-readonly')
     if (this.#sceneStale || !this.#scene) {
-      this.#scene = buildScene(this.#editor.document, this.#editor.model.nodeTypes, { route: this.#route() })
+      this.#scene = buildScene(this.#editor.document, this.#editor.model.nodeTypes, { route: this.#sceneRoute() })
       this.#sceneStale = false
     }
     const selection = this.#editor.selection
@@ -683,8 +686,14 @@ export class XhFlowDesigner extends XhReactiveElement {
     this.#renderHandles(layers)
     this.#renderOverlay(layers)
     this.#syncTransform(layers)
-    this.#renderPanels(layers, t)
-    this.#syncHelp(layers, t)
+    // 手势中只重画画布、覆盖层与状态栏，面板、工具栏、菜单栏与帮助松手后整份刷新
+    if (this.#gestureActive()) {
+      this.#renderStatus(layers, t)
+    }
+    else {
+      this.#renderPanels(layers, t)
+      this.#syncHelp(layers, t)
+    }
     if (!this.#fitIfPending())
       this.#applyViewport(false)
     this.#checkTour()
@@ -1200,6 +1209,24 @@ export class XhFlowDesigner extends XhReactiveElement {
     })
   }
 
+  /**
+   * 这一轮建场景用的路由：拖动节点时，与被拖节点不相连的连线沿用上一轮场景里的走线，只给相连的重新路由；
+   * 手势结束后整份路由。
+   */
+  #sceneRoute(): FlowEdgeRouter {
+    const route = this.#route()
+    const previous = this.#scene
+    if (!previous || this.#layers?.root.dataset.gesture !== 'move')
+      return route
+    const moving = new Set(this.#editor.selection.nodes)
+    const kept = new Map(previous.edges.filter(edge => edge.anchored).map(edge => [edge.id, edge.points]))
+    return (request) => {
+      const { edge } = request
+      const points = moving.has(edge.source.node) || moving.has(edge.target.node) ? undefined : kept.get(edge.id)
+      return points ?? route(request)
+    }
+  }
+
   #route(): FlowEdgeRouter {
     if (this.router)
       return this.router
@@ -1699,6 +1726,9 @@ export class XhFlowDesigner extends XhReactiveElement {
   }
 
   #onResize(): void {
+    this.#sizeCache = this.#measureSize()
+    if (this.#layers && this.#shows('minimap'))
+      this.#layers.minimap.update()
     if (this.#autoView === undefined)
       return
     this.#fitPending = true
@@ -1725,17 +1755,33 @@ export class XhFlowDesigner extends XhReactiveElement {
     if (layers) {
       const { x, y, zoom } = this.#viewport
       layers.world.style.transform = `translate(${x}px, ${y}px) scale(${zoom})`
-      layers.world.style.setProperty('--xh-flow-designer-zoom', String(zoom))
+      // 端口与控制柄按缩放比例反向缩放、保持屏幕上的大小，比例只写在这两层上
+      layers.ports.style.setProperty('--xh-flow-designer-zoom', String(zoom))
+      layers.handles.style.setProperty('--xh-flow-designer-zoom', String(zoom))
       layers.transform.viewport = this.#viewport
       layers.zoomStatus.update({ label: this.#translations().statusZoom, value: `${Math.round(zoom * 100)}%` })
-      if (this.#shows('minimap'))
+      if (this.#shows('minimap') && !this.#gestureActive())
         layers.minimap.update()
     }
     if (notify)
       emitEvent(this, 'viewport-change', { viewport: this.#viewport })
   }
 
+  /** 正在拖动、连线、框选或拖入物料。 */
+  #gestureActive(): boolean {
+    return this.#layers?.root.hasAttribute('data-gesture') === true
+  }
+
+  /** 画布的屏幕尺寸，未布局时为 undefined：有 ResizeObserver 时取它量出的值，不在写过样式之后再读布局。 */
   #size(): { width: number, height: number } | undefined {
+    if (this.#resizeObserver === undefined)
+      return this.#measureSize()
+    if (this.#sizeCache === null)
+      this.#sizeCache = this.#measureSize()
+    return this.#sizeCache
+  }
+
+  #measureSize(): { width: number, height: number } | undefined {
     const root = this.#layers?.root
     if (!root || root.clientWidth === 0 || root.clientHeight === 0)
       return undefined
@@ -1814,6 +1860,7 @@ export class XhFlowDesigner extends XhReactiveElement {
           if (this.#gesture === gesture)
             this.#gesture = undefined
           this.#layers?.root.removeAttribute('data-gesture')
+          this.requestUpdate()
           handlers.onEnd(gesture.active)
         },
       }),
@@ -1942,6 +1989,8 @@ export class XhFlowDesigner extends XhReactiveElement {
       return
     }
     delete root.dataset.gesture
+    this.#sceneStale = true
+    this.requestUpdate()
     if (!history.inTransaction)
       return
     if (phase === 'cancel') {
@@ -1985,8 +2034,10 @@ export class XhFlowDesigner extends XhReactiveElement {
       this.#marqueeStarted = true
       root.dataset.gesture = 'marquee'
     }
-    if (phase === 'end' || phase === 'cancel')
+    if (phase === 'end' || phase === 'cancel') {
       delete root.dataset.gesture
+      this.requestUpdate()
+    }
     if (phase === 'cancel')
       return
     const nodes = this.#scene?.nodes ?? []
@@ -2153,8 +2204,10 @@ export class XhFlowDesigner extends XhReactiveElement {
 
   #clearDrop(): void {
     const root = this.#layers?.root
-    if (root?.dataset.gesture === 'drop')
+    if (root?.dataset.gesture === 'drop') {
       delete root.dataset.gesture
+      this.requestUpdate()
+    }
     if (!this.#dropPreview)
       return
     this.#dropPreview = undefined
