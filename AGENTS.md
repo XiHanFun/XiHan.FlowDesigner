@@ -49,20 +49,13 @@ XiHan.FlowDesigner 是框架无关的流程设计器，以原生 Web Components 
 | 单测 | `pnpm test` |
 | Lint | `pnpm lint` |
 | 产物契约（publint + attw，先 build） | `pnpm gate:publish` |
-| 冒烟（在临时空项目里装包、类型检查与打包） | `pnpm smoke --pack`（UI 未发版时加 `--ui ../../XiHan.UI/ui`） |
+| 冒烟（在临时空项目里装包、类型检查与打包） | `pnpm smoke --pack`（要连同同级 XiHan.UI 未发版的改动一起验时加 `--ui ../../XiHan.UI/ui`） |
 | 写变更集 | `pnpm changeset` |
 
 `pnpm build` 按依赖拓扑依次构建 core、runtime、designer。runtime 与 designer 经包的 `exports` 读取上游 dist，改了上游先重建再验证下游。
 
 开发预览页在 `flow/playground`，用 Vite 起在 5190 端口（strictPort）：页面上分「查看器」「设计器」两个页签，用同一份示例审批流演示运行状态、高亮、拖动、连线、撤销与中文语言包。
-它直接引用三个包的源码，改了源码即时生效，不必先 `pnpm build`；`@xihan-ui/*` 经 overrides 读同级 XiHan.UI 的产物，启动前先在 `XiHan.UI/ui` 构建依赖的包：
-
-```bash
-# XiHan.UI/ui
-pnpm --filter "@xihan-ui/web-components..." --filter "@xihan-ui/designer-kit..." --filter "@xihan-ui/designer-shell..." --filter "@xihan-ui/icons..." --filter "@xihan-ui/styles..." build
-# XiHan.FlowDesigner/flow
-pnpm dev
-```
+它直接引用三个包的源码，改了源码即时生效，不必先 `pnpm build`；`@xihan-ui/*` 用 npm 上的正式包，装好依赖就能 `pnpm dev`。
 
 这是开发预览，不是产品：页面只用 UI 的令牌、皮肤与元素，不另写一套样式，也不进任何发布物。
 
@@ -80,13 +73,13 @@ pnpm dev
 | 示例流程定义读入并校验，核对正文引用的示例 | `pnpm check:examples` |
 | Lint | `pnpm lint` |
 
-- 流程三个包经 `link:` 读 `flow/packages/*` 的产物，先在 `flow/` 构建；`@xihan-ui/*` 与 `flow/` 工作区一样经 overrides 读同级 XiHan.UI 的产物，UI 5.0.0 正式发布后删掉那一段。
+- 流程三个包经 `link:` 读 `flow/packages/*` 的产物，先在 `flow/` 构建；`@xihan-ui/*` 用 npm 上的正式包，版本范围与 `flow/` 的 catalog 一致。站点是宿主，装流程各包的全部 `@xihan-ui/*` peer，`.vitepress/config.ts` 用 `resolve.dedupe` 让 `link:` 进来的流程包也从站点根目录解析，页面上只有一份 UI（两份时全局语言等配置只落在一份上）；流程包加了 peer 而站点没装，构建直接报错。
 - `docs/reference/` 由 `scripts/gen-reference.mjs` 从源码生成（TypeScript 源码注释、`DEFAULT_ISSUE_SEVERITY` 与 `flowZhCN` 的问题说明；扩展从 XiHan.UI 继承的字段取已安装的 `@xihan-ui` 包的类型声明），不手改。改了流程定义类型、问题码、公开 API 或这些注释，在 `docs/` 跑 `pnpm gen` 并随改动一起提交；UI 那几个类型的注释变了也要重新生成。参考页的说明不对，就改源码注释。
 - 正文里的 TypeScript 示例都放在 `examples/`，用 `<<< @/examples/…#片段` 引入，不在 Markdown 里另写一份：`schemas/` 下导出 `schema` 与 `extensions` 的流程定义由 `check:examples` 读入并校验，装了 XiHan 工作流引擎预设的还核对换成引擎定义再读回不变，`demos/` 下的 `.ts` 导出 `mount(host)`，页面上写 `<FlowDemo name="…" />` 真实运行，`snippets/` 只做类型检查；正文引用的示例文件、片段与示例名也由 `check:examples` 核对存在。
 - 正文里含 `{{` 的行内代码写成 `<code v-pre>…</code>`，否则会被 Vue 当成插值吃掉，构建也不报错。
 - 站点自己的导航、侧栏与示例组件放在 `docs/.vitepress/`，不复制或改写主题已提供的样式。
 - 文档只写已经做完的能力；不写组件数、节点类型数与依赖的具体版本号，不写预发布阶段的铺垫。
-- 站点地址是 https://flow.docs.xihanfun.com：`docs/public/CNAME`、`docs/public/.nojekyll` 与 `.github/workflows/deploy-docs.yml`（main 上 `docs/` 或 `flow/` 有变更时先装好并构建 `flow/`，再构建文档站，部署到 gh-pages）属于站点契约，不因清理构建配置而删除；主题配置的 `llms.site` 与 `docs/package.json` 的 `homepage` 写同一个地址。`flow/` 的 overrides 生效期间这条流水线跑不通，与不推送远端的约定一致。
+- 站点地址是 https://flow.docs.xihanfun.com：`docs/public/CNAME`、`docs/public/.nojekyll` 与 `.github/workflows/deploy-docs.yml`（main 上 `docs/` 或 `flow/` 有变更时先装好并构建 `flow/`，再构建文档站，部署到 gh-pages）属于站点契约，不因清理构建配置而删除；主题配置的 `llms.site` 与 `docs/package.json` 的 `homepage` 写同一个地址。
 
 ## 分层与依赖
 
@@ -95,6 +88,8 @@ pnpm dev
 - runtime 是业务页面使用的元素，体积敏感；设计器专用的代码不进 runtime。
 - 所有包源码不得 import 任何前端框架（ESLint 已拦截）。
 - 运行时依赖只允许 `@xihan-flow/*` 与 `@xihan-ui/*`；引入任何其他依赖之前先征得维护者同意。
+- 三个公开包之间写 `dependencies`（`workspace:^`，锁步同版）；`@xihan-ui/*` 写 `peerDependencies`（`^5.0.0`），由宿主装唯一的一份，开发与测试另写一份 `devDependencies`（`catalog:`）。用到新的 UI 包时 peer 与 dev 两处一起加；UI 升大版本时改 `flow/pnpm-workspace.yaml` 的 catalog 与各包的 peer 范围。
+- 用的是 npm 上已经发布的 UI。要用 UI 还没发布的改动，等 UI 发版后再升；本地临时验证可以在 `pnpm-workspace.yaml` 里用 `overrides` 指向同级 `XiHan.UI/ui/packages/<分组>/<包>`（读的是它的 dist，先在 `XiHan.UI/ui` 构建），验完删掉、恢复锁文件，不提交。
 
 ## 硬性约定
 

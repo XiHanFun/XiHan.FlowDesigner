@@ -9,18 +9,6 @@ packages:
 allowBuilds:
   esbuild: true
 
-# 开发期临时：@xihan-ui/* 改指同级 XiHan.UI 源码（与 BasicApp 联调方式相同），读的是各包 dist，用前先在 XiHan.UI/ui 构建用到的包。
-# UI 5.0.0 正式发布后删掉本段，即回落到 catalog 里的发布版。本段生效期间不推送远端：CI 上没有同级的 UI。
-overrides:
-  '@xihan-ui/core': 'link:../../XiHan.UI/ui/packages/engine/core'
-  '@xihan-ui/designer-kit': 'link:../../XiHan.UI/ui/packages/features/designer-kit'
-  '@xihan-ui/designer-shell': 'link:../../XiHan.UI/ui/packages/features/designer-shell'
-  '@xihan-ui/icons': 'link:../../XiHan.UI/ui/packages/design/icons'
-  '@xihan-ui/pointer': 'link:../../XiHan.UI/ui/packages/engine/pointer'
-  '@xihan-ui/styles': 'link:../../XiHan.UI/ui/packages/design/styles'
-  '@xihan-ui/viz': 'link:../../XiHan.UI/ui/packages/engine/viz'
-  '@xihan-ui/web-components': 'link:../../XiHan.UI/ui/packages/adapters/web-components'
-
 # 依赖目录（单一版本事实源）。包内一律用 catalog: 引用，升级只改这里一处
 catalog:
   '@antfu/eslint-config': ^9.5.1
@@ -35,7 +23,7 @@ catalog:
   typescript: ^6.0.3
   vitest: ^4.1.11
   vite: ^8.3.4
-  # —— 运行时依赖 ——
+  # —— @xihan-ui：各包写 peerDependencies ^5.0.0，开发与测试装这里的版本 ——
   '@xihan-ui/core': ^5.0.0
   '@xihan-ui/designer-kit': ^5.0.0
   '@xihan-ui/designer-shell': ^5.0.0
@@ -44,3 +32,18 @@ catalog:
   '@xihan-ui/styles': ^5.0.0
   '@xihan-ui/viz': ^5.0.0
   '@xihan-ui/web-components': ^5.0.0
+
+minimumReleaseAgeExclude:
+  - '@xihan-ui/core@5.0.0'
+  - '@xihan-ui/designer-kit@5.0.0'
+  - '@xihan-ui/designer-shell@5.0.0'
+  - '@xihan-ui/expression@5.0.0'
+  - '@xihan-ui/headless@5.0.0'
+  - '@xihan-ui/icons@5.0.0'
+  - '@xihan-ui/motion@5.0.0'
+  - '@xihan-ui/pointer@5.0.0'
+  - '@xihan-ui/position@5.0.0'
+  - '@xihan-ui/styles@5.0.0'
+  - '@xihan-ui/tokens@5.0.0'
+  - '@xihan-ui/viz@5.0.0'
+  - '@xihan-ui/web-components@5.0.0'
