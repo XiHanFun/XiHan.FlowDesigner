@@ -62,12 +62,9 @@ pnpm build
 
 其余命令：`pnpm typecheck`、`pnpm test`、`pnpm lint`。
 
-开发预览页（查看器与设计器的演示，不是产品）：UI 正式发布前，`@xihan-ui/*` 指向同级的 XiHan.UI 源码，先在 `XiHan.UI/ui` 构建依赖的包，再在 `flow/` 下启动，打开 http://localhost:5190 。
+开发预览页（查看器与设计器的演示，不是产品）：在 `flow/` 下启动，打开 http://localhost:5190 。
 
 ```bash
-# XiHan.UI/ui
-pnpm --filter "@xihan-ui/web-components..." --filter "@xihan-ui/designer-kit..." --filter "@xihan-ui/styles..." build
-# XiHan.FlowDesigner/flow
 pnpm dev
 ```
 

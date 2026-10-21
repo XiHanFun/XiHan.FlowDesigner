@@ -4,6 +4,7 @@
  */
 
 import type { DefaultTheme } from 'vitepress'
+import { readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -14,6 +15,20 @@ const description = '框架无关的流程设计器，以 Web Components 交付�
 const keywords = '曦寒,曦寒懿,流程设计器,流程图,审批流,工作流,Web Components,XiHanFun,XiHan.FlowDesigner'
 
 const sourceRoot = fileURLToPath(new URL('../', import.meta.url))
+
+/** 读一份 package.json。 */
+function manifest(path: string): { dependencies?: Record<string, string>, peerDependencies?: Record<string, string> } {
+  return JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8'))
+}
+
+// 流程各包的 @xihan-ui/* 是 peerDependencies，由站点装唯一的一份：经 link: 引入的流程包也从站点根目录解析，页面上只有一份 UI。
+// 站点没装流程包的哪个 peer，构建就报错
+const uiPackages = Object.keys(manifest('../package.json').dependencies ?? {}).filter(name => name.startsWith('@xihan-ui/'))
+for (const pkg of ['core', 'runtime', 'designer']) {
+  const missing = Object.keys(manifest(`../../flow/packages/${pkg}/package.json`).peerDependencies ?? {}).filter(name => !uiPackages.includes(name))
+  if (missing.length > 0)
+    throw new Error(`[docs] package.json is missing peers of @xihan-flow/${pkg}: ${missing.join(', ')}`)
+}
 
 const guideSidebar: DefaultTheme.SidebarItem[] = [
   {
@@ -145,6 +160,11 @@ export default defineXiHanConfig({
       { name: 'reference', label: '参考', dirs: ['reference'] },
     ],
     transform: machineReadable,
+  },
+  vite: {
+    resolve: {
+      dedupe: uiPackages,
+    },
   },
   // Vue 示例里的 xh- 标签都是自定义元素，不当作 Vue 组件解析
   vue: {

@@ -14,6 +14,8 @@ pnpm add @xihan-flow/core @xihan-flow/runtime @xihan-ui/styles
 | `@xihan-flow/runtime` | `<xh-flow-viewer>` 查看器 |
 | `@xihan-ui/styles` | 设计令牌与组件皮肤，查看器的颜色与间距都取自它 |
 
+流程各包用到的 `@xihan-ui/*` 写在 peerDependencies 里，pnpm 与 npm 7 起会自动装上。项目里自己也用 XiHan.UI 时，流程与项目共用同一份，版本要落在各包 peerDependencies 写的范围里。
+
 包都是 ESM，用 Vite、webpack 等打包器引入即可。
 
 ## 注册元素并引入样式
