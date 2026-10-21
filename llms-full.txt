@@ -1,0 +1,3697 @@
+# 曦寒流程设计器 · 全站正文
+
+共 17 页。索引见 https://flow.docs.xihanfun.com/llms.txt
+
+---
+
+来源：https://flow.docs.xihanfun.com/changelog
+
+# 更新日志
+
+本页记录曦寒流程设计器各版本的变更，只收使用者能感知的改动。`@xihan-flow/core`、`@xihan-flow/runtime`、`@xihan-flow/designer` 三个包总是同一个版本号一起发布。
+
+## v1.0.0-rc.1（2026-10-21）
+
+首次发布，以原生 Web Components 交付，不绑定前端框架。
+
+- **新增** `@xihan-flow/core`：流程定义的结构（节点、连线、业务数据与扩展数据）、读入检查、校验与问题码、编辑操作（每一步都能求出逆操作）、连线几何、节点类型登记与扩展合并，纯 TypeScript、不依赖 DOM；`@xihan-flow/core/presets/xihan-workflow` 是 XiHan 工作流引擎的节点预设，流程定义与引擎定义能互相转换。
+- **新增** `@xihan-flow/runtime`：`<xh-flow-viewer>` 查看器，按节点类型画出流程，标出运行状态与高亮，缩放、平移、定位节点，导出图片；直角连线路由；与 XiHan.UI 内建语言一一对应的界面语言包，查看器与设计器共用。
+- **新增** `@xihan-flow/designer`：`<xh-flow-designer>` 可视化设计器，物料拖放、连线与改连、对齐吸附、自动布局、属性面板、问题列表、流程结构、小地图、撤销重做与历史记录、剪贴板与导出图片；菜单栏、可定制的工具栏与状态栏，设置对话框（主题、语言、布局、工具栏、画布、自动保存本机草稿、开发者模式），新手引导；面板能换栏、收起与浮出。节点类型、属性、规则、命令、面板、物料来源、设置分区、引导步骤与导入导出都能经 `extensions` 登记。
+
+---
+
+来源：https://flow.docs.xihanfun.com/
+
+# 曦寒流程设计器
+
+```yaml
+layout: home
+title: 曦寒流程设计器
+titleTemplate: 框架无关的流程图查看与设计
+
+hero:
+  name: 曦寒流程设计器
+  text: 框架无关的流程设计器
+  tagline: 原生 Web Components · 流程定义即 JSON · 运行状态可视化 · XiHan 工作流引擎预设
+  image:
+    src: /images/logo.png
+    alt: 曦寒流程设计器
+  actions:
+    - theme: brand
+      text: 快速开始
+      link: /quickstart
+
+    - theme: alt
+      text: 介绍
+      link: /introduction
+
+features:
+  - title: 框架无关
+    icon: 🧩
+    details: 以原生 Web Components 交付，Vue、React、Angular 或不用框架的页面都能直接使用；同一页面放多个实例互不影响。
+    link: /introduction
+    linkText: 了解设计原则
+
+  - title: 流程定义即数据
+    icon: 📄
+    details: 流程定义是纯 JSON：节点、连线、折点与业务数据，读入时逐项检查，不含也不执行任何代码。
+    link: /guide/schema
+    linkText: 了解流程定义
+
+  - title: 查看运行状态
+    icon: 🗺️
+    details: 查看器按节点类型画出流程，标出每个节点的运行状态与高亮，支持缩放、平移、定位节点与右键事件。
+    link: /guide/viewer
+    linkText: 了解查看器
+
+  - title: 可视化设计器
+    icon: 🎨
+    details: 物料拖放、连线与改连、对齐吸附、属性面板、问题列表、小地图、撤销重做与系统剪贴板；流程定义的保存交给宿主。
+    link: /guide/designer
+    linkText: 了解设计器
+
+  - title: 一切经扩展登记
+    icon: 🧱
+    details: 节点类型、属性、校验规则、渲染、命令与面板都由按实例传入的扩展登记，冲突当场报错，去掉扩展即撤掉它带来的一切。
+    link: /guide/extensions
+    linkText: 了解扩展
+
+  - title: XiHan 工作流引擎预设
+    icon: ⚙️
+    details: 自带与 XiHan.Framework 工作流引擎活动一一对应的节点预设，流程定义与引擎定义可以互相转换。
+    link: /guide/xihan-workflow
+    linkText: 了解预设
+```
+
+---
+
+来源：https://flow.docs.xihanfun.com/introduction
+
+# 介绍
+
+曦寒流程设计器（XiHan.FlowDesigner）是一款框架无关的流程设计器：以原生 Web Components 交付，用查看器显示流程与每个节点的运行状态，用设计器可视化编辑流程。节点类型、属性、校验规则、渲染、命令与面板都经扩展登记；自带 XiHan.Framework 工作流引擎的节点预设，流程定义能与引擎定义互相转换。属于曦寒懿（XiHanFun）开源生态，采用 MIT 授权。
+
+## 能做什么
+
+| 场景 | 用什么 |
+| --- | --- |
+| 在业务页面里显示流程与运行进度 | `<xh-flow-viewer>`：按节点类型画出流程，标出运行状态与高亮，缩放、平移、定位节点 |
+| 设计与修改流程 | `<xh-flow-designer>`：物料拖放、连线与改连、对齐吸附、属性面板、问题列表、小地图、撤销重做与剪贴板 |
+| 在服务端或脚本里检查流程定义 | `@xihan-flow/core` 的 `readDocument` 与 `validateDocument`，不依赖 DOM |
+| 对接 XiHan 工作流引擎 | `@xihan-flow/core/presets/xihan-workflow`：引擎活动对应的节点类型，与引擎定义 JSON 互转 |
+
+## 设计原则
+
+- **框架无关**：以原生 Web Components 交付，不绑定任何前端框架。元素用 Light DOM，样式只消费 [XiHan.UI](https://ui.docs.xihanfun.com) 的设计令牌。
+- **零第三方依赖**：运行时只依赖 `@xihan-flow/*` 与 `@xihan-ui/*`，布局、连线路由、指针手势与设计器的外框、面板都来自 XiHan.UI。
+- **流程定义即数据**：流程定义是纯 JSON，不含也不执行任何代码；读入时逐项检查结构，带问题的定义不会被当成合法数据。
+- **一切经扩展登记**：节点类型、属性、编辑方式、校验规则、渲染、命令与面板都由按实例传入的扩展登记。名字冲突在赋值时当场报错，去掉一个扩展就撤掉它带来的一切。
+- **数据由使用方掌控**：组件不发网络请求。流程定义存在哪里、谁能改，都由使用方决定，经属性与事件交给组件。
+- **没有全局状态**：不往 `window` 上挂对象，不读写固定键名的本地存储，同一页面放多个实例互不影响。
+
+## 包与入口
+
+| 入口 | 内容 |
+| --- | --- |
+| `@xihan-flow/core` | 流程定义的类型、读入检查、校验、编辑操作、连线几何、节点类型登记与扩展合并。纯 TypeScript，不依赖 DOM，浏览器与 Node.js 里都能用 |
+| `@xihan-flow/core/presets/xihan-workflow` | XiHan 工作流引擎的节点预设，以及流程定义与引擎定义的互转 |
+| `@xihan-flow/runtime` | 业务页面用的 `<xh-flow-viewer>` 与直角连线路由，样式在 `@xihan-flow/runtime/style.css` |
+| `@xihan-flow/runtime/locale` | 语言包 `flowZhCN`、`flowJaJP` 等，与 XiHan.UI 的语言包一一对应，查看器与设计器共用 |
+| `@xihan-flow/designer` | `<xh-flow-designer>`，样式在 `@xihan-flow/designer/style.css` |
+
+依赖方向固定为 `designer → runtime → core`。业务页面只需要 runtime，设计器只在需要编辑流程的地方加载。
+
+## 工作流程
+
+```text
+设计器 <xh-flow-designer>
+  │  schema-change / save 事件
+  ▼
+宿主保存流程定义 JSON（数据库、文件，由宿主决定）
+  │
+  ├─ 业务页面取出流程定义与运行状态 ──▶ <xh-flow-viewer> 显示进度
+  └─ 用 XiHan 工作流引擎时转成引擎定义 ──▶ 引擎发布与运行
+```
+
+1. 设计：在设计器里编辑流程，设计器派发 `schema-change` 与 `save`，宿主把流程定义存起来。
+2. 查看：业务页面取出流程定义与各节点的运行状态，交给查看器显示。
+3. 运行：用 XiHan 工作流引擎时，用预设把流程定义转成引擎定义交给引擎；从引擎取回的定义也能转回流程定义继续编辑。
+
+## 运行环境
+
+- `@xihan-flow/core` 不依赖 DOM，可以在浏览器、Node.js 或其它 JavaScript 运行环境里读入与校验流程定义。
+- `@xihan-flow/runtime` 与 `@xihan-flow/designer` 要在支持 Custom Elements 的浏览器里运行。
+
+## 下一步
+
+- [快速开始](./quickstart)：在任意前端项目里装包，显示一张审批流并标出运行状态。
+- [流程定义结构](./guide/schema)：节点、连线、业务数据与扩展数据，读入、校验与编辑操作。
+- [查看器](./guide/viewer)：运行状态、高亮、定位、事件与自定义节点内容。
+- [设计器](./guide/designer)：编辑、属性面板、问题列表、命令、撤销与保存。
+- [扩展](./guide/extensions)：节点类型、属性、编辑方式、规则、属性编辑器、命令与面板。
+- [XiHan 工作流引擎预设](./guide/xihan-workflow)：引擎活动对应的节点类型、受理人规则，以及与引擎定义互转。
+- [与宿主集成](./guide/host)：打开与保存、运行状态、权限、服务端复核与在前端框架里使用。
+
+---
+
+来源：https://flow.docs.xihanfun.com/quickstart
+
+# 快速开始
+
+这一页在任意前端项目里装上运行时，把一张费用审批流显示出来，再逐步标出各节点的运行状态。页面上的示例就是下面这几段代码在运行。
+
+## 安装
+
+```bash
+pnpm add @xihan-flow/core @xihan-flow/runtime @xihan-ui/styles
+```
+
+| 包 | 用途 |
+| --- | --- |
+| `@xihan-flow/core` | 流程定义的类型与 XiHan 工作流引擎的节点预设，这一页用它写流程 |
+| `@xihan-flow/runtime` | `<xh-flow-viewer>` 查看器 |
+| `@xihan-ui/styles` | 设计令牌与组件皮肤，查看器的颜色与间距都取自它 |
+
+流程各包用到的 `@xihan-ui/*` 写在 peerDependencies 里，pnpm 与 npm 7 起会自动装上。项目里自己也用 XiHan.UI 时，流程与项目共用同一份，版本要落在各包 peerDependencies 写的范围里。
+
+包都是 ESM，用 Vite、webpack 等打包器引入即可。
+
+## 注册元素并引入样式
+
+元素不在 import 时注册，调用 `defineFlowViewer()` 之后页面上才能用 `<xh-flow-viewer>`，重复调用不报错。`../schemas/approval` 是下一节写的流程定义。
+
+```ts
+import type { FlowNodeStatus } from '@xihan-flow/runtime'
+import { defineFlowViewer } from '@xihan-flow/runtime'
+import { extensions, schema } from '../schemas/approval'
+import '@xihan-ui/styles/index.css'
+import '@xihan-flow/runtime/style.css'
+
+defineFlowViewer()
+```
+
+## 准备节点类型
+
+流程里每个节点都有类型，类型决定节点的外观、端口、可以连到哪里以及有哪些属性。节点类型由扩展登记，这里直接用自带的 XiHan 工作流引擎节点预设，文案用中文：
+
+```ts
+/** 节点类型、属性与规则：XiHan 工作流引擎的节点预设，文案用中文。 */
+export const workflow = createXihanWorkflow({ texts: xihanWorkflowZhCN })
+
+export const extensions = [workflow]
+```
+
+## 写一张流程
+
+流程定义是纯 JSON。节点写明类型、左上角坐标与尺寸，连线写明起止节点；标签、虚线、业务数据都是可选的。坐标单位是像素，原点在画布左上角。
+
+```ts
+export const schema: FlowDocument = {
+  version: 1,
+  data: { code: 'expense', name: '费用审批' },
+  nodes: [
+    { id: 'start', type: 'Start', x: 0, y: 104, width: 120, height: 40, label: '提交申请' },
+    { id: 'dept', type: 'UserTask', x: 176, y: 100, width: 160, height: 48, label: '部门经理审批', data: { properties: { Assignees: ['部门经理'], CompletionPolicy: 'Any' } } },
+    { id: 'amount', type: 'Decision', x: 400, y: 100, width: 160, height: 48, label: '金额判断' },
+    { id: 'gm', type: 'UserTask', x: 624, y: 16, width: 160, height: 48, label: '总经理审批', data: { properties: { Assignees: ['总经理'], CompletionPolicy: 'Any' } } },
+    { id: 'approved', type: 'End', x: 856, y: 104, width: 120, height: 40, label: '通过', data: { properties: { Outcome: 'approved' } } },
+    { id: 'rejected', type: 'End', x: 400, y: 232, width: 120, height: 40, label: '驳回', data: { properties: { Outcome: 'rejected' } } },
+  ],
+  edges: [
+    { id: 'submit', source: { node: 'start' }, target: { node: 'dept' } },
+    { id: 'agree', source: { node: 'dept' }, target: { node: 'amount' }, label: '同意', data: { condition: 'outcome == "approved"' } },
+    { id: 'reject', source: { node: 'dept' }, target: { node: 'rejected' }, label: '驳回', data: { condition: 'outcome == "rejected"' } },
+    { id: 'large', source: { node: 'amount' }, target: { node: 'gm' }, label: '金额 > 1 万', data: { condition: 'amount > 10000', priority: 0 } },
+    { id: 'small', source: { node: 'amount' }, target: { node: 'approved' }, label: '其余', style: { dashed: true }, data: { isDefault: true, priority: 1 } },
+    { id: 'gm-agree', source: { node: 'gm' }, target: { node: 'approved' }, label: '同意' },
+  ],
+}
+```
+
+## 显示与标出运行状态
+
+把扩展与流程定义交给 `<xh-flow-viewer>` 的 `extensions` 与 `schema` 属性，它立即画出流程并缩放到整张图落在视口里；属性变了会自动重画。复杂数据走属性，不走 attribute。
+
+```ts
+const viewer = document.createElement('xh-flow-viewer')
+viewer.extensions = extensions
+viewer.schema = schema
+```
+
+`setNodeStatuses` 按节点 id 标出运行状态，没列出的节点保持不变；把 `statuses` 设成空对象即清掉全部状态。皮肤为 `running`、`completed`、`waiting`、`faulted`、`canceled`、`compensated` 各画了一种样子：
+
+```ts
+let step = 0
+const button = document.createElement('button')
+button.type = 'button'
+button.textContent = '下一步'
+button.addEventListener('click', () => {
+  if (step === steps.length) {
+    step = 0
+    viewer.statuses = {}
+    return
+  }
+  viewer.setNodeStatuses(steps[step]!)
+  step += 1
+})
+```
+
+
+在画布上拖动或滚动滚轮可以平移，按住 Ctrl 或 ⌘ 滚动滚轮缩放；画布获得焦点后方向键平移，`+` 与 `-` 缩放，`0` 让整张图回到视口里。
+
+## 中文界面
+
+查看器与设计器的界面文字缺省是英文。流程的语言包与 XiHan.UI 的一一对应：`flowZhCN`、`flowZhTW`、`flowJaJP`、`flowKoKR`、`flowDeDE`、`flowFrFR`、`flowEsES`、`flowPtBR`、`flowRuRU` 与 `flowEnUS`，每份都含设计器零件的文案。把 XiHan.UI 同一语言的语言包与它合并后全局设置，所有实例都跟着换。下面以中文为例。这一步要另外安装 `@xihan-ui/web-components`：
+
+```ts
+import { flowZhCN } from '@xihan-flow/runtime/locale'
+import { mergeXhConfig, setXhConfig } from '@xihan-ui/web-components'
+import { zhCN } from '@xihan-ui/web-components/locale'
+
+setXhConfig(mergeXhConfig(zhCN, flowZhCN))
+```
+
+节点类型的名称与属性文案写在扩展里，换语言就换一个扩展：上面的预设传了 `xihanWorkflowZhCN`，所以节点类型是中文。预设的文案同样有这十种语言，名字是 `xihanWorkflow` 加语言，如 `xihanWorkflowJaJP`。
+
+## 下一步
+
+- [流程定义结构](./guide/schema)：节点、连线、业务数据与扩展数据。
+- [查看器](./guide/viewer)：运行状态、高亮、定位与事件。
+- [设计器](./guide/designer)：可视化编辑流程定义，撤销与保存。
+- [介绍](./introduction)：包与入口、工作流程。
+
+---
+
+来源：https://flow.docs.xihanfun.com/guide/designer
+
+# 设计器
+
+`<xh-flow-designer>` 编辑流程定义：从物料面板拖入节点、拖动端口连线、在属性面板里改属性，问题列表随时给出校验结果；撤销重做、剪贴板、对齐分布与自动布局都是内置命令。它只改流程定义，不保存，什么时候存、存到哪里由宿主决定。完整的属性、方法、事件与命令见[设计器参考](../reference/designer)。
+
+## 放上页面
+
+调用 `defineFlowDesigner()` 注册设计器，它用到的 XiHan.UI 元素与设计器零件一并注册。样式表比查看器多两份：设计器零件的 `@xihan-ui/designer-shell/style.css` 与设计器自己的 `@xihan-flow/designer/style.css`。
+
+```ts
+import { defineFlowDesigner } from '@xihan-flow/designer'
+import { extensions, schema } from '../schemas/approval'
+import '@xihan-ui/styles/index.css'
+import '@xihan-ui/designer-shell/style.css'
+import '@xihan-flow/runtime/style.css'
+import '@xihan-flow/designer/style.css'
+
+defineFlowDesigner()
+```
+
+再把扩展与流程定义交给 `extensions` 与 `schema`。设计器铺满自身，宿主要给元素定高度。
+
+```ts
+const designer = document.createElement('xh-flow-designer')
+designer.extensions = extensions
+designer.paletteGroupOrder = ['human', 'control']
+designer.paletteGroupLabels = xihanWorkflowZhCN.categories
+designer.propertyGroupOrder = ['basic', 'participants', 'form', 'execution']
+designer.propertyGroupLabels = xihanWorkflowZhCN.groups
+designer.schema = schema
+```
+
+
+- `extensions` 与查看器的是同一类扩展，设计器层的扩展还能登记属性编辑器、命令与面板，见[扩展](./extensions)。同一个扩展对象换了引用会当作卸下再装上，宿主要保持引用稳定。
+- 给 `schema` 赋值即装载：清空撤销历史与选择，视口按实际大小（100%）摆好——整张图在某个方向上放得下就居中，放不下就从左上角留白处起，开头的节点在眼前；画布尺寸变了照这样重摆，直到设置视口或在画布上按下指针。要看全貌用「适合窗口」（`zoomToFit()`）。赋回当前这一份不会重新装载。
+- 读 `schema` 得到当前的流程定义。设计器从不改动传进来的对象，每次修改都产生一份新的定义。
+
+## 编辑
+
+**新建节点**：把物料面板里的节点类型拖到画布上，在松手处新建；点条目则在视口中央新建；中央已有节点时顺着右下方错开一步，连点几次不会叠在一起，错到视口边上从左上角另起一列。物料按节点类型的类别分组，`paletteGroupOrder` 定类别的先后，`paletteGroupLabels` 给类别换显示文字。宿主也可以调用 `addNode(type, at)`。
+
+**选择**：点节点或连线选中它，按住 Shift、Ctrl 或 ⌘ 点击则加选或取消；在空白处按住 Shift 拖出框选，同时按住 Ctrl 或 ⌘ 时追加到已有的选择上；点空白处清空选择。选择变化派发 `selection-change`，`getSelection()` 与 `select()` 读写选择。
+
+**移动**：拖动选中的节点。`grid` 是吸附的网格边长，缺省 16，写 `false` 不吸附；设置里的「吸附对齐」开着时（缺省开，见[设置](#设置)）靠近其它节点会吸附并显示对齐线。按住 Alt 松手时原节点不动，在新位置复制一份。画布有焦点时方向键微移选中的节点，按住 Shift 一次移一格网格。
+
+**连线**：从节点的端口拖到另一个节点的端口。拖动途中预览线标出能不能连；违反节点类型的连接约束时连不上，派发 `connect-reject`，`detail` 里是两端与全部问题。选中连线后，两端的控制柄拖到别的端口即改连；中段的控制柄拖出拐点，拐点可以拖动，双击去掉；「清除拐点」把连线交回自动路由。拖动途中按 Escape 取消。
+
+**平移与缩放**与查看器一样：在空白处拖动或滚动滚轮平移，按住 Ctrl 或 ⌘ 滚动滚轮缩放；没有选中节点时方向键平移视口。工具栏上的「拖动」（`H`）打开以后，在画布任意处按住拖动都是平移，节点上也一样，不选中、不挪节点，光标是手形；再点一下或按 Esc 退出，状态在外框的 `canvasTool` 上。小地图上按下或拖动，视口中心移到那里。
+
+## 属性面板
+
+属性面板编辑选中的对象：节点按节点类型的属性描述列出字段；连线列出连线通用的属性，再加上源节点类型给出线登记的属性。选中多个对象时只编辑它们共同的属性，一次写进全部对象；什么都没选中时编辑流程定义级的属性。
+
+字段按属性描述的分组排列。`propertyGroupOrder` 定分组的先后，`propertyGroupLabels` 给分组换标题；示例里两项都来自预设的中文文案。在同一个字段里连续输入合成一步撤销，离开字段后再改另起一步。字段的校验问题直接显示在字段上。
+
+## 问题列表
+
+流程定义、扩展或校验选项变了之后，设计器重新校验，问题列表显示全部问题，同时派发 `issues-change`。错误与警告的条数在问题列表的面板头上，点一下只看或不看这一级。有问题的节点带 `data-issue`，取值是落在它上面最严重的一级（`error` 或 `warning`），皮肤据此画出标记。点一条问题，设计器选中问题所在的节点或连线并显露它；问题落在某个属性上时，焦点直接交给属性面板里的那个字段。
+
+问题码与说明见[问题码](../reference/issues)。`validateOptions` 按问题码改写严重程度，写 `off` 即不报告：
+
+```ts
+designer.validateOptions = { severity: { 'node.isolated': 'off' } }
+```
+
+`validate()` 按同样的扩展与选项立即校验一次，宿主保存前可以用它拦下有错误的定义。
+
+## 流程结构
+
+流程结构面板按定义里的先后列出节点，每个节点下面是从它出去的连线，缺省收起。没有名称的节点写「种类名 · id」，有名称时副文本是种类名；连线没有名称时写「连线 · id」，副文本是「→ 去向」，连线的业务数据里有条件文字（`data.condition`，XiHan 工作流预设就这样写条件）时写成「条件 → 去向」。
+
+- 点一行就在画布上选中它，不在视口里时移过来（节点用 `revealNode`，连线用 `revealEdge`）；画布上选中的对象在面板里跟着选中，选中一条连线时展开它的出发节点。
+- 多选照文件管理器：按住 Ctrl / ⌘ 点击或按 Ctrl / ⌘ + Space 加选与取消，按住 Shift 点击选一段，节点与连线可以一起选；只把新选上的第一行移进视口，只取消了几行时视口不动。Delete 删掉全部选中的。
+- 指针悬停或键盘落在一行时，画布上标出那个节点或连线，离开时撤掉。
+- 删除钮与 Delete 走设计器的删除；只读时不删。行不能拖动，先后跟着流程定义。
+- 面板上方有搜索框，按名称与副文本过滤。标题与帮助是流程自己的说法，在设计器文案的 `outline` 里。
+
+## 命令
+
+菜单栏、工具栏、右键菜单与快捷键执行的都是命令。每条内置命令都带图标，工具栏缺省只显示图标，悬停或聚焦时提示命令的名字与快捷键；撤销、复制、对齐、缩放这些四款设计器都有的命令，文案用 designer-shell 语言包里 `xh-designer-commands` 那一桶，与其它设计器一致，要改它们的文字时改那一桶；撤销、重做与清空历史本身就是 designer-shell 的共用命令，见[撤销与保存](#撤销与保存)。工具栏末组是 designer-shell 内置的「面板」：点开一张菜单，列出物料、属性、问题这些能开关的面板，勾选的显示，收起的面板从这里再打开；宿主不要哪一条，用 `commandLayout` 排掉。设置、帮助、开始引导与编辑 JSON 在菜单栏里，见下文。内置命令的 id、名称与快捷键见[内置命令](../reference/designer#内置命令)；只读时会修改流程定义的命令不可用，复制、全选与缩放仍可用。命令都有对应的方法，宿主的按钮直接调用方法即可，比如 `undo()`、`duplicate()`、`align('left')`、`autoLayout({ direction: 'LR' })`；按 id 执行用 `runCommand(id)`，内置命令与扩展命令都认，命令存在且此刻可用才执行，返回是否执行了。
+
+最上一条是菜单栏，下面是工具栏。菜单栏放通用的功能，四张菜单与四款设计器一致：
+
+- 「文件」：保存（Ctrl / ⌘ + S）、打开文件（有导入器时）、导出 PNG 与 SVG、设置（Ctrl / ⌘ + ,，同 `openSettings()`）。
+- 「编辑」：撤销、重做，剪切、复制、粘贴、删除、创建副本，全选；开发者模式开着时还有编辑 JSON（Ctrl / ⌘ + Shift + J，见[编辑 JSON](#编辑-json)）。
+- 「视图」：放大、缩小、适合窗口、实际大小，拖动，自动布局与「对齐与分布」子菜单，「面板」与「外观」两个子菜单；外观里是工具栏、状态栏、菜单栏三个显示开关（改的是设置）。
+- 「帮助」：开始引导、帮助（在新窗口打开本站的设计器一页，地址是导出的 `FLOW_DESIGNER_HELP_URL`）、快捷键（打开设置的快捷键页），关于（打开设置的关于页）。
+
+画布有焦点时按 F10 把焦点交给菜单栏，左右键在菜单之间走，下键、Enter 或 Space 展开；再按 F10，或在菜单栏上按 Esc，回到画布。窄屏时菜单栏收成行首一颗「菜单」钮，各张菜单是它的子菜单。菜单栏常开，设置里没有关掉它的开关。
+
+宿主自己的操作（新建、预览、返回列表）写成一个扩展的命令，`placement` 写 `menubar:file` 就进「文件」菜单，写了 `toolbar` 也上工具栏；模板标题写成设计器的子元素 `slot="menubar-center"`，显示在整条菜单栏的正中，放不下时截断加省略号，再窄就藏起；保存状态写成 `slot="status-end"`，显示在状态栏右端、缩放比例的左边，状态栏在设置里关掉时跟着不显示；别的要常显的内容写 `slot="menubar-end"`，显示在菜单栏右边。这样设计器外面不必另起一条操作条。
+
+```ts
+designer.extensions = [{
+  id: 'acme.host',
+  commands: [
+    { id: 'acme.new', label: '新建', shortcut: ['Mod', 'Alt', 'N'], placement: ['menubar:file'], run: () => location.assign('/flows/new') },
+    { id: 'acme.back', label: '返回列表', placement: ['menubar:file', 'toolbar'], run: () => history.back() },
+  ],
+}]
+const title = document.createElement('span')
+title.slot = 'menubar-center'
+title.textContent = '请假审批 · LEAVE-01'
+const saved = document.createElement('span')
+saved.slot = 'status-end'
+saved.textContent = '已保存'
+designer.append(title, saved)
+```
+
+右键菜单按落点给出不同的命令：节点上是剪切、复制、创建副本与删除，选中两个以上节点时加上对齐，三个以上时再加上分布；连线上是删除与清除拐点；空白处是粘贴、全选、自动布局与适合窗口，开发者模式开着时末尾是编辑 JSON。在画布上按 ContextMenu 键或 Shift + F10，按当前的选择打开菜单。右键事件可以取消，取消后内置菜单与浏览器的菜单都不出现，宿主可以在 `detail` 的 `x`、`y` 处弹自己的菜单。
+
+选中节点时，选中框上方浮着一条选中工具条：创建副本、复制与删除，选中几个节点时前面多一个「对齐与分布」菜单（`align-menu`，点开列出六种对齐与两种分布）。贴顶放不下时翻到下方，拖动途中收起；只选了连线、没有选中或只读时不出现。画布有焦点时按 Alt + F10 把焦点交给它，在工具条里按 Esc 回到画布。
+
+`commandLayout` 重排工具栏、菜单栏的各张菜单、各右键菜单与选中工具条，键是位置（`toolbar`，菜单栏是 `menubar:file`、`menubar:edit`、`menubar:view`、`menubar:help`，右键菜单是 `menu:node`、`menu:edge`、`menu:blank`，选中工具条是 `selection:node` 与 `selection:nodes`），值是若干组命令 id；某张菜单或某个选中工具条排空了就不出现。写了某个位置就只显示列出的命令，没写的位置用内置排列；排列里写了不存在的命令 id 会抛 TypeError，不会静默跳过。
+
+```ts
+designer.commandLayout = {
+  'toolbar': [['undo', 'redo'], ['auto-layout'], ['zoom-to-fit', 'zoom-to-actual']],
+  'menu:blank': [['paste'], ['auto-layout']],
+}
+```
+
+面板是物料（`palette`）、流程结构（`outline`）、属性（`properties`）、问题（`issues`）、历史记录（`history`）五张卡片与画布右下角的小地图（`minimap`），id 在包入口导出的 `FLOW_PANELS` 里。流程结构停在左栏物料下面；历史记录缺省隐藏，打开后停在右栏属性下面。`defaultLayout` 是宿主给的缺省布局：用户没存过布局时用它，「恢复默认布局」也回到它；不给时全部显示、各在缺省的位置。形状是 `@xihan-ui/designer-shell` 的 `DesignerLayout`，写了的字段整项覆盖缺省，常用的是 `hidden`（收起哪些面板）与 `docks`（各栏放哪些面板、谁先谁后）。
+
+```ts
+designer.defaultLayout = { version: 1, hidden: [FLOW_PANELS.palette, FLOW_PANELS.issues, FLOW_PANELS.minimap] }
+```
+
+底部的状态栏左边写选中的对象：什么都没选中时是流程里有几个节点、几条连线，选中一个节点时是它的类型、位置与尺寸，选中一条连线时是连线名，选中多个时是选了几个；右边是缩放比例，点一下回到 100%。设置里关掉「状态栏」时整条不显示。
+
+物料、属性与问题列表各是一张卡片：面板头写标题，属性面板的副标题是当前编辑的对象，「?」弹出这块面板的说明，收起钮把它收成标题条（双击面板头也行），「更多」菜单里换栏、调序、浮出，「×」隐藏它；按住面板头可以拖到左、右、下另一栏，拖到画布上就浮出成小窗。工具栏与「视图」菜单里的「面板」逐块勾选显隐，另有显示或隐藏所有面板（Ctrl / ⌘ + \\）、还原面板显隐（Ctrl / ⌘ + Shift + \\）与恢复默认布局；每块面板还有一条开关命令 `panel:<面板 id>`，可以排进 `commandLayout`。
+
+布局改了，整份写进设置的 `layout.panels`（`DESIGNER_SETTING_KEYS.layout`），和设置对话框里改一条一样派发 `settings-change`，宿主存下来、下次随 `settings` 赋回即可；给了 `settingsStorageKey` 时设计器自己存。宿主要固定布局，用 `settingsPolicy`：`layout.panels` 锁住整份，`layout.panels.<面板 id>` 藏掉或锁定一块面板。
+
+除了命令的快捷键，画布有焦点时还认这些键：Backspace 删除，`=` 放大，F10 进出菜单栏；设置的「快捷键」页把命令的快捷键与这些键列成一张表。Ctrl / ⌘ + C、X、V 走系统剪贴板：复制出的是一段 JSON 文本，能在同一页面、别的页面或别的标签页的设计器里粘贴；读不出流程内容的文本交给扩展的导入器（见[导入与导出](./extensions#导入与导出)），没有导入器接下时不会贴进来。宿主调 `paste(内容)` 时每次比上一次多错开一格；给了落点 `paste(内容, { at })` 时内容整体的中心放到 `at`（世界坐标，视口中央是 `getViewportCenter()`），左上角吸附网格，不累加错开。剪贴板的文本格式由 `encodeFlowClipboard` 与 `decodeFlowClipboard` 互转。
+
+## 设置
+
+设置是用户偏好，每人每机一份，不随流程定义保存。`openSettings(section?)` 打开设置对话框，左边一个分区一页：
+
+- 「基础」（`general`）：主题（跟随页面、跟随系统、亮色、暗色）、主题色（跟随页面、八种预设、自定义颜色）、状态栏、自动保存、开发者模式，以及分页与渲染两条调试日志（开发者模式开着才能改）。
+- 「语言」（`language`）：跟随页面（缺省）、跟随系统，或在十种语言里选一种，名字是各自的本名（简体中文、繁體中文、English、日本語……）。
+- 「布局」（`layout`）：一张面板表，逐块面板改显隐、位置、先后与收起，表下一颗「恢复默认布局」。
+- 「工具栏」（`toolbar`）：按钮的显示方式（图标、文字、图标和文字，缺省只显示图标）、显示工具栏开关，以及一张按钮表：按缺省排列列出工具栏上的命令，可以勾掉不要的、拖动换先后、跨组挪，表下「恢复默认」。工具栏的这些只走设置，没有单独的属性；用户的改动压在宿主的 `commandLayout` 之上。
+- 「画布」（`flow`）：自动布局的方向与两种间距、吸附对齐。
+- 扩展登记的分区，排在后面。
+- 「帮助」「快捷键」「关于」三页在最后：帮助页是几段操作说明与「开始引导」「帮助」两颗钮；快捷键页把命令的快捷键与画布认的几个键列成一张表，「通用」里方向键一行写明没有选中节点时平移画布，Esc 一行写明取消正在进行的拖动；画布在空白处直接拖动就平移，所以没有「按住空格拖动」那一行；关于页写设计器的版本（包入口导出的 `FLOW_VERSION`）与许可证，扩展可以在后面加几行（扩展的 `about` 字段）。
+
+分区 id 与 `flow`、内建的 `general`、`language`、`layout`、`toolbar`、`help`、`shortcuts`、`about` 或别的扩展重名时，给 `extensions` 赋值就抛 `DesignerExtensionError`。
+
+```ts
+export function openCanvasSettings(designer: XhFlowDesigner): void {
+  designer.openSettings(FLOW_SETTINGS_SECTION)
+}
+```
+
+值是扁平的键值，键是「分区 id.条目 id」，如 `general.theme`、`flow.snap`，没写的键取缺省值。宿主给缺省、锁定条目或读值时用常量，不手写键：「画布」分区的 id 与各条目的键是包入口导出的 `FLOW_SETTINGS_SECTION` 与 `FLOW_SETTING_KEYS`，「基础」「语言」「布局」「工具栏」分区的键是 `@xihan-ui/designer-shell` 的 `DESIGNER_SETTING_KEYS`（如 `general.brand`、`language.locale`、`toolbar.display`、`toolbar.layout`）；以后条目改了 path，常量跟着变，宿主的缺省不会静默失效。`settings` 赋值即生效；用户在对话框里改了一条，设计器换成新的一份并派发 `settings-change`，宿主存起来、下次赋回。`settingsPolicy` 隐藏或锁定条目，键是条目键或分区 id：`hidden` 不显示，一个分区的条目全藏了就没有这一页；`locked` 只读，说明换成「由所在系统管理」。
+
+```ts
+export function wireSettings(designer: XhFlowDesigner, saved: FlowSettings, store: (settings: FlowSettings) => void): void {
+  // 宿主自己的缺省压在下面，用户存过的值盖在上面
+  designer.settings = { [FLOW_SETTING_KEYS.layoutDirection]: 'LR', ...saved }
+  designer.settingsPolicy = { [DESIGNER_SETTING_KEYS.theme]: 'hidden', [DESIGNER_SETTING_KEYS.brand]: 'hidden', [FLOW_SETTING_KEYS.snap]: 'locked' }
+  designer.addEventListener('settings-change', (event) => {
+    store((event as CustomEvent<{ settings: FlowSettings }>).detail.settings)
+  })
+}
+```
+
+- **主题只作用于设计器**：主题与主题色写在 `<xh-flow-designer>` 自己的 `data-theme`、`data-brand` 上，页面其余部分不变；设置对话框、菜单这些浮层跟着设计器变。主题色是内置的：跟随页面（缺省），或 UI 的八种预设，或自定义颜色，宿主不用传预设。
+- **语言只作用于设计器**：设置里选了语言，`<xh-flow-designer>` 把这一语言的 UI、designer-shell 与流程语言包作为自己的 `xhConfig` 交出去，设计器、里面的元素与它弹出的浮层都换成这种语言（日期、分页这些 UI 文案也一样），页面别处不变。跟随系统按浏览器的语言偏好挑最接近的一种，挑不到用英文；语言包第一次用到时才加载。跟随页面时 `xhConfig` 是空对象，照页面的全局配置。
+- **画布的设置**：`autoLayout()` 没给的方向与间距、工具栏的「自动布局」都取「画布」分区的值；吸附对齐关掉时拖动只吸附网格。小地图是一块面板，显隐跟着布局走。
+- **扩展读设置**：命令、面板与扩展从上下文的 `settings` 读值，各分区没写的条目已经取了缺省值，如 `context.settings['flow.snap']`。
+
+- **自动保存**：设置里开着自动保存时，有未保存的修改，停手约一秒就把整份流程定义存成这台浏览器里的草稿（localStorage），宿主不参与；设计器变干净（宿主存完调 `markSaved()`，或撤销回到保存点）时删掉草稿，关掉自动保存不删已有的草稿。宿主给 `draftKey`（同名 attribute `draft-key`，通常是流程 id）区分不同流程，不给按页面地址区分。下次宿主装进同一个键的流程、和草稿不一样时，问「发现未保存的草稿（时间）」，恢复会整份换上草稿、记一步撤销，丢弃即删掉草稿。不要这一项时用 `settingsPolicy` 把 `general.autoSave` 藏起或锁住。Ctrl / ⌘ + S 照旧派发 `save`，与自动保存无关。
+- **调试日志**：开发者模式与「渲染调试日志」都开着时，每次重画在浏览器控制台记一组「[xh-flow-designer] render · update: 改动的属性 耗时」，导出图片也记一组；流程没有分页，「分页调试日志」开了也没有日志。
+
+独立使用、没有宿主替你存时，给 `settingsStorageKey`：连上文档时若没赋 `settings` 就从根所在窗口的 localStorage 读，用户改了设置就写回去；标了 `secret` 的文本条目（如密钥）不存。读写失败派发 `settings-storage-error`，设置留在内存里。不给就不读写存储。
+
+```ts
+export function standalone(designer: XhFlowDesigner): void {
+  designer.settingsStorageKey = 'flow-designer:settings'
+  designer.addEventListener('settings-storage-error', (event) => {
+    console.warn('设置没能读写本机存储，这次改的只在内存里', (event as CustomEvent<{ error: unknown }>).detail.error)
+  })
+}
+```
+
+## 新手引导
+
+设计器第一次显示出来、画布铺好之后，自动开始一次新手引导：先讲菜单栏（各张菜单里有什么，F10 进出菜单栏），再一步步高亮工具栏、节点面板、画布、属性面板、问题面板与状态栏，接着是流程自己的三步——连线（指向第一个端口）、自动布局与导出图片（指向工具栏上的钮，并说它们也在「视图」「文件」菜单里），最后一步是设置：高亮「文件」菜单，设置在那里，引导能从「帮助」菜单重新开始。目标看不见的那步自动跳过，比如画布上还没有节点时不讲连线。
+
+窄屏时菜单栏收成一颗「菜单」钮，讲菜单栏与设置的两步都落在这颗钮上。
+
+- 走完、跳过或关上之后，设置里记下 `help.tourDone`（`@xihan-ui/designer-shell` 的 `DESIGNER_TOUR_DONE_KEY`）并派发 `settings-change`，以后不再自动开始。宿主替用户存设置时，这个键随设置一起存。
+- 设计器藏着时不开始，等它显示出来再看。宿主不要自动开始时写 `autoTour = false`（同名 attribute `auto-tour="false"`）。
+- 引导限在设计器的外框里：遮罩只盖外框，高亮框裁在外框里，页面别处照常可读可点。同一页同时只有一个引导：别的设计器的引导开着时不自动开始。
+- `startTour()` 随时从头开始，同一页里别的引导开着时先收起它，没有能走的步骤时返回 `false`；「帮助」菜单与设置帮助页里的「开始引导」、`start-tour` 命令做的是同一件事。
+- 扩展可以登记自己的步骤，见[扩展](./extensions)的 `tourSteps`。
+
+## 撤销与保存
+
+每次修改记为一步撤销，拖动这类连续操作松手时才记为一步。`canUndo`、`canRedo` 表示能不能撤销重做，`undo()`、`redo()` 执行。
+
+- **每一步带说明**：如「移动 任务 approve_1」「添加 3 个节点」「修改「名称」」「自动布局」「编辑 JSON」。单个节点写「种类 名称」（没有名称时是 id），几个节点写个数；创建副本与按住 Alt 拖动复制都写「复制」加节点；说明跟着界面语言变。撤销、重做钮的名字带上下一步的说明，如「撤销：移动 任务 approve_1」，按钮上看得见的字仍是「撤销」。
+- **合并**：在同一个属性字段里连续输入合成一步；画布有焦点时按方向键微移，同一组选中的节点一秒内连按合成一步，换了选中另起一步。
+- **快捷键**：撤销 Ctrl / ⌘ + Z，重做 Ctrl / ⌘ + Shift + Z，另认 Ctrl + Y。
+- **清空历史**：命令 `clear-history`，不上工具栏，在历史记录面板的面板头上；点了先弹确认框，确定后才清空，清空后不能再撤销到之前。
+- **历史记录面板**：列出每一步与起点，选一步（或起点）就一次跳过去，之后的步骤留着、可以再重做回来；只读时只能看。撤销、重做、清空与跳转之后，读屏会礼貌地读一句。宿主自己改流程定义时用 `execute(operations)`，一组操作记为一步，操作的写法见[流程定义结构](./schema#编辑操作)。
+
+流程定义每次变化派发 `schema-change`，`detail` 里是新的定义、这次的操作与种类：`execute` 是编辑，`undo`、`redo` 是撤销重做，`load` 是装载了新定义。
+
+```ts
+designer.addEventListener('schema-change', (event) => {
+  const { kind, operations } = (event as FlowDesignerEventMap['schema-change']).detail
+  status.textContent = `${KIND_TEXT[kind]}：${operations.map(operation => operation.type).join('、')}`
+})
+```
+
+`dirty` 表示有没有未保存的修改，变化时派发 `dirty-change`。设计器不自己保存：画布有焦点时按 Ctrl / ⌘ + S，或点「文件」菜单的「保存」（命令 `save`），只派发 `save`，宿主保存成功后调用 `markSaved()` 把当前状态记为已保存。撤销回已保存的那一步时 `dirty` 也会回到 `false`。
+
+```ts
+const saveNow = (): void => {
+  // 宿主在这里把 designer.schema 交给后端，保存成功后记为已保存
+  designer.markSaved()
+  status.textContent = '已保存'
+}
+const save = button('保存', saveNow)
+save.disabled = true
+designer.addEventListener('save', saveNow)
+designer.addEventListener('dirty-change', (event) => {
+  save.disabled = !(event as FlowDesignerEventMap['dirty-change']).detail.dirty
+})
+```
+
+## 编辑 JSON
+
+`openJsonEditor()` 打开一个编辑整份流程定义 JSON 的对话框（也是 `edit-json` 命令做的事）。`edit-json` 命令只在设置里开着开发者模式时存在：关着时菜单栏、右键菜单里都没有它，快捷键也不响应；宿主要给用户这个入口，就在 `settings` 里预先写 `general.developer: true`，或用 `settingsPolicy` 锁住它。`openJsonEditor()` 方法照样能调。对话框：编辑框里写出当前的定义，边改边检查，下面列出问题，底边是格式化、复制、取消与应用。
+
+- 问题与问题列表同一套：先按读入检查结构，读得了再按当前的扩展与 `validateOptions` 校验，说明与所在对象的名字与问题列表一致。点一条，光标跳到那个路径在文字里的位置。
+- 文字解析不了、有错误级的问题或与打开时相同时，「应用」不可用。
+- 应用即整份换上，记为一步撤销，派发 `schema-change`（种类是 `execute`），选择清空，视口随后按实际大小摆好；撤销一步回到原来那份。
+- 只读时能看、能格式化与复制，不能应用。
+
+## 导出图片
+
+`export("svg" | "png", options)` 与查看器的导出图片相同，选项也一样；选中的节点与连线按没选中的样子画。它是设计器自带的图片导出器，与扩展登记的导出器走同一个 `export()`。
+
+工具栏最后一组是「导出 PNG」与「导出 SVG」，流程图是空的时不可用，只读时照样能用。导出后派发可以取消的 `export` 事件，`detail` 里是格式与文件；没被取消时存成 `flow.png` 或 `flow.svg` 下载，宿主想自己命名或上传就取消它，拿 `detail.blob` 自己存。不想要这两个按钮时用 `commandLayout` 把它们去掉。
+
+## 只读
+
+`readonly` 打开后仍可以选择、浏览、复制与缩放，不能修改：拖动、连线、删除、粘贴与属性面板的编辑都不起作用，会修改的方法什么都不做。元素上带 `data-readonly`。
+
+同名 attribute 是三态的，与 XiHan.UI 的元素一致：不写为缺省（不只读）；写 `readonly="false"` 为 `false`；写 `readonly`、`readonly="true"` 或别的值为 `true`；摘掉 attribute 回到缺省。这是行为变化：以前只要写了这个 attribute 就算只读，`readonly="false"` 也不例外。经 property 赋值不受影响。
+
+```ts
+const readonly = button('只读', () => {
+  designer.readonly = !designer.readonly
+  readonly.setAttribute('aria-pressed', String(designer.readonly))
+})
+readonly.setAttribute('aria-pressed', 'false')
+```
+
+## 文案
+
+设计器的缺省文案是英文。全站换语言时与查看器一样合并同一语言的流程语言包（如 `flowZhCN`、`flowJaJP`），写法见[快速开始](../quickstart#中文界面)。单个实例要改时写 `translations`，它压在全局配置之上；可以改的文案见 [FlowDesignerTranslations](../reference/designer#flowdesignertranslations)。
+
+---
+
+来源：https://flow.docs.xihanfun.com/guide/extensions
+
+# 扩展
+
+节点类型、属性、编辑方式、规则、节点渲染、属性编辑器、命令与面板，都经扩展登记。扩展是普通对象，按实例交给元素的 `extensions`，没有全局注册：同一页面上的两个设计器可以装不同的扩展。完整的字段见[扩展参考](../reference/extensions)。
+
+## 三层
+
+| 层 | 类型 | 所在的包 | 在下一层之上加了什么 | 谁读 |
+| --- | --- | --- | --- | --- |
+| core | `FlowCoreExtension` | `@xihan-flow/core` | 节点类型、连线与流程定义级属性、编辑方式、规则、问题说明 | 校验、编辑操作、查看器、设计器 |
+| 运行时 | `FlowRuntimeExtension` | `@xihan-flow/runtime` | 节点内容的渲染 `nodeRenderers` | 查看器、设计器 |
+| 设计器 | `FlowDesignerExtension` | `@xihan-flow/designer` | 属性编辑器、命令、面板、`setup` | 设计器 |
+
+下层的扩展对象可以直接交给上层的元素，core 层的扩展同时交给查看器、设计器与 `validateDocument`。服务端或 Node.js 里只装 core 层，校验结论与设计器一致。
+
+- `id` 全局唯一，用包名加功能名，如 `@example/leave`。它也是节点、连线与流程定义上扩展数据的键，见[业务数据与扩展数据](./schema#业务数据与扩展数据)。
+- 内置扩展排在最前，传入的按数组顺序排在后面；物料、属性与命令都按这个顺序。
+- 同一个扩展对象换了引用会当作卸下再装上，宿主要保持扩展数组与其中对象的引用稳定。
+
+下面用一个请假流程走一遍：core 层登记四种节点、一种编辑方式与一条规则，设计器层再加编辑器、命令、面板与 `setup`。
+
+## 节点类型
+
+```ts
+const nodeTypes: readonly FlowNodeTypeDefinition[] = [
+  {
+    type: 'apply',
+    label: '发起',
+    category: 'leave',
+    size: { width: 120, height: 40 },
+    ports: 'out',
+    entry: true,
+    maxCount: 1,
+  },
+  {
+    type: 'approve',
+    label: '审批',
+    category: 'leave',
+    size: { width: 160, height: 48 },
+    ports: 'both',
+    defaults: { label: '审批' },
+    properties: [
+      { path: ['label'], control: { kind: 'text' }, label: '名称', group: 'basic', required: true },
+      { path: ['data', 'approver'], control: { kind: 'leave.person' }, label: '审批人', group: 'basic', required: true },
+      { path: ['data', 'days'], control: { kind: 'number', integer: true, min: 1 }, label: '超过几天才审批', group: 'rule' },
+    ],
+    outgoingEdges: [
+      {
+        path: ['data', 'result'],
+        control: { kind: 'select', options: [{ value: 'agree', label: '同意' }, { value: 'reject', label: '驳回' }] },
+        label: '审批结果',
+      },
+    ],
+  },
+  {
+    type: 'notify',
+    label: '抄送',
+    category: 'leave',
+    size: { width: 140, height: 40 },
+    ports: 'both',
+    properties: [
+      { path: ['label'], control: { kind: 'text' }, label: '名称', group: 'basic' },
+      { path: ['data', 'to'], control: { kind: 'tags' }, label: '抄送给', group: 'basic' },
+    ],
+  },
+  {
+    type: 'archive',
+    label: '归档',
+    category: 'leave',
+    size: { width: 120, height: 40 },
+    ports: 'in',
+    terminal: true,
+  },
+]
+```
+
+- `type` 是类型名，节点的 `type` 写它；`label` 是显示名，物料面板、属性面板与问题说明都用它。`icon` 是 XiHan.UI 的图标记录（如 `@xihan-ui/icons` 里的图标），画布上的节点与物料条目都把它画在文字前面。
+- `category` 是物料面板里的类别，设计器的 `paletteGroupOrder` 与 `paletteGroupLabels` 按类别排序、换标题。
+- `size` 是新建节点的尺寸，`defaults` 是新建时写入的标签与 `data`。
+- `ports` 写预设或具名端口。预设 `in` 是左侧一个入口，`out` 是右侧一个出口，`both` 两者都有，`none` 没有端口；具名端口写 `id`、方向（`in`、`out`、`both`）、所在的边与沿边的相对位置，还可以限制连线条数；写了 `label` 的端口，设计器把名字写在端口外侧，随端口一起显出。连线的端点不写端口时，取方向相符的第一个端口。
+- `entry` 的节点是可达性分析的起点，不要求有入线；`terminal` 的节点不要求有出线。`minCount`、`maxCount` 限制这类节点的个数。
+- `connection` 是连接约束：入线、出线的最多条数，能连向、能接受的节点类型，以及是否允许连向自己。设计器拖动连线时按它判断能不能连，校验也按它报问题。
+
+## 属性
+
+`properties` 是属性面板里列出的属性，`path` 相对节点本身：`['label']` 是标签，`['data', …]` 写进节点的业务数据。每个属性写编辑方式 `control`，内建的有 `text`、`number`、`boolean`、`select`、`tags`、`color`、`json` 等，全部种类与取值约束见 XiHan.UI 的 [designer-kit](https://ui.docs.xihanfun.com/runtime/designer-kit)。
+
+- `group` 是属性面板里的分组，设计器的 `propertyGroupOrder` 与 `propertyGroupLabels` 按分组排序、换标题；`label` 是字段名。
+- `required` 的属性必须填写；`default` 是新建节点或连线时写入的缺省值；`visibleWhen` 按别的属性的值决定显不显示。
+- 校验按属性描述检查取值：必填没填、类型不对、超出范围、不在选项里等，问题码见[问题码](../reference/issues)。
+
+连线的属性有两处：节点类型的 `outgoingEdges` 只加在从这类节点连出的连线上，如审批的结果；扩展的 `edgeProperties` 加在所有连线上。连线的标签与虚线是内置的连线属性。节点类型的 `outgoingEdgeStyles` 按连线数据给从这类节点连出的连线外观，如 `{ when: { path: ['data', 'isDefault'], equals: true }, style: { dashed: true } }` 把默认分支画成虚线；`when` 的写法同属性描述的 `visibleWhen`，路径相对连线本身。连线自己写的外观压过推出的，推出的外观只用于绘制，不写回流程定义。扩展的 `documentProperties` 是流程定义级的属性，什么都没选中时属性面板编辑它们。
+
+## 编辑方式
+
+内建的编辑方式不够用时，在 `controls` 里登记新的种类，键就是属性描述里的 `control.kind`，不能与内建的重名。`check` 检查已经填写的取值，返回问题码表示不合格：
+
+```ts
+/** 审批人这种编辑方式：取值要是名单里的一位。 */
+const controls: FlowCoreExtension['controls'] = {
+  'leave.person': { check: value => (typeof value === 'string' && PEOPLE.includes(value) ? undefined : 'invalid-option') },
+}
+```
+
+core 层只管取值对不对；属性面板里用什么控件编辑它，由设计器层的扩展按种类提供编辑器，见下文的[属性编辑器](#属性编辑器)。没有登记的种类在校验时报 `unknown-control`。
+
+## 规则
+
+规则检查节点类型与属性描述表达不了的约束，拿到流程定义与合并后的节点类型，返回问题：
+
+```ts
+const rules: FlowCoreExtension['rules'] = [
+  document => document.nodes.flatMap((node, index) => {
+    if (node.type !== 'approve')
+      return []
+    const rejectable = document.edges.some(edge => edge.source.node === node.id && edge.data?.result === 'reject')
+    return rejectable
+      ? []
+      : [{ code: 'leave.no-reject', path: ['nodes', index], target: { kind: 'node', id: node.id }, severity: 'warning' as const }]
+  }),
+]
+```
+
+- 问题码必须以扩展 id 的末段加点开头，`@example/leave` 的规则写 `leave.` 开头的码，不符时校验当场抛 `TypeError`。
+- `path` 从流程定义的根算起；带上 `target` 时，设计器在问题列表里点这条问题会选中并显露那个对象，节点上也会标出问题。
+- `severity` 不写按错误处理。宿主可以用 `validateOptions.severity` 按问题码改写，扩展的问题码也认。
+
+问题的说明由扩展的 `issueText` 给出，返回 `undefined` 时交给设计器的文案：
+
+```ts
+export const leave: FlowCoreExtension = {
+  id: '@example/leave',
+  nodeTypes,
+  controls,
+  rules,
+  issueText: issue => (issue.code === 'leave.no-reject' ? '审批节点要连出一条驳回' : undefined),
+}
+```
+
+## 设计器层
+
+设计器层的扩展可以与 core 层的分开写，一起放进 `extensions`。下面的示例里，审批人用下拉框选，工具栏多了「加一个审批」与「吸附网格」，右侧多了一块统计，双击节点时连同它的出线一起选中：
+
+
+```ts
+const designer = document.createElement('xh-flow-designer')
+designer.extensions = [leave, leaveTools]
+designer.paletteGroupLabels = { leave: '请假' }
+designer.propertyGroupOrder = ['basic', 'rule']
+designer.propertyGroupLabels = { basic: '基本', rule: '规则' }
+designer.schema = schema
+```
+
+### 属性编辑器
+
+编辑器是一个函数，拿到上下文，返回放进属性面板的元素，值或只读状态变化时设计器调用 `update`：
+
+```ts
+/** 审批人用原生下拉框选。 */
+const personEditor: FlowPropertyEditor = (initial) => {
+  const select = document.createElement('select')
+  select.dataset.xhPart = 'control'
+  select.setAttribute('aria-label', initial.descriptor.label ?? '')
+  select.append(new Option('（未选）', ''), ...PEOPLE.map(name => new Option(name, name)))
+  let context = initial
+  select.addEventListener('change', () => {
+    context.setValue(select.value === '' ? undefined : select.value)
+    context.commit()
+  })
+  const update = (next: typeof initial): void => {
+    context = next
+    select.value = typeof next.value === 'string' ? next.value : ''
+    select.disabled = next.readonly
+  }
+  update(initial)
+  return { element: select, update }
+}
+```
+
+- 上下文里有当前值、属性描述、全部被编辑的对象与是否只读。`setValue` 写入新值，`undefined` 表示清除；`commit` 表示一次编辑结束，之后的写入另起一步撤销。
+- `editors` 有三张表：`byControl` 按编辑方式的种类，`byPath` 按属性路径，`byTarget` 按对象种类再按属性路径。对象种类是节点类型，连线是 `edge`，流程定义是 `document`；路径键是 `formatJsonPath` 的写法，如 `data.approver`。
+- 查找时先看 `byTarget`，再看 `byPath`，最后看 `byControl`；后面的扩展压过前面的。
+- 设计器内建的编辑器（如 XiHan 工作流预设的[启动变量](./xihan-workflow#启动变量)）垫在所有扩展之下，扩展在同一张表里登记同一个键就换掉它。
+
+### 命令
+
+```ts
+const commands: FlowDesignerExtension['commands'] = [
+  {
+    id: '@example/leave-tools.add-approve',
+    label: '加一个审批',
+    placement: ['toolbar', 'menu:blank'],
+    enabled: ({ designer }) => !designer.readonly,
+    run: ({ designer }) => designer.addNode('approve'),
+  },
+  {
+    id: '@example/leave-tools.grid',
+    label: '吸附网格',
+    placement: ['toolbar'],
+    checked: ({ designer }) => designer.grid !== false,
+    run: ({ designer }) => {
+      designer.grid = designer.grid === false ? 16 : false
+    },
+  },
+]
+```
+
+- `id` 用扩展 id 加点加名字。`placement` 写缺省出现在哪里：`toolbar`，菜单栏的 `menubar:file`、`menubar:edit`、`menubar:view`、`menubar:help`，右键菜单的 `menu:node`、`menu:edge`、`menu:blank`，选中工具条的 `selection:node`、`selection:nodes`；扩展命令排在内置命令之后，自成一组（在菜单栏里排在那张菜单收尾的一组之前）；不写时只能经快捷键或 `commandLayout` 出现。扩展还能用 `menubarMenus` 往菜单栏上加自己的菜单 `{ id, label, order? }`（`order` 写在 30–80 之间，排在「视图」与「帮助」之间），命令写 `menubar:<菜单 id>` 落进去。
+- `enabled` 不写时总是可用；写了 `checked` 就是开关式命令，按钮与菜单项显示选中状态；`tone` 写 `danger` 时按危险操作的颜色显示。
+- `shortcut` 写成 `['Mod', 'Shift', 'P']` 这样的键序列，`Mod` 在 macOS 上是 ⌘，其它系统是 Ctrl，画布有焦点时生效。
+- `run` 与其它回调拿到的上下文里有设计器本身与此刻的文案。
+
+### 面板
+
+```ts
+const panels: FlowDesignerExtension['panels'] = [
+  {
+    region: { name: 'leave-summary', position: 'end', title: '统计' },
+    create: (context) => {
+      const element = document.createElement('p')
+      const update = ({ designer }: typeof context): void => {
+        const approvals = designer.schema.nodes.filter(node => node.type === 'approve').length
+        element.textContent = `共 ${designer.schema.nodes.length} 个节点，其中审批 ${approvals} 个`
+      }
+      update(context)
+      return { element, update }
+    },
+  },
+]
+```
+
+- `region` 是面板占的区：`name` 不能与外框的区（`menubar`、`toolbar`、`canvas`、`status`）、内置面板（`FLOW_PANELS` 里的物料、流程结构、属性、问题、历史记录与小地图）或别的扩展的重名；`position` 是 `start`、`end`、`bottom` 之一，即左栏、右栏、下栏，同一栏的面板上下排列。
+- 写了 `title` 才画成卡片：面板头写标题，带收起、「更多」（换栏、调序、浮出、收成标题条、隐藏）与关闭钮，按住面板头能拖到别处；`icon` 用在工具栏「面板」菜单与浮出小窗的标题栏，`help` 是面板头的说明，`defaultHidden` 缺省不显示。卡片的做法见 XiHan.UI 的[面板卡片](https://ui.docs.xihanfun.com/runtime/designer-shell#面板卡片)。
+- `create` 在给 `extensions` 赋值、装上这个扩展时调用一次；之后设计器每次更新都调用 `update`，扩展被换下前调用 `destroy`。
+- 扩展面板与内置面板一样进布局：能换栏、浮出、收起与隐藏，记在设置的 `layout.panels` 里；每块各有一条开关命令 `panel:<区名>`。
+
+### 物料来源
+
+`paletteSources` 往物料面板里加几组条目，接在节点类型的分组后面，适合放常用片段、行业模板这类「一点就放下一段」的物料：
+
+```ts
+export const snippets: FlowDesignerExtension = {
+  id: '@acme/flow-snippets',
+  paletteSources: [{
+    id: '@acme/flow-snippets.common',
+    groups: () => [{
+      id: '@acme/flow-snippets.common',
+      label: '常用片段',
+      items: [{ id: '@acme/flow-snippets.two-level-approval', label: '两级审批', description: '部门审批后转财务审批' }],
+    }],
+    insert: (_item, { designer }, at) => {
+      designer.paste(twoLevelApproval, { at: at ?? designer.getViewportCenter() })
+    },
+  }],
+}
+```
+
+- `groups` 在设计器每次更新时现取，返回几组物料；条目的写法同 designer-shell 的物料面板（`label`、`icon`、`description`、`disabled`、`children` 等），内容与上一次一样时面板不重排。组 id 与条目 id（含下级）在整个物料面板里不能重名，节点类型的条目 id 就是类型名；重名时抛 TypeError。
+- 条目被点按或回车时调用 `insert`，不带落点；拖进画布松手时带上松手处的世界坐标。放什么、放在哪由来源自己定，常用的是 `designer.paste(片段, { at })`：片段整体的中心放到 `at`，左上角吸附网格；点按时没有落点，取 `getViewportCenter()` 放在视口中央。
+- `order` 排各来源的先后，不写按 100。只读时物料面板的条目一概不能用。
+
+### 导入与导出
+
+`importers` 把粘贴、拖进画布的外部内容与打开的文件换成流程内容，`exporters` 把当前流程定义换成文件：
+
+```ts
+export const jsonFiles: FlowDesignerExtension = {
+  id: '@example/json-files',
+  importers: [{
+    id: '@example/json-files.open',
+    fileTypes: ['.json', 'application/json'],
+    accepts: source => source.file !== undefined && (source.mime === 'application/json' || source.name?.endsWith('.json') === true),
+    import: async (source) => {
+      const read = readDocument(JSON.parse(await source.file!.text()))
+      if (!read.ok)
+        throw new TypeError('这个文件不是流程定义')
+      return { document: read.document }
+    },
+  }],
+  exporters: [{
+    id: '@example/json-files.save',
+    label: '流程定义（JSON）',
+    formats: ['json'],
+    export: async (_format, { designer }) => JSON.stringify(designer.schema, null, 2),
+  }],
+}
+```
+
+- 来源有三处：粘贴（`kind` 为 `clipboard`）、拖进画布（`drop`）与 `openFile()` 选的文件（`file`）。粘贴与拖放先列文件，再按链接、HTML、纯文本列出文本；来源按先后、导入器按扩展顺序问 `accepts`，第一个接下的导入。设计器自己复制出的内容直接粘贴，不经过导入器。
+- `import` 可以是异步的，返回 `{ nodes, edges }` 片段或 `{ document }` 整份流程定义，返回 `undefined` 时什么都不放。片段整体挪到落点（粘贴与打开文件时是视口中央，拖放时是指针处），左上角吸附网格，按粘贴的规则换新 id、选中并记一步撤销；整份定义换掉当前定义，同样记一步撤销，视口随后适配。
+- `import` 抛错，或结果的结构不合法、id 重复、用了没登记的节点类型时，派发 `import-error`，`detail` 里是导入器的 id、来源与错误，什么都不放；打开的文件没有导入器接下时也派发，此时没有导入器的 id。
+- 装了导入器后，工具栏最前面多出「打开文件」；宿主也可以自己调 `openFile()`。只读时导入一概不接。
+- `fileTypes` 写这个导入器认的文件类型（`.json` 这样的扩展名或 MIME），「打开文件」的文件框按各导入器写的合起来筛选；都没写时不限类型。它只管文件框里列哪些文件，接不接仍由 `accepts` 定。
+- `export(format, options)` 交给登记了这种格式的第一个导出器，`options` 原样放进上下文；得到的文件内容或文本存到哪里由宿主定。没有导出器认这种格式时返回被拒的 Promise（`RangeError`）。设计器自带一个图片导出器，认 `svg` 与 `png`，排在扩展的导出器之前（见[设计器的导出图片](./designer#导出图片)）。
+
+```ts
+export function wire(designer: HTMLElementTagNameMap['xh-flow-designer']): void {
+  designer.extensions = [jsonFiles]
+  designer.addEventListener('import-error', (event) => {
+    const { importer, error } = (event as CustomEvent<{ importer?: string, error: unknown }>).detail
+    console.warn(importer ?? '没有导入器接下这个文件', error)
+  })
+}
+
+export async function save(designer: HTMLElementTagNameMap['xh-flow-designer']): Promise<void> {
+  const text = await designer.export('json')
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }))
+  const link = Object.assign(document.createElement('a'), { href: url, download: 'flow.json' })
+  link.click()
+  URL.revokeObjectURL(url)
+}
+```
+
+### 引导步骤
+
+`tourSteps` 往新手引导里加几步，与通用步骤、流程自己的三步一起按 `order` 排：通用步骤是 0–60 与收尾的设置（900），流程的是 100 起，扩展的写 200 起。
+
+```ts
+export const simulation: FlowDesignerExtension = {
+  id: '@acme/flow-simulation',
+  tourSteps: [{
+    id: '@acme/flow-simulation.panel',
+    target: { panel: 'simulation' },
+    title: '模拟运行',
+    description: '在这里按步模拟流程的走向。',
+    order: 200,
+  }],
+  about: [{ label: '模拟运行', value: '1.0.0' }],
+}
+```
+
+- `id` 用扩展 id 加点加名字；不能与别的步骤重名，也不能用留给 designer-shell 的 `shell.` 前缀，否则给 `extensions` 赋值就抛 `DesignerExtensionError`。
+- `target` 指要高亮的目标：`{ panel }` 一块面板，`{ command }` 工具栏上的一条命令，`{ region }` 外框的区，`{ menubar }` 菜单栏上的一张菜单（菜单 id，如 `file`、`view`，窄屏时落在「菜单」钮上），`{ selector }` 设计器里的任意节点；不给就居中显示。目标看不见的那步自动跳过。
+- `title`、`description` 可以是按上下文现算的函数，跟着语言变。
+
+### 关于
+
+`about` 是设置「关于」页里的几行 `{ label, value }`，接在设计器自己的版本与许可证后面，适合写附加包的版本与授权；上面的示例里就写了一行。
+
+### setup
+
+`setup` 在设计器连上文档时调用，返回的函数在断开或扩展被换下时调用，适合加监听、开定时器这类要清理的事：
+
+```ts
+const leaveTools: FlowDesignerExtension = {
+  id: '@example/leave-tools',
+  editors: { byControl: { 'leave.person': personEditor } },
+  commands,
+  panels,
+  setup: ({ designer }) => {
+    const onDoubleClick = (event: Event): void => {
+      const { id } = (event as FlowDesignerEventMap['node-dblclick']).detail
+      designer.select({ nodes: [id], edges: designer.schema.edges.filter(edge => edge.source.node === id).map(edge => edge.id) })
+    }
+    designer.addEventListener('node-dblclick', onDoubleClick)
+    return () => designer.removeEventListener('node-dblclick', onDoubleClick)
+  },
+}
+```
+
+## 冲突
+
+节点类型、属性路径、编辑方式、命令 id、快捷键、面板的区名、物料来源 id、导入器或导出器的 id、设置分区 id、引导步骤 id、扩展 id 在两个扩展里重复时，给 `extensions` 赋值当场抛 `DesignerExtensionError`（从 `@xihan-ui/designer-kit` 导入），元素保持原来的扩展。错误上带冲突的名字空间、名字与两个扩展的 id：
+
+```ts
+const other = { id: '@example/other', nodeTypes: [{ type: 'approve', size: { width: 160, height: 48 }, ports: 'both' as const }] }
+try {
+  designer.extensions = [leave, other]
+}
+catch (error) {
+  if (!(error instanceof DesignerExtensionError))
+    throw error
+  // error.space 是 'node-type'，error.key 是 'approve'，error.extensions 是 ['@example/leave', '@example/other']
+  console.warn(error.message)
+}
+```
+
+---
+
+来源：https://flow.docs.xihanfun.com/guide/host
+
+# 与宿主集成
+
+查看器与设计器只管显示与编辑，不发网络请求，也不碰存储与权限。把它们嵌进业务系统时，下面这些由宿主来做：
+
+| 事情 | 宿主做什么 | 元素给什么 |
+| --- | --- | --- |
+| 流程的保存 | 存流程定义，或换成引擎定义交给工作流引擎；管版本与发布 | `schema`、`schema-change`、`save`、`dirty`、`markSaved()`，预设的 `toWorkflowDefinition` |
+| 运行状态 | 从后端取实例的执行情况，换成节点的状态 | 查看器的 `statuses`、`setNodeStatuses()`、`highlightNodes()` |
+| 权限 | 决定谁能看、谁能改，服务端再复核 | `readonly`、`panels`、`extensions` |
+| 校验 | 保存前拦住有错误的定义，服务端复核 | `validate()`、`issues-change`、`validateDocument` |
+| 业务数据 | 受理人、表单这类要查宿主数据才能选的属性 | 设计器层扩展的属性编辑器 |
+
+## 打开与保存
+
+流程定义是一份完整的 JSON，原样存、原样取。对接 XiHan 工作流引擎时存的是引擎定义：打开时把取回的定义交给 `fromWorkflowDefinition`，结果赋给 `schema`；保存时把 `schema` 交给 `toWorkflowDefinition`，再交给后端。不用引擎时直接存取流程定义本身。
+
+```ts
+import type { XihanWorkflowDefinition } from '@xihan-flow/core/presets/xihan-workflow'
+import type { XhFlowDesigner } from '@xihan-flow/designer'
+import type { FlowNodeStatus, XhFlowViewer } from '@xihan-flow/runtime'
+import { readDocument, validateDocument } from '@xihan-flow/core'
+import { createXihanWorkflow, fromWorkflowDefinition, toWorkflowDefinition } from '@xihan-flow/core/presets/xihan-workflow'
+
+export async function openWorkflow(designer: XhFlowDesigner, code: string): Promise<void> {
+  const url = `/api/workflows/${encodeURIComponent(code)}`
+  const response = await fetch(url)
+  designer.schema = fromWorkflowDefinition(await response.json() as XihanWorkflowDefinition)
+
+  designer.addEventListener('save', async () => {
+    if (designer.validate().some(issue => issue.severity === 'error'))
+      return
+    const saving = designer.schema
+    const saved = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(toWorkflowDefinition(saving)),
+    })
+    // 保存期间又改过的，不记为已保存
+    if (saved.ok && designer.schema === saving)
+      designer.markSaved()
+  })
+}
+```
+
+- 保存前用 `validate()` 拦住错误级的问题，警告不拦。
+- 保存是异步的，用户可能在等待期间接着改。示例在发出请求时记下当时的定义，成功后只有定义没再变才调用 `markSaved()`。
+
+设计器在内存里改流程，页面关掉修改就没了。有未保存的修改时提醒用户：
+
+```ts
+export function guardUnsaved(designer: XhFlowDesigner): () => void {
+  const onBeforeUnload = (event: BeforeUnloadEvent): void => {
+    if (designer.dirty)
+      event.preventDefault()
+  }
+  window.addEventListener('beforeunload', onBeforeUnload)
+  return () => window.removeEventListener('beforeunload', onBeforeUnload)
+}
+```
+
+## 显示运行状态
+
+业务页面用查看器显示某个实例走到了哪里：宿主从后端取实例里各节点的执行情况，换成「节点 id → 状态」交给 `statuses`，走过的节点可以再高亮出来。查看器为 `running`、`completed`、`waiting`、`faulted`、`canceled`、`compensated` 各画了一种样子，后端的状态名不同时在宿主这边换好，详见[查看器](./viewer#运行状态)。
+
+```ts
+/** 宿主接口返回的一条节点执行记录。 */
+interface NodeRecord {
+  readonly nodeId: string
+  readonly status: FlowNodeStatus
+}
+
+export async function showInstance(viewer: XhFlowViewer, instanceId: string): Promise<void> {
+  const response = await fetch(`/api/workflow-instances/${encodeURIComponent(instanceId)}/nodes`)
+  const records = await response.json() as NodeRecord[]
+  viewer.statuses = Object.fromEntries(records.map(record => [record.nodeId, record.status]))
+  viewer.highlightNodes(records.map(record => record.nodeId))
+}
+```
+
+实例还在运行时，宿主按自己的节奏重新取，用 `setNodeStatuses()` 只更新变了的节点。
+
+## 权限
+
+- 只能看的用户：设计器设成 `readonly`，仍可选择、浏览与复制；只需要看的页面直接用查看器，它更轻。
+- 只让调整局部的场景，用 `panels` 去掉物料等区，用 `commandLayout` 精简命令，用自定义属性编辑器限定可选的值。
+- 这些都只在前端生效。流程的保存、发布与删除要在服务端判断权限，保存时服务端也应复核流程本身。
+
+## 服务端复核
+
+`@xihan-flow/core` 与预设不依赖 DOM，存流程定义的宿主可以在 Node.js 后端直接读入并校验收到的定义，结论与设计器一致：
+
+```ts
+/** 服务端收到流程定义时复核：读入不了或有错误级问题就拒收，返回问题码与路径。 */
+export function reviewWorkflow(body: string): { valid: boolean, errors: string[] } {
+  const read = readDocument(JSON.parse(body))
+  if (!read.ok)
+    return { valid: false, errors: read.issues.map(issue => `${issue.code} @ ${issue.path.join('.')}`) }
+  const errors = validateDocument(read.document, { extensions: [createXihanWorkflow()] })
+    .filter(issue => issue.severity === 'error')
+    .map(issue => `${issue.code} @ ${issue.path.join('.')}`)
+  return { valid: errors.length === 0, errors }
+}
+```
+
+存引擎定义、后端是 XiHan.Framework 的，由引擎在发布时按它自己的规则把关，前端在提交前用 `validate()` 先拦一道。
+
+## 在前端框架里使用
+
+查看器与设计器是原生 Web Components，任何框架都能用：在应用启动时调用一次 `defineFlowViewer()` 或 `defineFlowDesigner()`，之后像普通元素一样放进模板。流程定义、扩展这类对象要交给元素的属性，不要写成 attribute。
+
+在 Vue 里，先告诉编译器 `xh-` 开头的标签是自定义元素，免得被当成组件去解析：
+
+```ts
+// vite.config.ts 里 @vitejs/plugin-vue 的选项
+vue({
+  template: {
+    compilerOptions: {
+      isCustomElement: tag => tag.startsWith('xh-'),
+    },
+  },
+})
+```
+
+对象用 `.prop` 修饰交给属性，事件用 `@` 监听：
+
+```vue
+<script setup lang="ts">
+/*
+ * Copyright (c) 2021-Present XiHanFun and contributors.
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ */
+
+// 在 Vue 里使用查看器：对象经 .prop 交给元素的属性，事件用 @ 监听；点一个节点把它标为已完成。
+
+import type { FlowNodeStatus, FlowViewerEventMap } from '@xihan-flow/runtime'
+import { defineFlowViewer } from '@xihan-flow/runtime'
+import { ref } from 'vue'
+import { extensions, schema } from '../schemas/approval'
+
+defineFlowViewer()
+
+const statuses = ref<Record<string, FlowNodeStatus>>({ start: 'completed', dept: 'running' })
+const message = ref('点一个节点把它标为已完成')
+
+function onNodeClick(event: Event): void {
+  const { id } = (event as FlowViewerEventMap['node-click']).detail
+  statuses.value = { ...statuses.value, [id]: 'completed' }
+  message.value = `已把 ${id} 标为已完成`
+}
+</script>
+
+<template>
+  <p>{{ message }}</p>
+  <xh-flow-viewer :extensions.prop="extensions" :schema.prop="schema" :statuses.prop="statuses" @node-click="onNodeClick" />
+</template>
+```
+
+
+React 19 起会把对象直接赋给自定义元素的同名属性；事件可以用 `ref` 拿到元素后 `addEventListener` 监听。
+
+## 文案与样式
+
+- 内建文案缺省是英文。全站换语言时把同一语言的流程语言包（如 `flowZhCN`、`flowJaJP`）与 XiHan.UI 的语言包合并后交给 `setXhConfig`，写法见[快速开始](../quickstart#中文界面)；单个实例的文案用它的 `translations` 覆写。预设的节点类型与属性另有文案，见 [XiHan 工作流引擎预设](./xihan-workflow#装上预设)。
+- 样式只用 XiHan.UI 的设计令牌，元素跟着宿主的 UI 主题变化，宿主不用另写颜色。设计器与查看器铺满自身，宿主给元素定宽高。
+
+## 一个页面里放多个实例
+
+元素不往 `window` 上挂对象，也不读写固定键名的本地存储，同一页面里的多个查看器、多个设计器互不影响，各自的扩展也只对自己生效。只有语言包是全局的：`setXhConfig` 对页面上所有元素生效。
+
+---
+
+来源：https://flow.docs.xihanfun.com/guide/schema
+
+# 流程定义结构
+
+流程定义（`FlowDocument`）是纯 JSON：一组节点、一组连线，加上文档级的业务数据。它不含也不执行任何代码，可以原样存进数据库、文件或交给接口。各字段的完整类型见[流程定义类型](../reference/schema)。
+
+## 文档
+
+```json
+{
+  "version": 1,
+  "nodes": [],
+  "edges": [],
+  "data": { "code": "expense", "name": "费用审批" }
+}
+```
+
+- `version` 是定义的版本号，读入时与 `FLOW_DOCUMENT_VERSION` 比对。
+- `nodes` 与 `edges` 的数组顺序就是绘制层级，靠后的画在上层。
+- `data` 是文档级的业务数据，比如流程编码与名称；有哪些字段由扩展登记的流程定义级属性决定，设计器里没选中任何对象时属性面板编辑的就是它们。
+- `extensions` 放各扩展自己的数据，键是扩展 id，与业务数据分开（见下文）。
+
+`createDocument(data?)` 返回一份空的流程定义。
+
+## 节点
+
+```json
+{
+  "id": "dept",
+  "type": "UserTask",
+  "x": 176,
+  "y": 100,
+  "width": 160,
+  "height": 48,
+  "label": "部门经理审批",
+  "data": { "properties": { "Assignees": ["部门经理"], "CompletionPolicy": "Any" } }
+}
+```
+
+- `id` 在文档内唯一，连线经它指向节点。
+- `type` 是节点类型名，必须是扩展登记过的类型，否则校验报 `node.unknown-type`。节点类型决定节点的外观、端口、能连向哪里，以及 `data` 里有哪些属性。
+- `x`、`y` 是节点左上角的坐标，`width`、`height` 是尺寸，单位都是像素；坐标原点在画布左上角，向右、向下为正。
+- `label` 是节点上显示的文字。
+- `data` 是业务数据，由节点类型的属性描述决定字段；设计器的属性面板按属性描述编辑它。
+
+## 连线
+
+```json
+{
+  "id": "large",
+  "source": { "node": "amount" },
+  "target": { "node": "gm" },
+  "label": "金额 > 1 万",
+  "data": { "condition": "amount > 10000", "priority": 0 }
+}
+```
+
+- `source` 与 `target` 是起点与终点：`node` 是节点 id，`port` 是端口 id。不写 `port` 时取节点类型里第一个允许这一端的端口。
+- `label` 是连线上显示的文字，`style.dashed` 画成虚线。
+- `data` 是业务数据：有哪些字段由连线属性描述决定，可以随起点节点的类型不同（比如分支节点的出线才有条件与优先级）。
+- `vertices` 是途经的折点，按从起点到终点的顺序排列。没写折点的连线由路由器自动求出直角折线，绕开途中的节点。
+
+## 业务数据与扩展数据
+
+`data` 归业务：节点类型与属性描述决定它有哪些字段，宿主据此保存、提交与执行。`extensions` 归扩展：某个扩展要在节点、连线或文档上存自己的数据时，放在 `extensions` 里以扩展 id 为键的那一块，不混进业务数据。去掉一个扩展时，它在 `extensions` 里的数据原样保留，装回来时还能读到。
+
+## 读入与校验
+
+从存储或接口取回的流程定义是未知输入，先交给 `readDocument`：它逐项检查字段类型、必填项与多余字段，通过时返回不与输入共享引用的副本，不通过时返回问题列表。`readDocument` 只检查结构；重复 id、悬空引用、端口约束与属性取值这类语义问题交给 `validateDocument`，它按传入的扩展检查，返回全部问题。
+
+```ts
+import { readDocument, validateDocument } from '@xihan-flow/core'
+import { extensions } from '../schemas/approval'
+
+export function load(json: string): { document: FlowDocument, errors: FlowIssue[] } {
+  const read = readDocument(JSON.parse(json))
+  if (!read.ok)
+    throw new Error(read.issues.map(issue => `${issue.code} @ ${issue.path.join('.')}`).join('\n'))
+  const issues = validateDocument(read.document, {
+    extensions,
+    severity: { 'node.unreachable': 'off' },
+  })
+  return { document: read.document, errors: issues.filter(issue => issue.severity === 'error') }
+}
+```
+
+每条问题带问题码、从文档根算起的路径、所在对象与严重程度，不带文案。`severity` 按问题码改写严重程度，写 `off` 即不报告。设计器自己会随编辑重新校验，把问题列在问题列表里；全部问题码与说明见[问题码](../reference/issues)。
+
+## 编辑操作
+
+设计器里的每次修改都是一组纯 JSON 的编辑操作，`schema-change` 事件把它们连同新的流程定义一起交给宿主。`applyOperation` 与 `applyOperations` 在任何地方都能把操作应用到流程定义上，返回新定义与逆操作；按顺序应用逆操作就回到修改之前。删除节点时与它相连的连线一并删除，逆操作会把它们放回原位置。`replaceDocument` 整份换掉流程定义，逆操作换回原来那份；设计器的 JSON 编辑与导入整份定义都走它。
+
+```ts
+import { applyOperations } from '@xihan-flow/core'
+import { schema } from '../schemas/approval'
+
+const { document, inverse } = applyOperations(schema, [
+  { type: 'updateNode', id: 'gm', patch: { label: '总经理与财务审批' } },
+  { type: 'moveNodes', positions: [{ id: 'gm', x: 624, y: 0 }] },
+])
+
+// 按顺序应用逆操作，回到修改之前
+const restored = applyOperations(document, inverse).document
+```
+
+操作只保证 id 唯一与被操作的对象存在；引用完整性、端口约束与属性取值仍由 `validateDocument` 负责。操作无法应用时抛 `FlowOperationError`，传入的流程定义保持不变。
+
+---
+
+来源：https://flow.docs.xihanfun.com/guide/viewer
+
+# 查看器
+
+`<xh-flow-viewer>` 在业务页面里显示流程：按节点类型画出节点与连线，标出每个节点的运行状态与高亮，支持缩放、平移与定位节点。它只读，不改动流程定义。完整的属性、方法与事件见[查看器参考](../reference/viewer)。
+
+## 显示流程
+
+调用 `defineFlowViewer()` 注册元素，再把扩展与流程定义交给 `extensions` 与 `schema` 属性，写法见[快速开始](../quickstart)。
+
+- `extensions` 决定节点类型、端口与节点内容的渲染。没有登记的节点类型照样画成显示名称的方框，但它没有端口，连到它的连线画不出来。同一个扩展对象换了引用会当作卸下再装上，宿主要保持扩展数组与其中对象的引用稳定。
+- 第一次拿到流程定义（`schema` 从无到有）时，查看器缩放并平移到整张图落在视口中央，小图不放大到 100% 以上；之后元素尺寸变化也跟着重新适配，直到调用 `setViewport` 或在画布上按下指针。
+- 复杂数据走属性，不走 attribute；属性变了会自动重画。
+
+## 运行状态
+
+`statuses` 是节点 id 到运行状态的映射，值为 `null` 或不写表示没有状态。也可以用方法逐步更新：`setNodeStatus(id, status)` 改一个，`setNodeStatuses(map)` 改一批，没列出的节点保持不变。
+
+皮肤为这几种状态各画了一种样子：
+
+| 状态 | 用途 |
+| --- | --- |
+| `running` | 正在处理 |
+| `completed` | 已完成 |
+| `waiting` | 等待中 |
+| `faulted` | 出错 |
+| `canceled` | 已取消 |
+| `compensated` | 已补偿 |
+
+状态是任意字符串，写在节点元素的 `data-status` 上。其它取值由宿主自己加样式，只用 XiHan.UI 的设计令牌：
+
+```css
+xh-flow-viewer [data-part='node'][data-status='skipped'] {
+  color: var(--xh-fg-muted);
+  border-style: dashed;
+}
+```
+
+节点元素上还有 `data-node-id` 与 `data-node-type`，高亮时带 `data-highlighted`。
+
+## 高亮与定位
+
+`highlightNodes(ids)` 高亮一组节点、取消其余的高亮，`clearHighlights()` 全部取消；`highlighted` 属性是同一份数据。`scrollToNode(id)` 把节点居中，`revealNode(id)` 只在节点没整个落在视口里时才挪动。
+
+```ts
+const highlight = button('高亮大额路径', () => viewer.highlightNodes(['start', 'dept', 'amount', 'gm', 'approved']))
+const clear = button('清除高亮', () => viewer.clearHighlights())
+```
+
+```ts
+const locate = button('定位到总经理审批', () => viewer.scrollToNode('gm'))
+const fit = button('适配', () => viewer.zoomToFit())
+```
+
+
+`zoomIn`、`zoomOut`、`zoomToActual` 与 `zoomToFit` 对应工具栏上常见的四个按钮；`getViewport` 与 `setViewport` 读写视口，可以把视口存起来下次恢复。在画布上拖动或滚动滚轮平移，按住 Ctrl 或 ⌘ 滚动滚轮缩放；画布获得焦点后方向键平移，`+` 与 `-` 缩放，`0` 适配。
+
+## 事件
+
+点击与右键都派发事件，`detail` 里是节点或连线的 id；右键事件还带浏览器视口坐标，事件可以取消，取消后浏览器的右键菜单不出现，宿主就能在那个位置弹自己的菜单。
+
+```ts
+viewer.addEventListener('node-click', (event) => {
+  const { id } = (event as FlowViewerEventMap['node-click']).detail
+  const node = schema.nodes.find(item => item.id === id)
+  status.textContent = `点了「${node?.label}」，类型 ${node?.type}`
+})
+viewer.addEventListener('node-contextmenu', (event) => {
+  // 取消后浏览器的右键菜单不出现，宿主可以在 detail 的 x、y 处弹自己的菜单
+  event.preventDefault()
+  status.textContent = `在「${(event as FlowViewerEventMap['node-contextmenu']).detail.id}」上按了右键`
+})
+```
+
+拖动平移之后松手不算点击。视口每次变化派发 `viewport-change`。
+
+## 自定义节点内容
+
+运行时层的扩展可以给某个节点类型登记渲染函数 `nodeRenderers`：每次绘制都会调用，把内容写进节点元素。上下文里有节点、节点类型、要显示的文字、运行状态与是否高亮。没登记渲染的类型由 `defaultNodeRenderer` 画：节点类型给了 `icon` 时图标在前、名称在后，没给时只有名称；自己的渲染函数也可以先调它画出同样的内容再加别的。渲染函数只用 DOM API 建节点，不把数据拼进 `innerHTML`。
+
+```ts
+const assignees: FlowRuntimeExtension = {
+  id: 'example/assignees',
+  nodeRenderers: {
+    UserTask: (container, { node, label }) => {
+      const properties = node.data?.properties as { Assignees?: string[] } | undefined
+      const title = document.createElement('strong')
+      title.textContent = label
+      const people = document.createElement('small')
+      people.textContent = (properties?.Assignees ?? []).join('、')
+      container.replaceChildren(title, document.createElement('br'), people)
+    },
+  },
+}
+```
+
+装进 `extensions`，与节点类型所在的扩展放在一起：
+
+```ts
+const viewer = document.createElement('xh-flow-viewer')
+viewer.extensions = [workflow, assignees]
+viewer.schema = schema
+```
+
+
+同一个节点类型在两个扩展里都登记了渲染时，赋值当场抛 `DesignerExtensionError`，属性保持原值。设计器读的也是同一份渲染，画布上看到的与查看器一致。
+
+## 连线路由
+
+没写折点的连线交给路由器求折线。缺省是直角路由：从端口引出、绕开途中的节点，找不到绕开全部节点的通路时退回不看障碍物的直角折线。`createOrthogonalRouter` 可以调整与节点保持的距离，也可以换成自己写的路由器，它拿到两端的锚点与要绕开的节点框，返回从起点到终点的完整折线：
+
+```ts
+viewer.router = createOrthogonalRouter({ margin: 24 })
+```
+
+```ts
+const straight: FlowEdgeRouter = ({ source, target }) => [source.point, target.point]
+viewer.router = straight
+```
+
+## 导出图片
+
+`export(format, options)` 把画面上的流程图导出成图片，得到 `Blob`：`svg` 是能单独打开的 SVG 文件，`png` 在它上面栅格化。节点的框、图标与文字，连线、箭头与标签都画进去，颜色与字体取画面此刻的样式（运行状态的描边颜色也在），换成具体值写进文件，脱离页面也一样。颜色一律写成 sRGB 的 `#rrggbb`，带透明度的写进 `fill-opacity` / `stroke-opacity`，办公软件与矢量编辑器里也能打开；超出 sRGB 色域的颜色按通道裁剪。字体写在根上一次，各段文字只写与它不同的那几项。
+
+| 选项 | 说明 |
+| --- | --- |
+| `scale` | 倍率，只对 PNG 有效，缺省 1；给高分屏看时写 2。图太大、超过浏览器画布的上限时自动降倍率，按比例缩小 |
+| `background` | 底色，任何 CSS 颜色；缺省取画布此刻的底色（画布透明时往外找第一层不透明的），写 `transparent` 不铺 |
+| `padding` | 四周的留白，缺省 24 |
+
+```ts
+const png = await viewer.export('png', { scale: 2 })
+```
+
+自定义节点内容只按节点的文字导出一行。PNG 里的文字用本机的系统字体画，不加载网页字体；SVG 文件里写的是字体名，打开它的机器上有这个字体就用它。流程图是空的时以 `RangeError` 拒绝。
+
+## 文案
+
+查看器只有一句给读屏的名称，缺省是英文 `Flow diagram`，中文语言包里是「流程图」。单个实例要改时写 `translations`，它压在全局配置之上。
+
+---
+
+来源：https://flow.docs.xihanfun.com/guide/xihan-workflow
+
+# XiHan 工作流引擎预设
+
+XiHan.Framework 的[工作流引擎](https://framework.docs.xihanfun.com/guide/workflow)按流程定义 JSON 运行流程。`@xihan-flow/core/presets/xihan-workflow` 把引擎的每种活动做成一个节点类型，属性键与引擎读的一致，规则与引擎发布时的检查对齐，并能与引擎定义互转：设计器里画好的流程换成引擎定义交给后端保存、发布，引擎里的定义也能读回设计器。全部节点类型、属性与问题码见[预设参考](../reference/xihan-workflow)。
+
+## 装上预设
+
+`createXihanWorkflow` 按文案生成一个 core 层扩展，交给查看器、设计器与 `validateDocument` 都可以。不传文案是英文，也可以导入现成的英文扩展 `xihanWorkflow`。文案与流程的语言包一样按 XiHan.UI 的语言一一对应：`xihanWorkflowZhCN`、`xihanWorkflowZhTW`、`xihanWorkflowJaJP`、`xihanWorkflowKoKR`、`xihanWorkflowDeDE`、`xihanWorkflowFrFR`、`xihanWorkflowEsES`、`xihanWorkflowPtBR`、`xihanWorkflowRuRU` 与 `xihanWorkflowEnUS`，换哪种语言就把哪一份传给 `texts`；只改几处时传其中几个键，其余照英文。17 种节点类型各配了一枚 `@xihan-ui/icons` 的图标，画布上的节点与物料条目都画在文字前面，对应关系见[参考页](../reference/xihan-workflow)。
+
+```ts
+/** 节点类型、属性与规则：XiHan 工作流引擎的节点预设，文案用中文。 */
+export const workflow = createXihanWorkflow({ texts: xihanWorkflowZhCN })
+
+export const extensions = [workflow]
+```
+
+- 节点类型与属性的文字写在扩展里。切换语言就换一个扩展对象，id 相同，设计器按卸下再装上处理，流程定义不变。
+- 物料的类别与属性的分组只给出键，文字在文案的 `categories` 与 `groups` 里，交给设计器的 `paletteGroupLabels` 与 `propertyGroupLabels`，写法见[设计器](./designer#放上页面)。
+- 节点的类型名就是引擎的活动类型，如 `Start`、`UserTask`、`Http`。
+
+## 节点与属性
+
+节点的属性按引擎的字段存放：活动属性写在 `data.properties` 下，键名与引擎活动读的一样，如人工任务的 `Assignees`、HTTP 请求的 `Url`；超时、失败续行与重试策略是节点级字段，写在 `data.timeoutSeconds`、`data.continueOnError` 与 `data.retryPolicy`。节点名称就是节点的标签。
+
+属性面板按基本、参与人、表单与执行分组。必填的属性没填、取值超出范围或不在选项里时，校验照常报问题。
+
+连线的属性随源节点类型：从条件分支连出的连线有条件、优先级与默认分支，并行分支沿全部出线流转，连出的连线没有条件。默认分支画成虚线：外观由 `isDefault` 推出，勾选、取消时跟着变，不另存一份样式。流程编码、名称、分类、描述、是否启用补偿与启动变量是流程定义级的属性，写在流程定义的 `data` 里，什么都没选中时属性面板编辑它们。
+
+## 受理人规则
+
+人工任务的受理人规则、兜底受理人规则与抄送规则用预设登记的编辑方式 `XIHAN_WORKFLOW_ASSIGNEE_RULES`，取值是 `{ type, values }` 的数组，与引擎的[受理人规则](https://framework.docs.xihanfun.com/guide/workflow#受理人规则)一致：引擎内置 `User`、`Starter`、`Expression` 三种，角色、部门等由应用注册。预设检查取值的形状，并要求 `User` 至少有一个受理人、`Expression` 恰好一条非空的表达式；应用注册的类型只检查形状。
+
+选人、选角色要查宿主自己的数据，所以这种编辑方式的编辑器由宿主在设计器层的扩展里按种类提供；没有提供时，属性面板里这一行只读。下面是一个最简单的写法，把规则写成 JSON：
+
+```ts
+const assigneeRulesEditor: FlowPropertyEditor = (initial) => {
+  const input = document.createElement('textarea')
+  input.rows = 3
+  input.setAttribute('aria-label', initial.descriptor.label ?? '')
+  let context = initial
+  input.addEventListener('change', () => {
+    try {
+      context.setValue(input.value.trim() === '' ? undefined : JSON.parse(input.value))
+      input.removeAttribute('aria-invalid')
+      context.commit()
+    }
+    catch {
+      input.setAttribute('aria-invalid', 'true')
+    }
+  })
+  const update = (next: typeof initial): void => {
+    context = next
+    if (document.activeElement !== input)
+      input.value = next.value === undefined ? '' : JSON.stringify(next.value)
+    input.readOnly = next.readonly
+  }
+  update(initial)
+  return { element: input, update }
+}
+
+export const assigneeRules: FlowDesignerExtension = {
+  id: '@example/assignee-rules',
+  editors: { byControl: { [XIHAN_WORKFLOW_ASSIGNEE_RULES]: assigneeRulesEditor } },
+}
+```
+
+人工任务还保留着旧的受理人写法：直接列受理人（`Assignees`）、受理人表达式（`AssigneesExpression`）与抄送人（`CcUserIds`）。只用受理人规则的应用写 `createXihanWorkflow({ legacyAssignees: false })`，属性面板里就不再显示这三项；定义里已有的值照旧读入、写回，往返不丢，校验也照旧认它们。缺省是 `true`，三项都显示。
+
+把 `assigneeRules` 与预设一起放进设计器的 `extensions` 即可。编辑器的写法见[扩展](./extensions#属性编辑器)。
+
+## 启动变量
+
+流程定义的启动变量用预设登记的编辑方式 `XIHAN_WORKFLOW_START_VARIABLES`，取值是变量声明的数组，与引擎读的一致：`name` 是变量名；`required` 为 `true` 时，启动流程缺了这个变量引擎就拒绝启动；`defaultValue` 在启动时没有提供、又不是必填时生效；`description` 是说明；`type` 只是给人看的类型提示，引擎不按它检查。预设检查取值的形状：变量名不能为空、不能重名，`required` 是布尔，`type` 与 `description` 是字符串。
+
+这种编辑方式的编辑器是设计器内建的：属性面板里排成一张表，一个变量一行，列是变量名、必填、缺省值与说明，可以增删。三个文字列有最小宽度，面板窄时表格区横向滚动，行号与把手留在两侧。缺省值按 JSON 读写，字符串要带引号，如 `"lisi"`、`1000`、`true`；写不成 JSON 时这一格标为无效、不写入，清空即不设缺省值。变量上表里没有的字段（如 `type`）原样保留。要换一种编辑器时，与受理人规则一样在设计器层的扩展里按种类登记，它压过内建的那个。
+
+## 规则
+
+预设带着几条规则，检查引擎发布定义时会拒绝、而通用校验覆盖不到的情况：
+
+- 流程里没有结束或终止节点，报警告。
+- 条件分支有不止一条默认分支，报错误；有带条件的出线、却既没有默认分支也没有无条件的出线，报警告。
+- 人工任务没有配置受理人规则、受理人或受理人表达式之一，报错误。
+
+问题码以 `xihan-workflow.` 开头，说明在预设的文案里，严重程度可以经设计器的 `validateOptions` 改写。
+
+## 与引擎定义互转
+
+`toWorkflowDefinition` 把流程定义换成引擎的定义 JSON，`fromWorkflowDefinition` 反过来。下面把费用审批换成引擎定义，再读回查看器；去掉坐标读回时，节点按连线自左向右重新排开：
+
+
+```ts
+const definition: XihanWorkflowDefinition = toWorkflowDefinition(schema)
+const json = JSON.stringify(definition, null, 2)
+```
+
+```ts
+const readBack = button('去掉坐标后读回', () => {
+  const saved = JSON.parse(json) as XihanWorkflowDefinition
+  const { designerLayout: _, ...extraProperties } = saved.extraProperties ?? {}
+  viewer.schema = fromWorkflowDefinition({ ...saved, extraProperties })
+})
+const original = button('按保存的坐标读回', () => {
+  viewer.schema = fromWorkflowDefinition(JSON.parse(json) as XihanWorkflowDefinition)
+})
+```
+
+字段这样对应：
+
+| 流程定义 | 引擎定义 |
+| --- | --- |
+| 节点的 `type` | 节点的 `activityType` |
+| 节点的 `label` | 节点的 `name` |
+| 节点 `data` 里的字段（`properties`、`retryPolicy`、`timeoutSeconds`、`continueOnError` 等） | 节点上的同名字段 |
+| 连线的 `source.node`、`target.node` | 连线的 `sourceNodeId`、`targetNodeId` |
+| 连线的 `label` | 连线的 `name` |
+| 连线 `data` 里的字段（`condition`、`priority`、`isDefault` 等） | 连线上的同名字段 |
+| 流程定义 `data` 里的字段（`code`、`name`、`category` 等） | 定义顶层的同名字段 |
+| 节点坐标 | `extraProperties.designerLayout` |
+| 连线的拐点与连线自己写的外观（由 `isDefault` 推出的虚线不写） | `extraProperties.designerEdges` |
+| 节点、连线与流程定义上的扩展数据 | `extraProperties.designerExtensions` |
+
+- `extraProperties` 里这三项是 JSON 字符串，引擎不读，原样存着。节点的宽高不存，读回时按活动类型取。
+- 读回时节点没有坐标，就按连线自左向右分层排出坐标，所以引擎里用代码写的定义也能直接打开。连线没有 id 时补成「源->目标#序号」，值为 `null` 的字段去掉；结构不对时抛 `TypeError`。
+- 引擎定义里没列出的字段原样保留，往返之后不丢。示例里的费用审批换成引擎定义再读回与原来一致，文档站的检查会核对这一点。
+
+保存时把 `toWorkflowDefinition(designer.schema)` 交给后端，引擎在发布时再按它自己的规则把关；打开时把后端给的定义交给 `fromWorkflowDefinition`，结果赋给 `schema`。
+
+---
+
+来源：https://flow.docs.xihanfun.com/reference/core
+
+# 模型层 core
+
+<!-- 本页由 docs/scripts/gen-reference.mjs 从源码生成，不要手改；源码变了之后在 docs/ 运行 pnpm gen。 -->
+
+`@xihan-flow/core` 是纯 TypeScript 的模型层：流程定义的类型、读入检查、校验、编辑操作、连线几何、节点类型登记与扩展合并，不依赖 DOM，浏览器、Node.js 与其它 JavaScript 运行环境里都能用。流程定义的字段见[流程定义类型](./schema)，问题码见[问题码](./issues)。下表按源码模块列出全部导出。
+
+## 全部导出
+
+### extensions
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `createFlowModel` | 函数 | 合出流程模型：内置扩展 FLOW_CORE_EXTENSION 在前，extensions 按顺序在后。 |
+| `FLOW_CORE_EXTENSION` | 常量 | 内置扩展：连线的标签与虚线。 |
+| `FLOW_EXTENSION_SPACES` | 常量 | 流程各层扩展共用的名字空间：节点类型、连线属性路径与流程定义级属性路径。 |
+| `FlowCoreExtension` | 接口 | 流程 core 层的扩展：节点类型、连线属性、流程定义级属性、编辑方式与规则。 |
+| `FlowModel` | 接口 | 一组扩展合出的流程模型：节点类型、连线与流程定义级属性、编辑方式。 |
+| `FlowRuleContext` | 接口 | 规则拿到的上下文：合并后的节点类型。 |
+| `patchExtensionData` | 函数 | 某个扩展的数据写进对象原有的 extensions 后的新值，交给 updateNode / updateEdge / updateDocument 的 patch.extensions：别的扩展的数据原样保留；data 为 undefined 时去掉这一块，去完为空时为 null（即删掉 extensions 字段）。 |
+
+### geometry
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `computeEdgeGeometry` | 函数 | 求全部连线的折线：带折点的连线依次穿过折点，其余交给 route；两端都以端口位置为起止。 |
+| `FlowEdgeAnchor` | 接口 | 连线的一端：端口位置与离开（起点）或进入（终点）节点的那一边。 |
+| `FlowEdgeGeometry` | 接口 | 一条连线的几何；端点解析不出时 points 为空、anchored 为 false。 |
+| `FlowEdgeRouter` | 类型 | 路由器：给出从起点锚点到终点锚点的完整折线（含两端）。 |
+| `FlowRouteRequest` | 接口 | 路由器的输入：两端锚点与要绕开的节点框。 |
+| `resolveEdgeAnchor` | 函数 | 解析连线一端的锚点；节点不存在、类型未知或没有可用端口时返回 undefined。 |
+
+### issues
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `FlowEdgeEnd` | 类型 | 连线的一端。 |
+| `FlowIssue` | 类型 | 一条问题：问题码、从文档根算起的路径、所在对象（节点为 { kind: 'node', id }，连线为 { kind: 'edge', id }）、严重程度与参数，不带文案。 |
+| `FlowIssueCode` | 类型 | 全部问题码。 |
+| `FlowSchemaIssueCode` | 类型 | 读取未知输入时的结构问题码：通用问题码之外只有版本不受支持。 |
+| `FlowValidationIssueCode` | 类型 | 按节点类型登记表校验文档时的问题码；required 与取值问题码来自节点属性检查。 |
+
+### operations
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `applyOperation` | 函数 | 应用一个编辑操作，返回新文档与逆操作，不修改输入文档；未改动的节点与连线沿用原引用。 |
+| `applyOperations` | 函数 | 依次应用一组操作；逆操作为各操作逆操作按反序拼接。 |
+| `FlowDocumentPatch` | 接口 | 文档字段补丁：缺省表示不变，null 表示删除该字段。 |
+| `FlowEdgePatch` | 接口 | 连线字段补丁：缺省表示不变，null 表示删除该字段。 |
+| `FlowNodePatch` | 接口 | 节点字段补丁：缺省表示不变，null 表示删除该字段。 |
+| `FlowNodePosition` | 接口 | 节点的新位置。 |
+| `FlowOperation` | 类型 | 编辑操作；所有操作都是纯 JSON。 |
+| `FlowOperationError` | 类 | 操作无法应用时抛出的错误；文档保持不变。 |
+| `FlowOperationErrorCode` | 类型 | 操作失败原因。 |
+| `FlowOperationResult` | 接口 | 应用操作的结果：新文档与按顺序应用即可撤销的逆操作；没有带来变化时文档是传入的同一引用、逆操作为空。 |
+| `FlowOperationType` | 类型 | 操作类型名。 |
+
+### read
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `FlowReadResult` | 类型 | 读取结果：成功时给出规范化后的文档副本，失败时给出全部结构问题。 |
+| `readDocument` | 函数 | 把未知输入读成文档：逐项检查字段类型、必填项与多余字段，返回不与输入共享引用的副本。 |
+
+### registry
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `createNode` | 函数 | 按节点类型新建节点：尺寸、标签与 data 取类型默认值，init 中给出的字段优先；再把属性描述的缺省值写进还没有值的路径。 |
+| `createNodeTypeRegistry` | 函数 | 创建节点类型登记表；定义不合法时抛错。 |
+| `findPort` | 函数 | 查找节点类型上的端口。 |
+| `FlowConnectionRule` | 接口 | 连接约束。 |
+| `FlowEdgeStyleRule` | 接口 | 按连线数据给的外观：when 对连线本身求值，满足时并上 style。 |
+| `FlowNodeDefaults` | 接口 | 新建节点时的默认值。 |
+| `FlowNodeInit` | 接口 | 新建节点的参数。 |
+| `FlowNodeType` | 接口 | 规范化后的节点类型：端口展开为具名端口列表。 |
+| `FlowNodeTypeDefinition` | 接口 | 节点类型定义：同时驱动物料面板、属性面板、连线约束与结构校验。 |
+| `FlowNodeTypeRegistry` | 接口 | 节点类型登记表。 |
+| `FlowPort` | 接口 | 规范化后的端口。 |
+| `FlowPortDefinition` | 接口 | 具名端口定义。 |
+| `FlowPortDirection` | 类型 | 端口方向：只入、只出或双向。 |
+| `FlowPortPreset` | 类型 | 端口预设：in 为左侧入口 in，out 为右侧出口 out，both 为两者都有，none 为无端口。 |
+| `FlowPortSide` | 类型 | 端口所在的节点边。 |
+| `FlowPropertyControl` | 类型 | 节点属性的编辑方式：内建的编辑方式之外，扩展可以登记自己的种类（如受理人选择），编辑器由设计器层的扩展提供。 |
+| `FlowPropertyDescriptor` | 类型 | 节点属性描述：path 相对节点本身，如 ['data', 'properties', 'Url']、['label']。 |
+| `getPortPosition` | 函数 | 计算端口在世界坐标系中的位置。 |
+| `portAllows` | 函数 | 判断端口能否作为连线的指定一端：起点需可出，终点需可入。 |
+| `resolveEdgeStyle` | 函数 | 连线此刻的外观：源节点类型的 outgoingEdgeStyles 按先后并上满足条件的，连线自己写的 style 再逐项压过；源节点类型未知时只有连线自己写的。 |
+
+### schema
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `createDocument` | 函数 | 创建空文档。 |
+| `FLOW_DOCUMENT_VERSION` | 常量 | 当前文档 schema 版本。 |
+| `FlowDocument` | 接口 | 流程图文档；数组顺序即绘制层级，靠后的在上层。 |
+| `FlowEdge` | 接口 | 连线：起止端点、标签、外观、业务数据与可选折点。 |
+| `FlowEdgeStyle` | 接口 | 连线外观。 |
+| `FlowEndpoint` | 接口 | 连线端点：节点与可选端口。 |
+| `FlowNode` | 接口 | 节点：左上角坐标、尺寸、可选标签与业务数据。 |
+| `FlowPoint` | 接口 | 世界坐标系中的点。 |
+| `FlowRect` | 接口 | 轴对齐矩形。 |
+| `FlowSize` | 接口 | 尺寸。 |
+
+### validate
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `checkConnection` | 函数 | 检查在 source 与 target 之间新增一条连线是否违反端口与连接约束，返回全部问题；空数组表示允许连接。 |
+| `DEFAULT_ISSUE_SEVERITY` | 常量 | 各问题码的缺省严重程度。 |
+| `FlowConnectionCheckOptions` | 接口 | 连接检查选项。 |
+| `FlowConnectionIssueCode` | 类型 | 连接检查可能给出的问题码。 |
+| `FlowConnectionProblem` | 接口 | 一条连接问题；end 指出问题出在哪一端，自环问题不带 end。 |
+| `FlowValidateOptions` | 接口 | 校验选项。 |
+| `resolveEndpointPort` | 函数 | 解析端点实际连接的端口：指定了端口时按 id 查找，否则取第一个允许该端的端口。 |
+| `validateDocument` | 函数 | 按扩展合出的流程模型校验文档结构，返回全部问题，每条都带上严重程度。 |
+
+---
+
+来源：https://flow.docs.xihanfun.com/reference/designer
+
+# 设计器
+
+<!-- 本页由 docs/scripts/gen-reference.mjs 从源码生成，不要手改；源码变了之后在 docs/ 运行 pnpm gen。 -->
+
+`<xh-flow-designer>` 编辑流程定义，类在 `@xihan-flow/designer` 里导出为 `XhFlowDesigner`，调用 `defineFlowDesigner()` 注册。用法见[设计器](../guide/designer)。
+
+## 元素 xh-flow-designer
+
+### 属性
+
+| 属性 | attribute | 类型 | 说明 |
+| --- | --- | --- | --- |
+| `readonly` | `readonly` | `boolean \| undefined` | 只读：可以选择与浏览，不能修改；缺省 false。同名 attribute 三态：不写为缺省，写 "false" 为 false，其余写法（空串、"true" 等）为 true。 |
+| `autoTour` | `auto-tour` | `boolean \| undefined` | 设计器第一次显示出来、画布铺好之后自动开始新手引导，缺省开；藏着时不开始；设置里记过 help.tourDone（走完、跳过或关上过一次）时不再自动开始。写 false 关掉，start-tour 命令、帮助页的「开始引导」与 startTour() 照样能开始。同名 attribute auto-tour，写 "false" 是关。 |
+| `grid` | — | `number \| false` | 拖动与新建节点时吸附的网格边长，false 不吸附网格；缺省 16。 |
+| `defaultLayout` | — | `DesignerLayout \| undefined` | 面板布局的缺省：设置里还没有 layout.panels 时用它，「恢复默认布局」也回到它；不给按各面板登记的位置，全部显示。用户挪了面板、改了显隐或大小，整份布局写进设置的 layout.panels（DESIGNER_SETTING_KEYS.layout）并派发 settings-change。 |
+| `paletteGroupOrder` | — | `readonly string[] \| undefined` | 物料面板里先列出的类别及其顺序，其余类别按登记顺序排在后面。 |
+| `paletteGroupLabels` | — | `Readonly<Record<string, string>> \| undefined` | 物料面板的类别标题，缺省直接显示 category。 |
+| `propertyGroupOrder` | — | `readonly string[] \| undefined` | 属性面板里先列出的分组及其顺序，其余分组按首次出现的顺序排在后面。 |
+| `propertyGroupLabels` | — | `Readonly<Record<string, string>> \| undefined` | 属性面板的分组标题，缺省直接显示分组 id。 |
+| `commandLayout` | — | `DesignerCommandLayout \| undefined` | 工具栏与各右键菜单的命令排列：toolbar、menu:node、menu:edge、menu:blank → 若干组命令 id。写了某个位置就只显示列出的命令；没写的位置用内置排列，再把 placement 含它的扩展命令追加成一组。 |
+| `validateOptions` | — | `Omit<FlowValidateOptions, 'extensions'> \| undefined` | 校验选项：按问题码覆盖严重程度，扩展规则的问题码也认。 |
+| `router` | — | `FlowEdgeRouter \| undefined` | 连线路由器，缺省为直角路由。 |
+| `settings` | — | `DesignerSettings \| undefined` | 设置的值：扁平的键值，键是「分区 id.条目 id」，如 general.theme、flow.snap；没写的键取条目的缺省值。赋值即生效；用户在设置对话框里改了以后设计器换成新的一份并派发 settings-change。 |
+| `settingsPolicy` | — | `DesignerSettingsPolicy \| undefined` | 宿主对设置条目的管控：键是条目键或分区 id，hidden 不显示，locked 只读、说明换成「由所在系统管理」。 |
+| `settingsStorageKey` | `settings-storage-key` | `string \| undefined` | 设置存在根所在窗口 localStorage 的哪个键下：给了，连上文档时若没赋 settings 就从这里读，用户改了设置就写回去，标了 secret 的条目不存；读写失败派发 settings-storage-error。不给就不读写。同名 attribute settings-storage-key。 |
+| `draftKey` | `draft-key` | `string \| undefined` | 自动保存草稿的键：区分同一页、同一种设计器里的不同流程（宿主写流程 id）；不给时按页面地址区分。设置里开着自动保存时，未保存的修改停手约一秒存成这台浏览器里的草稿；下次装进同一个键的流程、和草稿不一样时问恢复还是丢弃。同名 attribute draft-key。 |
+| `translations` | — | `Partial<FlowDesignerTranslations> \| undefined` | 元素自己的文案，压在全局配置之上。 |
+
+### 存取器
+
+| 属性 | 读写 | 类型 | 说明 |
+| --- | --- | --- | --- |
+| `schema` | 可读写 | `FlowDocument` | 流程定义。赋值时装载、清空撤销历史，视口按实际大小（100%）摆好（赋回当前这一份不重新装载）；读取时得到当前定义。 |
+| `extensions` | 可读写 | `readonly FlowDesignerExtension[] \| undefined` | 扩展：节点类型、节点渲染、属性编辑器、命令、面板、导入器与导出器都从这里来，内置扩展自动排在最前。赋值时当场合并查重，冲突抛 DesignerExtensionError、什么都不变；各扩展的 setup 在元素连上文档时调用、断开时清理。同一个扩展对象换了引用当作卸下再装上，宿主要保持引用稳定。 |
+| `canUndo` | 只读 | `boolean` | 有可以撤销的一步。 |
+| `canRedo` | 只读 | `boolean` | 有可以重做的一步。 |
+| `canPaste` | 只读 | `boolean` | 剪贴板里有内容，paste() 能贴出东西。 |
+| `xhConfig` | 只读 | `XhConfig` | 设计器这棵子树的配置：设置里选了语言时是这一语言的 UI、designer-shell 与流程语言包，跟随页面时是空对象。设计器自己、里面的元素与它弹出的浮层都按它取 locale 与文案，页面别处不受影响。 |
+| `canImport` | 只读 | `boolean` | 装了导入器：粘贴与拖进画布的外部内容、openFile() 选的文件都交给它们。 |
+| `dirty` | 只读 | `boolean` | 有未保存的修改。 |
+
+### 方法
+
+| 方法 | 说明 |
+| --- | --- |
+| `execute(operations: readonly FlowOperation[], options?: ExecuteOptions): FlowDocument` | 执行一组操作并记为一步撤销；返回新的定义。 |
+| `undo(): boolean` | 撤销一步；没有可撤销的返回 false。 |
+| `redo(): boolean` | 重做一步；没有可重做的返回 false。 |
+| `markSaved(): void` | 把当前状态记为已保存。 |
+| `addNode(type: string, at?: FlowPoint): FlowNode` | 新建节点并选中：at 是节点中心的世界坐标，缺省放在视口中央（中央被占时往右下错开）；位置吸附网格。 |
+| `select(selection: Partial<FlowSelection>): void` | 换成选中这些节点与连线，没写的一类清空。 |
+| `getSelection(): FlowSelection` | 当前选中的节点与连线。 |
+| `deleteSelection(): boolean` | 删除选中的节点（连带相连的连线）与连线；只读或没有选中时返回 false。 |
+| `copy(): FlowClipboard \| undefined` | 复制选中的节点与两端都被选中的连线，同时写进系统剪贴板；没有选中节点时返回 undefined。 |
+| `cut(): FlowClipboard \| undefined` | 复制选中内容后删除选中的节点与连线，同时写进系统剪贴板；只读或没有选中节点时返回 undefined。 |
+| `paste(clipboard?: FlowClipboard, options?: { readonly at?: FlowPoint }): FlowSelection` | 粘贴并选中粘贴出的对象，返回它们；每次比上一次多偏移一格网格（不吸附网格时 24）。缺省用设计器剪贴板里的内容，给了 clipboard 时它成为剪贴板内容；给了 at（世界坐标）时内容整体的中心放到那里、左上角吸附网格，不累加偏移。只读或剪贴板是空的时什么都不做，返回空选择。 |
+| `runCommand(id: string): boolean` | 执行一条命令（内置的或扩展的）：命令存在、此刻可用才执行，返回是否执行了；给扩展与宿主替用户操作设计器用。 |
+| `openFile(): void` | 弹出选择文件的对话框，选中的文件交给导入器：按扩展顺序问 accepts，第一个接下的导入；导入的片段放在视口中央，整份流程定义换掉当前定义。没有导入器接下时派发 import-error。只读或没有导入器时什么都不做。 |
+| `export(format: string, options?: Readonly<Record<string, unknown>>): Promise<Blob \| string>` | 导出成文件：交给登记了这种格式的第一个导出器，options 原样交给它；没有导出器认这种格式时返回以 RangeError 拒绝的 Promise。 |
+| `duplicate(): FlowSelection` | 复制选中内容并立即粘贴，偏移一格网格，不改动剪贴板；只读时什么都不做，返回空选择。 |
+| `align(mode: AlignMode): void` | 对齐选中的节点；少于两个或只读时什么都不做。 |
+| `distribute(axis: DistributeAxis): void` | 等距分布选中的节点；少于三个或只读时什么都不做。 |
+| `autoLayout(options?: FlowAutoLayoutOptions): void` | 按连线方向分层排布全部节点，左上角保持在原处，并清除连线的手动拐点；记为一步，只读时什么都不做。没给的方向与间距取设置里「画布」分区的值。 |
+| `openSettings(section?: string): void` | 打开设置对话框，给了分区 id 就显示那一页：基础是 general，设计器自己的「画布」是 flow。 |
+| `startTour(): boolean` | 从头开始新手引导：通用步骤加流程与扩展的步骤，同一页里别的引导开着时先收起它；没有能走的步骤时返回 false。 |
+| `openJsonEditor(): void` | 打开编辑整份流程定义 JSON 的对话框：写出当前定义，边改边按读入检查与校验报问题；没有错误时「应用」整份换上，记一步撤销。只读时只能看、不能应用。 |
+| `validate(): FlowIssue[]` | 按当前扩展与校验选项校验定义。 |
+| `getViewport(): Viewport` | 当前视口。 |
+| `getViewportCenter(): FlowPoint` | 视口中央的世界坐标；画布还没有尺寸时是原点。 |
+| `setViewport(viewport: Viewport): void` | 设置视口；此后尺寸变化不再自动摆视口。 |
+| `zoomToFit(): void` | 缩放并平移到让整张图落在视口中央，小图不放大到 100% 以上；此后尺寸变化时重新适配，直到设置视口或在画布上按下指针。 |
+| `zoomIn(): void` | 以视口中心放大一档。 |
+| `zoomOut(): void` | 以视口中心缩小一档。 |
+| `zoomToActual(): void` | 缩放到 100% 并把整张图居中。 |
+| `scrollToNode(id: string): void` | 把节点居中显示。 |
+| `revealNode(id: string): void` | 节点没整个落在视口内时把它居中，已在视口内则不动。 |
+| `revealEdge(id: string): void` | 连线没整条落在视口内时把它移进来，已在视口内则不动。 |
+| `clientToWorld(clientX: number, clientY: number): FlowPoint` | 浏览器视口坐标换成画布的世界坐标。 |
+
+### 事件
+
+事件都是冒泡的 `CustomEvent`。
+
+| 事件 | detail | 说明 |
+| --- | --- | --- |
+| `schema-change` | `{ schema: FlowDocument, operations: readonly FlowOperation[], kind: FlowSchemaChangeKind }` | 流程定义变了：带新定义、这次的操作与种类；拖动等成组的修改在结束时合成一次派发，装载新定义时 operations 为空。 |
+| `selection-change` | `FlowSelection` | 选中的节点与连线变了。 |
+| `dirty-change` | `{ dirty: boolean }` | 有没有未保存的修改变了。 |
+| `issues-change` | `{ issues: readonly FlowIssue[] }` | 流程定义、扩展或校验选项变了之后重新校验，带全部问题。 |
+| `connect-reject` | `{ source: FlowEndpoint, target: FlowEndpoint, problems: readonly FlowConnectionProblem[] }` | 拖出或改连的连线违反连接约束，没有连上；带两端与全部问题。 |
+| `node-dblclick` | `{ id: string }` | 双击了节点。 |
+| `node-contextmenu` | `{ id: string, x: number, y: number }` | 在节点上打开右键菜单，节点没被选中时先选中它；可以取消，取消后内置菜单与浏览器的右键菜单都不出现。 |
+| `edge-contextmenu` | `{ id: string, x: number, y: number }` | 在连线上打开右键菜单，连线没被选中时先选中它；可以取消。 |
+| `blank-contextmenu` | `{ x: number, y: number }` | 在画布空白处打开右键菜单；可以取消。 |
+| `viewport-change` | `{ viewport: Viewport }` | 视口变了：缩放、平移、适配与 setViewport 都会派发。 |
+| `import-error` | `{ importer?: string, source: DesignerImportSource, error: unknown }` | 导入没有成功：导入器抛了错，或给出的节点、连线或流程定义不合法、用了没登记的节点类型，importer 是导入器的 id；openFile() 选的文件没有导入器接下时也派发，此时没有 importer。 |
+| `export` | `{ format: FlowImageFormat, blob: Blob }` | 工具栏的导出命令导出了图片，带格式与文件；可以取消，取消后设计器不自己下载，宿主拿 blob 自己存。没被取消时存成 flow.png 或 flow.svg 下载。 |
+| `save` | `Record<string, never>` | 画布有焦点时按了 Ctrl / ⌘ + S；设计器不自己保存。 |
+| `settings-change` | `{ key: string, value: JsonValue \| undefined, settings: DesignerSettings }` | 在设置对话框里改了一条设置，或在外框上挪了面板（键是 layout.panels，值是整份布局）：设计器已换成新的 settings 并生效（主题、主题色、吸附与自动布局的选项、面板布局）；value 为 undefined 表示删掉这个键、回到缺省值。宿主存起来，下次赋回 settings。 |
+| `settings-storage-error` | `VisualEnvironmentStorageError` | 读写 settingsStorageKey 指的本机存储失败（内容不是对象、无痕窗口、配额满）；设置留在内存里。 |
+
+## 注册
+
+### defineFlowDesigner() {#defineflowdesigner}
+
+```ts
+declare function defineFlowDesigner(): void
+```
+
+注册 &lt;xh-flow-designer&gt; 与它用到的 UI 元素、设计器零件（零件各自带上它们内部用的 UI 元素）；宿主不必再全量注册。重复调用不报错。
+
+## 内置命令
+
+内置命令登记在 `FLOW_DESIGNER_EXTENSION` 里，工具栏、右键菜单与 `commandLayout` 都按 id 引用。名称取自中文语言包；快捷键在画布有焦点时生效，Ctrl / ⌘ 在 macOS 上是 ⌘，其它系统是 Ctrl。
+
+| 命令 | 名称 | 图标 | 快捷键 | 只读时 |
+| --- | --- | --- | --- | --- |
+| `open-file` | 打开文件 | `FolderOpenIcon` | — | 不可用 |
+| `undo` | 撤销 | `UndoIcon` | `Ctrl / ⌘ + Z` | 不可用 |
+| `redo` | 重做 | `RedoIcon` | `Ctrl / ⌘ + Shift + Z`、`Ctrl + Y` | 不可用 |
+| `clear-history` | 清空历史 | `EraserIcon` | — | 不可用 |
+| `cut` | 剪切 | `ScissorsIcon` | — | 不可用 |
+| `copy` | 复制 | `CopyIcon` | — | 可用 |
+| `paste` | 粘贴 | `ClipboardIcon` | — | 不可用 |
+| `duplicate` | 创建副本 | `CopyPlusIcon` | `Ctrl / ⌘ + D` | 不可用 |
+| `delete` | 删除 | `TrashIcon` | `Delete` | 不可用 |
+| `select-all` | 全选 | `SquareDashedIcon` | `Ctrl / ⌘ + A` | 可用 |
+| `align-left` | 左对齐 | `AlignObjectsLeftIcon` | — | 不可用 |
+| `align-center` | 水平居中 | `AlignObjectsCenterIcon` | — | 不可用 |
+| `align-right` | 右对齐 | `AlignObjectsRightIcon` | — | 不可用 |
+| `align-top` | 顶端对齐 | `AlignObjectsTopIcon` | — | 不可用 |
+| `align-middle` | 垂直居中 | `AlignObjectsMiddleIcon` | — | 不可用 |
+| `align-bottom` | 底端对齐 | `AlignObjectsBottomIcon` | — | 不可用 |
+| `distribute-horizontal` | 水平等距分布 | `DistributeHorizontalIcon` | — | 不可用 |
+| `distribute-vertical` | 垂直等距分布 | `DistributeVerticalIcon` | — | 不可用 |
+| `align-menu` | 对齐与分布 | `AlignObjectsLeftIcon` | — | 不可用 |
+| `auto-layout` | 自动布局 | `WorkflowIcon` | — | 不可用 |
+| `clear-vertices` | 清除拐点 | `EraserIcon` | — | 不可用 |
+| `zoom-out` | 缩小 | `ZoomOutIcon` | `-` | 可用 |
+| `zoom-in` | 放大 | `ZoomInIcon` | `+` | 可用 |
+| `zoom-to-fit` | 适合窗口 | `MaximizeIcon` | `0` | 可用 |
+| `zoom-to-actual` | 实际大小 | `ZoomResetIcon` | — | 可用 |
+| `export-png` | 导出 PNG | `FileImageIcon` | — | 可用 |
+| `export-svg` | 导出 SVG | `FileCodeIcon` | — | 可用 |
+| `save` | 保存 | `SaveIcon` | `Ctrl / ⌘ + S` | 可用 |
+| `panels` | 面板 | `PanelLeftIcon` | — | 可用 |
+| `panels-toggle-all` | 显示或隐藏所有面板 | — | `Ctrl / ⌘ + \` | 可用 |
+| `panels-restore` | 还原面板显隐 | — | `Ctrl / ⌘ + Shift + \` | 可用 |
+| `layout-reset` | 恢复默认布局 | — | — | 可用 |
+| `pan-tool` | 拖动 | `HandIcon` | `H` | 可用 |
+| `settings` | 设置 | `SettingsIcon` | `Ctrl / ⌘ + ,` | 可用 |
+| `shortcuts` | 快捷键 | — | — | 可用 |
+| `about` | 关于 | `InfoIcon` | — | 可用 |
+| `edit-json` | 编辑 JSON | `FileCodeIcon` | `Ctrl / ⌘ + Shift + J` | 可用 |
+| `help` | 帮助 | `CircleHelpIcon` | — | 可用 |
+| `start-tour` | 开始引导 | `MapIcon` | — | 可用 |
+| `show-toolbar` | 工具栏 | — | — | 可用 |
+| `show-status-bar` | 状态栏 | — | — | 可用 |
+| `appearance` | 外观 | `EyeIcon` | — | 可用 |
+| `panel:palette` | 节点 | — | — | 可用 |
+| `panel:outline` | 流程结构 | — | — | 可用 |
+| `panel:properties` | 属性 | — | — | 可用 |
+| `panel:issues` | 问题 | — | — | 可用 |
+| `panel:minimap` | 小地图 | — | — | 可用 |
+| `panel:history` | 历史记录 | — | — | 可用 |
+
+### FLOW_TOOLBAR_LAYOUT {#flow_toolbar_layout}
+
+工具栏的缺省排列；commandLayout 没写 toolbar 时用它，再把 placement 含 toolbar 的扩展命令追加成一组。设置与帮助在菜单栏里，工具栏末组只留面板；有导入器时的变化见 flowToolbarLayout。
+
+| 组 | 命令 |
+| --- | --- |
+| 1 | `undo` `redo` |
+| 2 | `delete` `duplicate` |
+| 3 | `align-left` `align-center` `align-right` `align-top` `align-middle` `align-bottom` `distribute-horizontal` `distribute-vertical` `auto-layout` |
+| 4 | `pan-tool` `zoom-out` `zoom-in` `zoom-to-fit` `zoom-to-actual` |
+| 5 | `export-png` `export-svg` |
+| 6 | `panels` |
+
+### flowToolbarLayout() {#flowtoolbarlayout}
+
+```ts
+declare function flowToolbarLayout(hasImporters: boolean): (readonly string[])[]
+```
+
+工具栏此刻的缺省排列：有导入器时在 FLOW_TOOLBAR_LAYOUT 前面多一组打开文件。
+
+### flowMenuLayout() {#flowmenulayout}
+
+```ts
+declare function flowMenuLayout(subject: FlowMenuSubject, selectedNodes: number): string[][]
+```
+
+右键菜单的缺省排列：节点菜单在选中两个以上时加对齐，三个以上时加分布；空白处的末尾是编辑 JSON。
+
+### FlowMenuSubject {#flowmenusubject}
+
+```ts
+type FlowMenuSubject = 'node' | 'edge' | 'blank'
+```
+
+右键菜单落在哪类对象上。
+
+## 类型
+
+### FlowSchemaChangeKind {#flowschemachangekind}
+
+```ts
+type FlowSchemaChangeKind = 'execute' | 'undo' | 'redo' | 'load'
+```
+
+schema-change 的种类：执行操作、撤销、重做，或宿主装载了新定义。
+
+### FLOW_PANELS {#flow_panels}
+
+```ts
+const FLOW_PANELS = { palette: 'palette', outline: 'outline', properties: 'properties', issues: 'issues', minimap: 'minimap', history: 'history' } as const
+```
+
+设计器登记的面板与画布浮动件的 id：宿主写 defaultLayout、settingsPolicy（layout.panels.&lt;面板 id&gt;）时用它，不手写字符串。各有一条开关命令 panel:&lt;面板 id&gt;。
+
+### FlowSelection {#flowselection}
+
+选中的节点与连线 id，各自按选中先后排列。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `nodes` | `readonly string[]` | 选中的节点 id。 |
+| `edges` | `readonly string[]` | 选中的连线 id。 |
+
+### FlowClipboard {#flowclipboard}
+
+剪贴板内容：被复制的节点及两端都在其中的连线。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `nodes` | `readonly FlowNode[]` | 被复制的节点。 |
+| `edges` | `readonly FlowEdge[]` | 两端都在 nodes 里的连线。 |
+
+### FlowAutoLayoutOptions {#flowautolayoutoptions}
+
+自动布局选项。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `direction?` | `LayeredDirection` | 分层方向：TB 自上而下、BT 自下而上、LR 自左而右、RL 自右而左；缺省 TB。 |
+| `nodeGap?` | `number` | 同层相邻两节点之间的空隙，缺省 24。 |
+| `layerGap?` | `number` | 相邻两层之间的空隙，缺省 48。 |
+| `label?` | `HistoryLabel` | 这一步的说明，供撤销重做按钮提示与历史记录；可以是现取的函数，跟着语言变。 |
+
+## 文案
+
+### FlowDesignerTranslations {#flowdesignertranslations}
+
+设计器的文案。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `label` | `string` | 画布区域的可访问名。 |
+| `openFile` | `string` | 选一个文件交给导入器。 |
+| `autoLayout` | `string` |  |
+| `clearVertices` | `string` | 去掉连线的手动拐点，交回自动路由。 |
+| `exportPng` | `string` | 导出成 PNG 图片。 |
+| `exportSvg` | `string` | 导出成 SVG 图片。 |
+| `exportImage` | `string` | 内置图片导出器的名称。 |
+| `palette` | `string` | 物料面板的标题。 |
+| `minimap` | `string` | 小地图的名字：面板菜单与设计器的面板命令用。 |
+| `paletteUncategorized` | `string` | 没有类别的节点类型所在分组的标题。 |
+| `propertiesEmpty` | `string` | 没有选中时属性面板里的提示。 |
+| `edge` | `string` | 属性面板里连线的类型名。 |
+| `issuesEmpty` | `string` | 没有问题时问题列表里的提示。 |
+| `paletteHelp` | `string` | 物料面板头的帮助。 |
+| `propertiesHelp` | `string` | 属性面板头的帮助。 |
+| `issuesHelp` | `string` | 问题列表面板头的帮助。 |
+| `settingsCanvas` | `string` | 设置里设计器自己那一页（画布）的名字。 |
+| `settingsLayoutDirection` | `string` | 设置：自动布局方向的标签。 |
+| `settingsLayoutDirectionHint` | `string` | 设置：自动布局方向的说明。 |
+| `settingsLayoutDirections` | `Readonly<Record<LayeredDirection, string>>` | 设置：自动布局各个方向的名字。 |
+| `settingsNodeGap` | `string` | 设置：同层节点间距的标签。 |
+| `settingsNodeGapHint` | `string` | 设置：同层节点间距的说明。 |
+| `settingsLayerGap` | `string` | 设置：层间距的标签。 |
+| `settingsLayerGapHint` | `string` | 设置：层间距的说明。 |
+| `settingsSnap` | `string` | 设置：吸附对齐开关的标签。 |
+| `settingsSnapHint` | `string` | 设置：吸附对齐开关的说明。 |
+| `statusZoom` | `string` | 状态栏：缩放一项的标签。 |
+| `selectionToolbar` | `string` | 选中节点时浮在选中框上的选中工具条的可访问名。 |
+| `alignMenu` | `string` | 内置命令：对齐与分布菜单，点开列出六种对齐与两种分布。 |
+| `flow` | `string` | 不落在节点或连线上的问题（如节点个数）所属的对象名。 |
+| `startVariableColumns` | `Readonly<Record<FlowStartVariableColumn, string>>` | 启动变量表的列名。 |
+| `startVariableAdd` | `string` | 启动变量表的新增按钮。 |
+| `tourSteps` | `Readonly<Record<FlowTourStepKey, FlowTourStepTranslations>>` | 新手引导里流程自己的几步：标题与说明。 |
+| `helpNotes` | `readonly string[]` | 设置对话框「帮助」页的几段操作说明。 |
+| `shortcutNudge` | `string` | 快捷键页：方向键一行按流程的做法改写的说明。 |
+| `shortcutCancel` | `string` | 快捷键页：Esc 一行按流程的做法改写的说明。 |
+| `shortcutContextMenu` | `string` | 快捷键页：Shift + F10 与菜单键一行的说明。 |
+| `outline` | `FlowOutlineTranslations` | 流程结构面板（页面结构零件）的标题、帮助、搜索框与空状态，压在零件文案之上。 |
+| `history` | `FlowHistoryTranslations` | 撤销历史里一步的说明。 |
+
+| 方法 | 说明 |
+| --- | --- |
+| `propertiesMultiple(count: number): string` | 选中多个对象时属性面板标题下的一行。 |
+| `propertyLabel(key: string): string` | 属性描述没有给 label 时的标签，key 是 formatJsonPath 写出的属性路径。 |
+| `issue(issue: FlowIssue, names: FlowIssueNames): string` | 问题的说明文字。 |
+| `propertyIssue(property: string, message: string): string` | 落在某个属性上的问题：属性名与问题说明拼在一起。 |
+| `statusSelected(count: number): string` | 状态栏：选中多个对象时左边写的话。 |
+| `statusDocument(nodes: number, edges: number): string` | 状态栏：什么都没选中时左边写流程里有多少节点与连线。 |
+| `statusGeometry(x: number, y: number, width: number, height: number): string` | 状态栏：选中一个节点时写它的位置与尺寸（世界坐标，取整）。 |
+| `startVariableCell(row: number, column: string): string` | 启动变量表里一格的可访问名：第几个变量（从 1 起）、哪一列。 |
+
+### FlowDesignerLocale {#flowdesignerlocale}
+
+一种语言的设计器文案：问题说明与内建属性名写成表，其余与 FlowDesignerTranslations 相同。
+
+继承 `Omit<FlowDesignerTranslations, 'issue' | 'propertyLabel'>`。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `issues` | `Readonly<Record<FlowIssueCode, FlowIssueMessage>>` | 每个问题码的说明。 |
+| `propertyLabels` | `Readonly<Record<FlowBuiltinPropertyKey, string>>` | 内建属性没有给 label 时的属性名。 |
+
+### FlowIssueMessage {#flowissuemessage}
+
+```ts
+type FlowIssueMessage = (text: (key: string) => string, type: (key: string) => string) => string
+```
+
+一条问题说明：text 取参数的文字，type 取参数里那个节点类型的显示名。
+
+### FlowBuiltinPropertyKey {#flowbuiltinpropertykey}
+
+```ts
+type FlowBuiltinPropertyKey = 'label' | 'style.dashed'
+```
+
+设计器内建的属性路径，formatJsonPath 的写法。
+
+## 全部导出
+
+### clipboard
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `decodeFlowClipboard` | 函数 | 解析剪贴板文本：不是流程的剪贴板包、版本不认得、节点或连线的结构不合法、id 重复时返回 undefined。 |
+| `encodeFlowClipboard` | 函数 | 把剪贴板内容序列化成剪贴板包的 JSON 文本。 |
+
+### editor
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `FlowAutoLayoutOptions` | 接口 | 自动布局选项。 |
+| `FlowClipboard` | 接口 | 剪贴板内容：被复制的节点及两端都在其中的连线。 |
+| `FlowSelection` | 接口 | 选中的节点与连线 id，各自按选中先后排列。 |
+
+### extensions
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `createFlowDesignerModel` | 函数 | 合出设计器用的模型；editors 是垫在各扩展之下的内建编辑器。 |
+| `FLOW_DESIGNER_EXTENSION` | 常量 | 设计器的内置扩展：内置命令、图片导出器、流程结构与历史记录两块面板、引导步骤。 |
+| `FLOW_DESIGNER_HELP_URL` | 常量 | 内置命令 help 打开的帮助页：流程文档站的设计器一页。 |
+| `FLOW_PANELS` | 常量 | 设计器登记的面板与画布浮动件的 id：宿主写 defaultLayout、settingsPolicy（layout.panels.&lt;面板 id&gt;）时用它，不手写字符串。 |
+| `FLOW_TOOLBAR_LAYOUT` | 常量 | 工具栏的缺省排列；commandLayout 没写 toolbar 时用它，再把 placement 含 toolbar 的扩展命令追加成一组。 |
+| `FLOW_TOUR_STEPS` | 常量 | 新手引导里流程自己的几步，排在通用步骤之后：连线（指向第一个端口）、自动布局与导出图片（指向工具栏上的钮）。 |
+| `FlowDesignerCommand` | 类型 | 设计器的命令。 |
+| `FlowDesignerContext` | 接口 | 命令、面板与扩展装上时拿到的上下文。 |
+| `FlowDesignerExporter` | 类型 | 导出器：把当前流程定义换成文件。 |
+| `FlowDesignerExtension` | 接口 | 流程设计器层的扩展：运行时层的全部字段，加上属性编辑器、命令、面板、物料来源、导入器、导出器与 setup。 |
+| `FlowDesignerImporter` | 类型 | 导入器：把粘贴、拖放或打开的文件换成片段或整份流程定义；返回 undefined 即什么都不放。 |
+| `FlowDesignerModel` | 接口 | 一组设计器扩展合出的东西：交给 core 函数的列表、运行时模型、命令表、属性编辑器表、导入器与导出器。 |
+| `FlowExportContext` | 接口 | 导出时交给导出器的上下文：设计器的上下文，加上调用 export() 时给的选项。 |
+| `FlowImportDocument` | 接口 | 导入的整份流程定义：换掉当前定义并记一步撤销，视口随后适配。 |
+| `FlowImportFragment` | 接口 | 导入的片段：一组节点与连线，整体挪到落点后按粘贴的规则换新 id 放进流程定义，选中它们并记一步撤销。 |
+| `FlowImportResult` | 类型 | 导入的结果：一个片段，或一整份流程定义。 |
+| `flowMenubarLayout` | 函数 | 菜单栏的缺省排列：designer-shell 四张菜单的缺省排列；没有导入器时文件菜单里不列打开文件，与工具栏一致。 |
+| `flowMenuLayout` | 函数 | 右键菜单的缺省排列：节点菜单在选中两个以上时加对齐，三个以上时加分布；空白处的末尾是编辑 JSON。 |
+| `FlowMenuSubject` | 类型 | 右键菜单落在哪类对象上。 |
+| `FlowPaletteSource` | 类型 | 物料来源：往物料面板里加的几组；条目被激活时 at 没有，拖到画布上放下时 at 是松手处的世界坐标。 |
+| `flowSelectionLayout` | 函数 | 选中工具条（命令落点 selection:&lt;主体&gt;）的缺省排列：都有创建副本、复制与删除；几个节点时前面多一个对齐与分布菜单（align-menu，单条对齐命令照样能经 commandLayout 排上来）。 |
+| `FlowSelectionSubject` | 类型 | 选中工具条落在哪类选中上：一个节点，或几个节点。 |
+| `flowToolbarLayout` | 函数 | 工具栏此刻的缺省排列：有导入器时在 FLOW_TOOLBAR_LAYOUT 前面多一组打开文件。 |
+
+### flow-designer
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `defineFlowDesigner` | 函数 | 注册 &lt;xh-flow-designer&gt; 与它用到的 UI 元素、设计器零件（零件各自带上它们内部用的 UI 元素）；宿主不必再全量注册。 |
+| `FLOW_DESIGNER_TAG` | 常量 | 设计器的标签名。 |
+| `FlowDesignerEventMap` | 接口 | 设计器派发的事件；x / y 为浏览器视口坐标。 |
+| `FlowSchemaChangeKind` | 类型 | schema-change 的种类：执行操作、撤销、重做，或宿主装载了新定义。 |
+| `XhFlowDesigner` | 类 | 流程设计器 &lt;xh-flow-designer&gt;：在画布上编辑流程定义。 |
+
+### panels/properties
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `FlowPropertyEditor` | 类型 | 宿主提供的属性编辑器。 |
+| `FlowPropertyEditorContext` | 类型 | 交给属性编辑器的上下文：target 是当前全部被编辑的对象。 |
+| `FlowPropertyEditorInstance` | 类型 | 属性编辑器实例。 |
+| `FlowPropertyTarget` | 类型 | 交给属性编辑器的对象：kind 是节点类型（连线为 edge，流程定义为 document），value 是节点、连线或流程定义本身。 |
+
+### settings
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `FLOW_SETTING_KEYS` | 常量 | 「画布」分区各条目的键，即 settings 里的键（分区 id.条目 id）。 |
+| `FLOW_SETTINGS_SECTION` | 常量 | 设计器自己那个设置分区的 id，扩展不能再用。 |
+
+### version
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `FLOW_VERSION` | 常量 | @xihan-flow/designer 的版本号。 |
+
+---
+
+来源：https://flow.docs.xihanfun.com/reference/extensions
+
+# 扩展
+
+<!-- 本页由 docs/scripts/gen-reference.mjs 从源码生成，不要手改；源码变了之后在 docs/ 运行 pnpm gen。 -->
+
+扩展分三层：core 层登记节点类型、属性、编辑方式与规则，校验与编辑操作只读这一层；运行时层再加节点内容的渲染，见[查看器参考](./viewer#flowruntimeextension)；设计器层再加属性编辑器、命令、面板、导入器、导出器与 `setup`。下层的扩展对象可以直接交给上层的元素。用法见[扩展](../guide/extensions)。
+
+## core 层
+
+### FlowCoreExtension {#flowcoreextension}
+
+流程 core 层的扩展：节点类型、连线属性、流程定义级属性、编辑方式与规则。运行时层与设计器层的扩展在它之上再加渲染、命令与面板，core 函数只读这里的字段。
+
+继承 `DesignerExtensionCore<FlowDocument, FlowRuleContext>`。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `nodeTypes?` | `readonly FlowNodeTypeDefinition[]` | 节点类型；类型名在全部扩展里不能重复。 |
+| `edgeProperties?` | `readonly FlowPropertyDescriptor[]` | 不随源节点类型的连线属性，path 相对连线本身，追加在内置之后；随源节点类型的写在节点类型的 outgoingEdges 上。 |
+| `documentProperties?` | `readonly FlowPropertyDescriptor[]` | 流程定义级属性，path 相对文档本身，没选中任何对象时属性面板显示它们。 |
+
+| 方法 | 说明 |
+| --- | --- |
+| `issueText(issue: FlowIssue): string \| undefined` | 这个扩展自己的问题码的说明文字；返回 undefined 时交给设计器的文案。 |
+
+### DesignerExtensionCore {#designerextensioncore}
+
+扩展里只含纯数据与纯函数的部分：校验、计算这类 core 函数读它。
+
+`FlowCoreExtension` 从 XiHan.UI 继承的字段。
+
+类型参数 `Doc = unknown`、`RuleCtx = unknown`。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | `string` | 全局唯一，用包名加功能名：@xihan-flow-pro/simulation。也是模板里扩展数据的键。 |
+| `controls?` | `Readonly<Record<string, ControlKind>>` | 新的编辑方式，键是 control.kind，不能与内建的重名。 |
+| `rules?` | `readonly SchemaRule<Doc, RuleCtx>[]` | 校验规则，问题与内置校验的一起进问题列表；问题码以 id 的末段加点开头。 |
+
+### SchemaRule {#schemarule}
+
+```ts
+type SchemaRule<Doc = unknown, RuleCtx = unknown> = (document: Doc, context: RuleCtx) => readonly SchemaIssue[]
+```
+
+校验规则：给出文档的问题。问题码必须以扩展 id 的末段加点开头，如 xihan-workflow.decision-no-default。
+
+### FlowRuleContext {#flowrulecontext}
+
+规则拿到的上下文：合并后的节点类型。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `nodeTypes` | `FlowNodeTypeRegistry` | 全部扩展登记的节点类型。 |
+
+### ControlKind {#controlkind}
+
+新的编辑方式：属性描述里 control.kind 等于登记的键时，checkProperties 用它校验取值。
+
+| 方法 | 说明 |
+| --- | --- |
+| `check(value: JsonValue, control: { readonly kind: string }): string \| undefined` | 检查已填写的取值；没问题返回 undefined，否则给出问题码。不给即不检查取值。 |
+
+### createFlowModel() {#createflowmodel}
+
+```ts
+declare function createFlowModel(extensions?: readonly FlowCoreExtension[]): FlowModel
+```
+
+合出流程模型：内置扩展 FLOW_CORE_EXTENSION 在前，extensions 按顺序在后。扩展 id、节点类型、属性路径、编辑方式等重名时抛 DesignerExtensionError；节点类型的 outgoingEdges 与不随源节点类型的连线属性同路径也抛。同一个数组只合一次：元素把同一份 extensions 交给各个 core 函数时不重复合并。
+
+### FlowModel {#flowmodel}
+
+一组扩展合出的流程模型：节点类型、连线与流程定义级属性、编辑方式。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `extensions` | `readonly FlowCoreExtension[]` | 内置扩展在前，传入的按顺序在后。 |
+| `nodeTypes` | `FlowNodeTypeRegistry` | 全部扩展登记的节点类型。 |
+| `edgeProperties` | `readonly FlowPropertyDescriptor[]` | 不随源节点类型的连线属性。 |
+| `documentProperties` | `readonly FlowPropertyDescriptor[]` | 流程定义级属性。 |
+| `controls` | `Readonly<Record<string, ControlKind>>` | 扩展登记的编辑方式。 |
+
+| 方法 | 说明 |
+| --- | --- |
+| `edgePropertiesOf(sourceType: string \| undefined): readonly FlowPropertyDescriptor[]` | 某条连线的属性：不随源节点类型的，加上源节点类型的 outgoingEdges；源节点类型未知时只有前者。 |
+| `issueText(issue: FlowIssue): string \| undefined` | 问题的说明文字：按扩展顺序取第一个给出的；都不给时为 undefined。 |
+
+## 节点类型
+
+### FlowNodeTypeDefinition {#flownodetypedefinition}
+
+节点类型定义：同时驱动物料面板、属性面板、连线约束与结构校验。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `type` | `string` | 类型名，节点的 type 写它。 |
+| `label?` | `string` | 显示名：物料面板、属性面板的标题与问题说明里用它，不给时显示 type；节点自己没写标签时画布上也显示它。 |
+| `category?` | `string` | 物料面板里的类别，按它分组。 |
+| `icon?` | `IconRecord` | 图标：内置的节点渲染画在文字前面，物料面板的条目也显示它；自定义的节点渲染可以从节点类型上读它。 |
+| `size` | `FlowSize` | 新建节点的尺寸。 |
+| `ports` | `FlowPortPreset \| readonly FlowPortDefinition[]` | 端口：预设，或具名端口的列表。 |
+| `defaults?` | `FlowNodeDefaults` | 新建节点时写入的标签与 data。 |
+| `connection?` | `FlowConnectionRule` | 连接约束：入出线条数与能连的节点类型。 |
+| `entry?` | `boolean` | 作为可达性分析的起点，且不要求有入线。 |
+| `terminal?` | `boolean` | 不要求有出线。 |
+| `minCount?` | `number` | 文档中该类型节点的最少个数。 |
+| `maxCount?` | `number` | 文档中该类型节点的最多个数。 |
+| `properties?` | `readonly FlowPropertyDescriptor[]` | 属性面板里的属性，path 相对节点本身；校验按它们检查取值。 |
+| `outgoingEdges?` | `readonly FlowPropertyDescriptor[]` | 从这类节点连出的连线多出的属性，path 相对连线本身，如决策节点出线的条件与是否默认分支。 |
+| `outgoingEdgeStyles?` | `readonly FlowEdgeStyleRule[]` | 从这类节点连出的连线按数据给的外观，如条件分支的默认分支画成虚线：按先后逐条看，满足的依次并上。连线自己写的 style 逐项压过它们；推出的外观只用于绘制，不写回流程定义。 |
+| `meta?` | `JsonObject` | 扩展自用的数据；内核不解释。 |
+
+### FlowPortPreset {#flowportpreset}
+
+```ts
+type FlowPortPreset = 'in' | 'out' | 'both' | 'none'
+```
+
+端口预设：in 为左侧入口 in，out 为右侧出口 out，both 为两者都有，none 为无端口。
+
+### FlowPortDefinition {#flowportdefinition}
+
+具名端口定义。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | `string` | 端口 id，连线端点的 port 写它；同一节点类型里不能重复。 |
+| `direction` | `FlowPortDirection` | 方向：in 只能连入，out 只能连出，both 两样都行。 |
+| `side` | `FlowPortSide` | 端口在节点的哪条边上。 |
+| `offset?` | `number` | 沿所在边从左到右或从上到下的相对位置，取值 0 到 1，缺省 0.5。 |
+| `label?` | `string` | 端口的显示名：设计器把它写在端口外侧，随端口一起显出；内核不解释。 |
+| `maxConnections?` | `number` | 该端口最多连接的连线数。 |
+
+### FlowPortDirection {#flowportdirection}
+
+```ts
+type FlowPortDirection = 'in' | 'out' | 'both'
+```
+
+端口方向：只入、只出或双向。
+
+### FlowPortSide {#flowportside}
+
+```ts
+type FlowPortSide = 'top' | 'right' | 'bottom' | 'left'
+```
+
+端口所在的节点边。
+
+### FlowConnectionRule {#flowconnectionrule}
+
+连接约束。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `maxIncoming?` | `number` | 最大入度。 |
+| `maxOutgoing?` | `number` | 最大出度。 |
+| `allowedTargets?` | `readonly string[]` | 允许连向的节点类型；缺省时不限。 |
+| `allowedSources?` | `readonly string[]` | 允许连入的来源节点类型；缺省时不限。 |
+| `allowSelfLoop?` | `boolean` | 是否允许连向自身，缺省不允许。 |
+
+### FlowNodeDefaults {#flownodedefaults}
+
+新建节点时的默认值。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `label?` | `string` | 新节点的标签。 |
+| `data?` | `JsonObject` | 新节点的 data，每次新建时深拷贝一份。 |
+
+### FlowEdgeStyleRule {#flowedgestylerule}
+
+按连线数据给的外观：when 对连线本身求值，满足时并上 style。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `when` | `PropertyCondition` | 条件，路径相对连线本身，如 ['data', 'isDefault']；写法同属性描述的 visibleWhen。 |
+| `style` | `FlowEdgeStyle` | 满足条件时的外观。 |
+
+## 属性描述
+
+### FlowPropertyDescriptor {#flowpropertydescriptor}
+
+```ts
+type FlowPropertyDescriptor = PropertyDescriptor<FlowPropertyControl>
+```
+
+节点属性描述：path 相对节点本身，如 ['data', 'properties', 'Url']、['label']。
+
+### FlowPropertyControl {#flowpropertycontrol}
+
+```ts
+type FlowPropertyControl = PropertyControl | { readonly kind: string }
+```
+
+节点属性的编辑方式：内建的编辑方式之外，扩展可以登记自己的种类（如受理人选择），编辑器由设计器层的扩展提供。
+
+### PropertyDescriptor {#propertydescriptor}
+
+一个可编辑属性。C 是编辑方式，产品可在内建之外扩展自己的种类：`PropertyDescriptor<PropertyControl | { kind: 'stroke' }>`。
+
+类型参数 `C extends { readonly kind: string } = PropertyControl`。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `path` | `JsonPath` | 值相对被编辑对象（节点、元素、字段本身）的路径。 |
+| `control` | `C` | 编辑方式：kind 定用哪种编辑器、按什么校验，其余字段是这种方式的选项（选项表、数值约束等）。 |
+| `group?` | `string` | 分组 id；分组的先后与文案由产品决定。 |
+| `label?` | `string` | 标签；不给时由产品按 formatJsonPath(path) 去语言包里查。 |
+| `required?` | `boolean` | 显示时必须填写，按 isFilled 判空。 |
+| `default?` | `JsonValue` | 新建时写入的缺省值；不给就不写。 |
+| `visibleWhen?` | `PropertyCondition` | 显示条件；缺省总是显示。 |
+| `enabledWhen?` | `PropertyCondition` | 可用条件，写法同 visibleWhen；不满足时照样显示、但只读。缺省总是可用。 |
+| `meta?` | `JsonObject` | 产品自用，内核不解释。 |
+
+### PropertyCondition {#propertycondition}
+
+```ts
+type PropertyCondition = { readonly path: JsonPath, readonly equals: JsonValue } | { readonly path: JsonPath, readonly oneOf: readonly JsonValue[] } | { readonly path: JsonPath, readonly filled: boolean } | { readonly all: readonly PropertyCondition[] } | { readonly any: readonly PropertyCondition[] } | { readonly not: PropertyCondition }
+```
+
+显示条件：path 与属性描述的 path 一样相对被编辑的对象，可用 all / any / not 组合。
+
+## 设计器层
+
+### FlowDesignerExtension {#flowdesignerextension}
+
+流程设计器层的扩展：运行时层的全部字段，加上属性编辑器、命令、面板、物料来源、导入器、导出器与 setup。
+
+继承 `FlowRuntimeExtension`、`Omit<DesignerShellExtension<FlowDesignerContext, FlowPropertyEditor, FlowDocument, FlowRuleContext, FlowPoint>, 'importers' | 'exporters'>`。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `importers?` | `readonly FlowDesignerImporter[]` | 导入器：粘贴、拖放与打开文件共用，按扩展顺序问 accepts，第一个接下的导入；id 不能与别的导入器重名。 |
+| `exporters?` | `readonly FlowDesignerExporter[]` | 导出器：export(format) 交给登记了这种格式的第一个；id 不能与别的导出器重名。 |
+
+### DesignerExtensionBase {#designerextensionbase}
+
+设计器层的扩展：在 core 部分之上加属性编辑器、命令、导入导出与装上时的回调。各款在此之上加自己的种类、渲染与面板。
+
+`FlowDesignerExtension` 从 XiHan.UI 继承的字段。`importers`、`exporters` 由流程收窄了结果与上下文的类型，见上表。
+
+类型参数 `Ctx = unknown`、`Editor = PropertyEditor`、`Doc = unknown`、`RuleCtx = unknown`。
+
+继承 `DesignerExtensionCore<Doc, RuleCtx>`。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `editors?` | `PropertyEditorLayer<Editor>` | 属性编辑器，按扩展顺序压在设计器内建的之上。 |
+| `commands?` | `readonly DesignerCommand<Ctx>[]` | 命令：工具栏按钮、右键菜单项与快捷键共用；命令 id 与快捷键不能与内置或别的扩展的重名。 |
+| `fieldSources?` | `readonly DesignerFieldSource[]` | 字段来源：导入字段的对话框里，排在内置的 JSON 样例与 JSON Schema 两页之后。 |
+
+| 方法 | 说明 |
+| --- | --- |
+| `setup(context: Ctx): (() => void) \| void` | 装上时调用，返回卸下时的清理。 |
+
+### DesignerShellExtension {#designershellextension}
+
+带面板的设计器层扩展；各款的设计器扩展在此之上加种类、渲染与物料。
+
+`FlowDesignerExtension` 从 XiHan.UI 继承的字段。
+
+类型参数 `Ctx = unknown`、`Editor = PropertyEditor`、`Doc = unknown`、`RuleCtx = unknown`、`At = unknown`。
+
+继承 `DesignerExtensionBase<Ctx, Editor, Doc, RuleCtx>`。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `panels?` | `readonly DesignerPanel<Ctx>[]` | 面板：各占外框的一个命名区，同一栏按扩展顺序上下排。 |
+| `settings?` | `readonly DesignerSettingsSection[]` | 设置分区：放进设置对话框，分区 id 不能与内置的 general 或别的扩展的重名，见 collectSettingsSections。 |
+| `tourSteps?` | `readonly DesignerTourStep<Ctx>[]` | 新手引导的步骤：与 designer-shell 的通用步骤、各款的步骤一起按 order 排；id 不能重名，见 collectTourSteps。 |
+| `paletteSources?` | `readonly DesignerPaletteSource<Ctx, At>[]` | 物料来源：往物料面板里加的几组，排在各款内置分组之后；id 不能重名，见 collectPaletteSources。At 是各款的落点信息。 |
+| `about?` | `readonly { readonly label: string, readonly value: string }[]` | 「关于」页里的几行，如附加包的版本与授权；各款把它们接在自己那几行后面。 |
+| `menubarMenus?` | `readonly DesignerMenubarMenu<Ctx>[]` | 菜单栏上加的菜单：id 不能与内置的文件、编辑、视图、帮助或别的扩展的重名，见 collectMenubarMenus；命令经 placement 的 menubar:&lt;id&gt; 落进去。 |
+
+### FlowDesignerContext {#flowdesignercontext}
+
+命令、面板与扩展装上时拿到的上下文。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `designer` | `XhFlowDesigner` | 这台设计器。 |
+| `translations` | `FlowDesignerTranslations` | 此刻生效的设计器文案。 |
+| `commandTranslations` | `DesignerCommandsTranslations` | 此刻生效的四款共用的命令文案（designer-shell 语言包的 xh-designer-commands 一桶）。 |
+| `settings` | `DesignerSettings` | 此刻生效的设置，键是「分区 id.条目 id」：设计器自己的「画布」与各扩展分区里的条目写了用写的、没写取缺省值，基础分区（general.*）只有宿主或用户写了的键。 |
+| `frame` | `XhDesignerFrameElement \| undefined` | 设计器的外框：面板的开关经它；外框还没建出来时为 undefined。 |
+
+### createFlowDesignerModel() {#createflowdesignermodel}
+
+```ts
+declare function createFlowDesignerModel(extensions: readonly FlowDesignerExtension[], editors?: PropertyEditorLayer<FlowPropertyEditor>): FlowDesignerModel
+```
+
+合出设计器用的模型；editors 是垫在各扩展之下的内建编辑器。任何一处重名（含引导步骤 id 重名或用了 shell. 前缀、物料来源 id 重名、菜单栏的菜单 id 重名）都抛 DesignerExtensionError。
+
+### FlowDesignerModel {#flowdesignermodel}
+
+一组设计器扩展合出的东西：交给 core 函数的列表、运行时模型、命令表、属性编辑器表、导入器与导出器。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `list` | `readonly FlowDesignerExtension[]` | 设计器内置扩展在前、传入的在后；校验与编辑器都拿这一份。 |
+| `extensions` | `readonly FlowDesignerExtension[]` | 再加上 core 层内置扩展的全部扩展，面板与命令按它的顺序。 |
+| `runtime` | `FlowRuntimeModel` | 运行时模型：节点类型、属性与节点渲染。 |
+| `commands` | `DesignerCommandTable<FlowDesignerContext>` | 命令 id → 命令，内置在前。 |
+| `editors` | `PropertyEditorTable<FlowPropertyEditor>` | 各扩展登记的属性编辑器叠成的一张表。 |
+| `importers` | `readonly FlowDesignerImporter[]` | 各扩展的导入器，按扩展顺序。 |
+| `exporters` | `readonly FlowDesignerExporter[]` | 各扩展的导出器，按扩展顺序。 |
+| `settings` | `readonly DesignerSettingsSection[]` | 各扩展登记的设置分区，按扩展顺序。 |
+| `tourSteps` | `readonly DesignerTourStep<FlowDesignerContext>[]` | 新手引导里设计器与各扩展的步骤，按登记顺序；designer-shell 的通用步骤由零件自带。 |
+| `paletteSources` | `readonly FlowPaletteSource[]` | 各扩展的物料来源，按 order 排。 |
+| `menubarMenus` | `readonly DesignerMenubarMenu<FlowDesignerContext>[]` | 菜单栏上的菜单：designer-shell 内置的文件、编辑、视图、帮助在前，各扩展登记的在后。 |
+
+## 命令
+
+### FlowDesignerCommand {#flowdesignercommand}
+
+```ts
+type FlowDesignerCommand = DesignerCommand<FlowDesignerContext>
+```
+
+设计器的命令。
+
+### DesignerCommand {#designercommand}
+
+一条命令：工具栏按钮、右键菜单项与快捷键共用。给了 panel 是弹层命令，给了 menu 是菜单命令，在工具栏上点它分别打开锚在按钮上的弹层与菜单，两者只能给一个；两者都没给的普通命令必须有 run。登记时（mergeExtensions）不合这两条就抛 TypeError。
+
+类型参数 `Ctx = unknown`。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | `string` | 全局唯一；扩展的命令用扩展 id 加点加名字，如 @xihan-flow-pro/simulation.run。 |
+| `label` | `string \| ((context: Ctx) => string)` | 按钮与菜单项上的文字；给函数时每次刷新现取，随语言变。 |
+| `shortLabel?` | `string \| ((context: Ctx) => string)` | 按钮上看得见的短文字：工具栏只显示图标时没有图标的按钮上写它；不给用 label。名字（读屏与提示）仍取 label，所以短文字要出现在 label 里（不分大小写），开发期不在时报一条告警。 |
+| `icon?` | `IconRecord` | 按钮与菜单项上的图标，图标集见 @xihan-ui/icons；工具栏按图标显示时，没有图标的命令退回显示短文字。 |
+| `placement?` | `readonly DesignerCommandPlacement[]` | 缺省排列里出现在哪些位置；不给即只经快捷键或 commandLayout 出现。 |
+| `shortcut?` | `readonly string[]` | 快捷键，写法同 xh-kbd 的 keys：['Mod', 'Shift', 'P']，Mod 在 macOS 上是 ⌘，其余平台是 Ctrl。 |
+| `alternateShortcuts?` | `readonly (readonly string[])[]` | 另外几组也能触发这条命令的快捷键，写法同 shortcut，如重做在 Mod+Shift+Z 之外再认 ['Ctrl', 'Y']。与 shortcut 一样查重、一样由 commandForShortcut 命中；提示里只显示 shortcut，快捷键表与 aria-keyshortcuts 全部列出（见 commandShortcuts）。 |
+| `tone?` | `Tone` | 语气：按钮与菜单项按这族色显示，破坏性命令写 danger。不给即不带语气。 |
+
+| 方法 | 说明 |
+| --- | --- |
+| `enabled(context: Ctx): boolean` | 不给即总是可用。 |
+| `visible(context: Ctx): boolean` | 不给即总是存在；返回 false 时这条命令此刻不存在：工具栏、菜单栏、右键菜单与菜单命令里都不列它，快捷键不触发，执行也不跑（如只在开发者模式下才有的调试入口）。 |
+| `checked(context: Ctx): boolean` | 给了就是开关式命令，按钮与菜单项显示选中状态。 |
+| `run(context: Ctx): void` | 执行命令；按钮、菜单项与快捷键都只在命令此刻可用时调用它。弹层命令与菜单命令可以不给：工具栏上点它们是打开弹层或菜单，不调 run；给了 run，快捷键按下时调它（通常调工具栏的 open 打开同一份）。 |
+| `panel(context: Ctx): DesignerCommandPanel<Ctx>` | 弹层命令：每次打开时建出放进弹层的面板。 |
+| `menu(context: Ctx): readonly DesignerCommandMenuEntry[]` | 菜单命令：每次刷新时现算菜单的各项。 |
+| `select(value: string, context: Ctx): void` | 菜单命令的条目被选中时调用，value 是条目的 value；写成命令 id 的项选中时执行那条命令，不调它。 |
+
+### DesignerCommandPlacement {#designercommandplacement}
+
+```ts
+type DesignerCommandPlacement = 'toolbar' | `menubar:${string}` | `menu:${string}` | `selection:${string}`
+```
+
+命令出现的位置：工具栏；菜单栏上的某张菜单（菜单 id，如 file、edit、view、help，或各款与扩展登记的）；某种主体的右键菜单（主体由各款定，如 node、edge、element、card、blank）；或选中某种主体时浮在选中框上的选中工具条（主体同样由各款定，如 element、text、node、multiple）。
+
+## 导入与导出
+
+### FlowDesignerImporter {#flowdesignerimporter}
+
+```ts
+type FlowDesignerImporter = DesignerImporter<FlowDesignerContext, FlowImportResult | undefined>
+```
+
+导入器：把粘贴、拖放或打开的文件换成片段或整份流程定义；返回 undefined 即什么都不放。
+
+### FlowImportResult {#flowimportresult}
+
+```ts
+type FlowImportResult = FlowImportFragment | FlowImportDocument
+```
+
+导入的结果：一个片段，或一整份流程定义。
+
+### FlowImportFragment {#flowimportfragment}
+
+导入的片段：一组节点与连线，整体挪到落点后按粘贴的规则换新 id 放进流程定义，选中它们并记一步撤销。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `nodes` | `readonly FlowNode[]` |  |
+| `edges?` | `readonly FlowEdge[]` | 两端都在 nodes 里的连线；别的连线丢弃。 |
+
+### FlowImportDocument {#flowimportdocument}
+
+导入的整份流程定义：换掉当前定义并记一步撤销，视口随后适配。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `document` | `FlowDocument` |  |
+
+### DesignerImporter {#designerimporter}
+
+导入：把外部内容换成片段或文档，结果的形状由各款定。
+
+类型参数 `Ctx = unknown`、`Result = unknown`。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | `string` | 全局唯一，写法同命令 id；不能与内置或别的扩展的导入器重名。 |
+| `fileTypes?` | `readonly string[]` | 打开文件时选择框认的类型：MIME 类型（application/json、image/*）或扩展名（.json）。各款用 importerAccept 拼成 accept。 |
+
+| 方法 | 说明 |
+| --- | --- |
+| `accepts(source: DesignerImportSource): boolean` | 接不接这个来源：只看类型、文件名或文本，不读文件内容，当场返回。 |
+| `import(source: DesignerImportSource, context: Ctx): Result \| Promise<Result>` | 把接下的来源换成结果，可以是异步的；结果的形状与抛错后怎么报由各款定。 |
+
+### DesignerImportSource {#designerimportsource}
+
+导入的来源：粘贴、拖放与打开文件三处共用。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `kind` | `'clipboard' \| 'drop' \| 'file'` | 从哪里来：clipboard 粘贴，drop 拖放，file 打开文件。 |
+| `mime?` | `string` | 内容的类型：文件取文件自己的类型，文本是 text/uri-list、text/html 或 text/plain。 |
+| `name?` | `string` | 文件名；只有文件有。 |
+| `text?` | `string` | 文本内容；只有文本有，文件的内容要从 file 里读。 |
+| `file?` | `Blob` | 文件；只有文件有。 |
+
+### FlowDesignerExporter {#flowdesignerexporter}
+
+```ts
+type FlowDesignerExporter = DesignerExporter<FlowExportContext>
+```
+
+导出器：把当前流程定义换成文件。
+
+### FlowExportContext {#flowexportcontext}
+
+导出时交给导出器的上下文：设计器的上下文，加上调用 export() 时给的选项。
+
+继承 `FlowDesignerContext`。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `options` | `Readonly<Record<string, unknown>>` |  |
+
+### DesignerExporter {#designerexporter}
+
+导出：把当前文档或渲染结果换成文件。
+
+类型参数 `Ctx = unknown`。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | `string` | 全局唯一，写法同命令 id；不能与内置或别的扩展的导出器重名。 |
+| `label` | `string \| ((context: Ctx) => string)` | 导出项的名称，列导出入口时显示；给函数时现取，随语言变。 |
+| `formats` | `readonly string[]` | 能导出的格式，如 svg、png、xlsx。 |
+
+| 方法 | 说明 |
+| --- | --- |
+| `export(format: string, context: Ctx): Promise<Blob \| string>` | 按格式导出，format 是 formats 里的一个；得到文件内容（Blob）或文本。 |
+
+## 面板
+
+### DesignerPanel {#designerpanel}
+
+扩展登记的一个面板：占外框的一个命名区，区名不能与内置区或别的扩展的重名。
+
+类型参数 `Ctx = unknown`。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `region` | `DesignerFrameRegion` | 外框的命名区，即面板的登记：名字、缺省停的栏、标题、图标、能不能挪与浮出等；追加在内置区之后。 |
+| `headerCommands?` | `readonly string[] \| ((context: Ctx) => readonly string[])` | 面板头操作区里的命令（命令 id），按命令表铺成只显示图标的一小条工具栏；给函数时每轮刷新现取。 |
+
+| 方法 | 说明 |
+| --- | --- |
+| `create(context: Ctx): DesignerPanelInstance<Ctx>` | 面板装上时调用，建出面板实例；同一个面板对象只建一次。 |
+
+### DesignerPanelInstance {#designerpanelinstance}
+
+面板实例：element 放进外框的区，设计器状态变化时调用 update，撤掉前调用 destroy。
+
+类型参数 `Ctx = unknown`。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `element` | `HTMLElement` | 面板的根元素，以 slot 交给外框，放进登记的那个区。 |
+
+| 方法 | 说明 |
+| --- | --- |
+| `update(context: Ctx): void` | 设计器状态变化后调用，面板按新状态刷新。 |
+| `destroy(): void` | 面板被撤掉前调用。 |
+
+### DesignerFrameRegion {#designerframeregion}
+
+一个命名区，也就是面板的登记。区名是面板 id，同一栏的多块面板按登记顺序上下排列。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `name` | `string` | 区名：写 slot="&lt;区名&gt;" 的子元素放进这个区，布局里也按它认面板。 |
+| `position` | `DesignerFramePosition` | 区的位置；左、右、下是面板缺省停的栏。 |
+| `size?` | `number` | 所在栏的缺省大小（百分比）：左右两栏占中间一行的宽度，下方一栏占中间一列的高度；取那一栏第一块面板的值。 |
+| `minSize?` | `number` | 拖动时所在栏的下限（百分比），缺省 10；取那一栏第一块面板的值。外框按尺寸槽算出的下限更大时以那个为准。 |
+| `label?` | `string` | 分隔条无障碍名称里的区名，缺省用 title，再缺省用 name。 |
+| `title?` | `string` | 面板头的标题：给了就把这块面板画成卡片，头部写标题；只对左、右、下三个位置生效。 |
+| `subtitle?` | `string` | 面板头标题下的一行副标题，如属性面板当前对象的名字。 |
+| `help?` | `string` | 面板头的帮助：给了就在右上角出帮助钮，悬停或聚焦时弹出这段说明。 |
+| `icon?` | `IconRecord` | 面板的图标：面板菜单、浮出小窗的标题栏里用。 |
+| `anchor?` | `DesignerFrameOverlayAnchor` | position 为 overlay 时落在画布区的哪里，缺省 bottom-end。 |
+| `defaultHidden?` | `boolean` | 缺省不显示。 |
+| `closable?` | `boolean` | 能隐藏（面板头出关闭钮），缺省 true。 |
+| `movable?` | `boolean` | 能换栏、调序，缺省 true。 |
+| `floatable?` | `boolean` | 能浮出成小窗，缺省 true。 |
+| `minimizable?` | `boolean` | 能收成标题条，缺省 true。 |
+
+### DesignerFramePosition {#designerframeposition}
+
+```ts
+type DesignerFramePosition = 'menubar' | 'top' | 'start' | 'center' | 'end' | 'bottom' | 'status' | 'overlay'
+```
+
+区的位置：最上的菜单栏、下面一条（工具栏）、中间一行的左、中、右、中间一列的下方、最下的状态栏，以及画布浮动件。左、右、下三个位置上的区是面板，这里写的是它缺省停的栏，用户可以挪。
+
+## 属性编辑器
+
+### FlowPropertyEditor {#flowpropertyeditor}
+
+```ts
+type FlowPropertyEditor = DesignerPropertyEditor
+```
+
+宿主提供的属性编辑器。
+
+### FlowPropertyEditorContext {#flowpropertyeditorcontext}
+
+```ts
+type FlowPropertyEditorContext = PropertyEditorContext<DesignerPropertyDescriptor, readonly DesignerPropertyTarget[]>
+```
+
+交给属性编辑器的上下文：target 是当前全部被编辑的对象。
+
+### FlowPropertyEditorInstance {#flowpropertyeditorinstance}
+
+```ts
+type FlowPropertyEditorInstance = PropertyEditorInstance<DesignerPropertyDescriptor, readonly DesignerPropertyTarget[]>
+```
+
+属性编辑器实例。
+
+### FlowPropertyTarget {#flowpropertytarget}
+
+```ts
+type FlowPropertyTarget = DesignerPropertyTarget
+```
+
+交给属性编辑器的对象：kind 是节点类型（连线为 edge，流程定义为 document），value 是节点、连线或流程定义本身。
+
+### PropertyEditorTable {#propertyeditortable}
+
+编辑器查找表；E 可以是 PropertyEditor，也可以是编辑器 id。路径键用 formatJsonPath 的写法。
+
+类型参数 `E`。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `byControl` | `Readonly<Record<string, E>>` | 按编辑方式的种类。 |
+| `byPath?` | `Readonly<Record<string, E>>` | 按属性路径，对所有对象种类生效。 |
+| `byTarget?` | `Readonly<Record<string, Readonly<Record<string, E>>>>` | 按对象种类与属性路径，只对该种类生效。 |
+
+### PropertyEditorContext {#propertyeditorcontext}
+
+交给自定义编辑器的上下文；D 是属性描述，T 是被编辑的对象（如节点、元素、字段）。
+
+类型参数 `D = unknown`、`T = unknown`。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `value` | `JsonValue \| undefined` | 属性的当前值，未设置时为 undefined。 |
+| `descriptor` | `D` | 正在编辑的这个属性的描述。 |
+| `target` | `T` | 被编辑的对象。 |
+| `readonly` | `boolean` | 只读：编辑器只显示，不写值。 |
+| `issues` | `readonly PropertyIssue[]` | 落在这个属性及其里层的问题，按路径排、同一路径只留一条，没有时是空数组。复合编辑器（选项表、四边、列配置）据此把里层的问题标到对应的子项上。 |
+
+| 方法 | 说明 |
+| --- | --- |
+| `setValue(value: JsonValue \| undefined): void` | 写入新值，undefined 表示清除；连续输入由设计器并为一步撤销。 |
+| `commit(): void` | 一次编辑结束（如失焦）：此后的写入另起一步撤销。 |
+
+### PropertyEditorInstance {#propertyeditorinstance}
+
+编辑器实例：设计器把 element 放进属性面板，值或只读状态变化时调用 update，移除前调用 destroy。
+
+类型参数 `D = unknown`、`T = unknown`。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `element` | `HTMLElement` | 编辑器的根元素，设计器把它放进属性面板。 |
+| `nestedIssues?` | `boolean` | 编辑器自己把里层的问题标到子项上：只有里层问题时，设计器不在这一行下面重复显示它们。 |
+
+| 方法 | 说明 |
+| --- | --- |
+| `update(context: PropertyEditorContext<D, T>): void` | 值、只读状态或被编辑的对象变了时调用。 |
+| `destroy(): void` | 从属性面板撤掉前调用。 |
+
+### DesignerPropertyTarget {#designerpropertytarget}
+
+被编辑的对象：种类（用于按对象种类查编辑器）、id、对象本身与它的属性描述。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `kind` | `string` | 对象种类，如 node、edge、element；按它查 byTarget 的编辑器。 |
+| `id` | `string` | 对象 id，与种类一起认出对象。 |
+| `value` | `JsonValue` | 对象本身，属性按描述的 path 从它里面读值。 |
+| `descriptors` | `readonly DesignerPropertyDescriptor[]` | 这个对象的属性描述。 |
+
+---
+
+来源：https://flow.docs.xihanfun.com/reference/issues
+
+# 问题码
+
+<!-- 本页由 docs/scripts/gen-reference.mjs 从源码生成，不要手改；源码变了之后在 docs/ 运行 pnpm gen。 -->
+
+`readDocument` 读入与 `validateDocument` 校验给出的问题都带问题码、从文档根算起的路径、所在对象与严重程度，不带文案；设计器的问题列表与属性面板按语言包把问题码换成说明。说明里花括号括起的是问题参数。
+
+## 校验
+
+`validateDocument` 按节点类型、属性描述与扩展的规则检查流程定义。下表列出内置的问题码、缺省严重程度与中文语言包的说明；严重程度可以经 `FlowValidateOptions.severity` 按问题码改写，写 `off` 即不报告。不带点号的问题码（`required`、`invalid-type`、`out-of-range`、`not-integer`、`invalid-option`、`invalid-color`、`invalid-value`、`duplicate-value`、`unknown-key`、`unknown-control`）来自属性的检查，路径落在那个属性上。
+
+| 问题码 | 缺省严重程度 | 说明 |
+| --- | --- | --- |
+| `node.duplicate-id` | 错误 | 节点 id「{id}」重复 |
+| `node.unknown-type` | 错误 | 节点类型「{type}」没有登记 |
+| `edge.duplicate-id` | 错误 | 连线 id「{id}」重复 |
+| `edge.dangling` | 错误 | 连线指向不存在的节点「{node}」 |
+| `edge.unknown-port` | 错误 | 端口「{port}」不存在 |
+| `edge.invalid-direction` | 错误 | 端口方向不允许这样连接 |
+| `edge.self-loop` | 错误 | 节点不能连向自己 |
+| `edge.target-not-allowed` | 错误 | 「{sourceType}」不能连向「{targetType}」 |
+| `edge.source-not-allowed` | 错误 | 「{targetType}」不接受来自「{sourceType}」的连线 |
+| `node.max-incoming` | 错误 | 入线最多 {max} 条，现有 {count} 条 |
+| `node.max-outgoing` | 错误 | 出线最多 {max} 条，现有 {count} 条 |
+| `port.max-connections` | 错误 | 端口「{port}」最多连 {max} 条，现有 {count} 条 |
+| `type.min-count` | 错误 | 至少需要 {min} 个「{type}」，现有 {count} 个 |
+| `type.max-count` | 错误 | 「{type}」最多 {max} 个，现有 {count} 个 |
+| `node.isolated` | 警告 | 没有任何连线 |
+| `node.missing-incoming` | 警告 | 缺少入线 |
+| `node.missing-outgoing` | 警告 | 缺少出线 |
+| `node.unreachable` | 警告 | 从开始节点走不到这里 |
+| `required` | 错误 | 必填 |
+| `invalid-type` | 错误 | 取值类型不对 |
+| `out-of-range` | 错误 | 超出允许的范围 |
+| `not-integer` | 错误 | 必须是整数 |
+| `invalid-option` | 错误 | 不在可选项里 |
+| `invalid-color` | 错误 | 不是有效的颜色 |
+| `invalid-value` | 错误 | 取值不合法 |
+| `duplicate-value` | 错误 | 选项的值重复 |
+| `unknown-key` | 错误 | 含有不认识的字段 |
+| `unknown-control` | 错误 | 没有这种编辑方式 |
+
+扩展登记的规则自带问题码（如预设的 `xihan-workflow.*`），说明由扩展的 `issueText` 给出。
+
+## 读入
+
+`readDocument` 把未知输入读成流程定义：结构问题用 XiHan.UI `@xihan-ui/designer-kit` 的通用问题码（取值类型不对、缺少必填字段、多出不认识的字段等），见 [designer-kit 的问题形状](https://ui.docs.xihanfun.com/runtime/designer-kit)。流程自己的读入问题码只有一个：
+
+| 问题码 | 说明 |
+| --- | --- |
+| `document.unsupported-version` | `version` 不是当前支持的版本；参数 `version` 是读到的版本，`supported` 是支持的版本 |
+
+---
+
+来源：https://flow.docs.xihanfun.com/reference/schema
+
+# 流程定义类型
+
+<!-- 本页由 docs/scripts/gen-reference.mjs 从源码生成，不要手改；源码变了之后在 docs/ 运行 pnpm gen。 -->
+
+流程定义（`FlowDocument`）是纯 JSON，下面的类型取自 `@xihan-flow/core` 的源码。当前的版本号 `FLOW_DOCUMENT_VERSION` 是 `1`，读入版本不符的定义报 `document.unsupported-version`。怎么读入与校验见[流程定义结构](../guide/schema)。
+
+## 文档
+
+### FlowDocument {#flowdocument}
+
+流程图文档；数组顺序即绘制层级，靠后的在上层。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `version` | `typeof FLOW_DOCUMENT_VERSION` | 版本号，读入时与 FLOW_DOCUMENT_VERSION 比对。 |
+| `nodes` | `readonly FlowNode[]` | 节点。 |
+| `edges` | `readonly FlowEdge[]` | 连线。 |
+| `data?` | `JsonObject` | 文档级业务数据。 |
+| `extensions?` | `JsonObject` | 各扩展自己的数据，键是扩展 id。 |
+
+### createDocument() {#createdocument}
+
+```ts
+declare function createDocument(data?: JsonObject): FlowDocument
+```
+
+创建空文档。
+
+## 节点与连线
+
+### FlowNode {#flownode}
+
+节点：左上角坐标、尺寸、可选标签与业务数据。
+
+继承 `FlowRect`。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | `string` | 节点 id，在文档内唯一，连线经它指向节点。 |
+| `type` | `string` | 节点类型，对应登记表中的类型名。 |
+| `label?` | `string` | 节点上显示的文字。 |
+| `data?` | `JsonObject` | 业务数据，有哪些字段由节点类型的属性描述决定。 |
+| `extensions?` | `JsonObject` | 各扩展自己的数据，键是扩展 id，每一块是 JSON 对象；与业务数据 data 分开。 |
+
+### FlowEdge {#flowedge}
+
+连线：起止端点、标签、外观、业务数据与可选折点。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | `string` | 连线 id，在文档内唯一。 |
+| `source` | `FlowEndpoint` | 起点。 |
+| `target` | `FlowEndpoint` | 终点。 |
+| `label?` | `string` | 连线上显示的文字。 |
+| `style?` | `FlowEdgeStyle` | 外观。 |
+| `data?` | `JsonObject` | 业务数据，有哪些字段由连线属性描述决定。 |
+| `vertices?` | `readonly FlowPoint[]` | 途经折点，按从起点到终点的顺序排列。 |
+| `extensions?` | `JsonObject` | 各扩展自己的数据，键是扩展 id。 |
+
+### FlowEndpoint {#flowendpoint}
+
+连线端点：节点与可选端口。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `node` | `string` | 节点 id。 |
+| `port?` | `string` | 端口 id；不写时取节点类型里第一个允许这一端的端口。 |
+
+### FlowEdgeStyle {#flowedgestyle}
+
+连线外观。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `dashed?` | `boolean` | 画成虚线。 |
+
+## 几何
+
+### FlowPoint {#flowpoint}
+
+世界坐标系中的点。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `x` | `number` | 横坐标，向右为正。 |
+| `y` | `number` | 纵坐标，向下为正。 |
+
+### FlowSize {#flowsize}
+
+尺寸。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `width` | `number` |  |
+| `height` | `number` |  |
+
+### FlowRect {#flowrect}
+
+轴对齐矩形。
+
+继承 `FlowPoint`、`FlowSize`。
+
+---
+
+来源：https://flow.docs.xihanfun.com/reference/viewer
+
+# 查看器
+
+<!-- 本页由 docs/scripts/gen-reference.mjs 从源码生成，不要手改；源码变了之后在 docs/ 运行 pnpm gen。 -->
+
+`<xh-flow-viewer>` 在业务页面里显示流程与运行状态，类在 `@xihan-flow/runtime` 里导出为 `XhFlowViewer`，调用 `defineFlowViewer()` 注册。用法见[查看器](../guide/viewer)。
+
+## 元素 xh-flow-viewer
+
+### 属性
+
+| 属性 | attribute | 类型 | 说明 |
+| --- | --- | --- | --- |
+| `schema` | — | `FlowDocument \| undefined` | 要显示的流程定义；从无到有时重新自动适配。 |
+| `extensions` | — | `readonly FlowRuntimeExtension[] \| undefined` | 扩展：节点类型、节点渲染等都从这里来，内置扩展自动排在最前。赋值时当场合并查重，冲突抛 DesignerExtensionError、属性保持原值；同一个扩展对象换了引用当作卸下再装上，宿主要保持引用稳定。 |
+| `statuses` | — | `Readonly<Record<string, FlowNodeStatus \| null>> \| undefined` | 节点 id → 运行状态；null 表示没有状态。 |
+| `highlighted` | — | `readonly string[] \| undefined` | 高亮的节点 id。 |
+| `router` | — | `FlowEdgeRouter \| undefined` | 连线路由器，缺省为直角路由。 |
+| `translations` | — | `Partial<FlowViewerTranslations> \| undefined` | 元素自己的文案，压在全局配置之上。 |
+
+### 方法
+
+| 方法 | 说明 |
+| --- | --- |
+| `export(format: FlowImageFormat, options?: FlowImageExportOptions): Promise<Blob>` | 把画面上的流程图导出成图片：svg 是能单独打开的 SVG 文件，png 按倍率栅格化；颜色与字体取画面此刻的样式，节点、图标、连线与标签都画进去。选项见 FlowImageExportOptions。流程图是空的、format 不是这两种时以 RangeError 拒绝。 |
+| `getViewport(): Viewport` | 当前视口。 |
+| `setViewport(viewport: Viewport): void` | 设置视口；此后尺寸变化不再自动适配。 |
+| `zoomToFit(): void` | 缩放并平移到让整张图落在视口中央，小图不放大到 100% 以上；此后尺寸变化时重新适配，直到设置视口或在画布上按下指针。 |
+| `zoomIn(): void` | 以视口中心放大一档。 |
+| `zoomOut(): void` | 以视口中心缩小一档。 |
+| `zoomToActual(): void` | 缩放到 100% 并把整张图居中。 |
+| `scrollToNode(id: string): void` | 把节点居中显示。 |
+| `revealNode(id: string): void` | 节点没整个落在视口内时把它居中，已在视口内则不动。 |
+| `setNodeStatus(id: string, status: FlowNodeStatus \| null): void` | 设置单个节点的运行状态，传 null 清除。 |
+| `setNodeStatuses(statuses: Readonly<Record<string, FlowNodeStatus \| null>>): void` | 批量设置节点运行状态，未列出的节点保持不变。 |
+| `highlightNodes(ids: readonly string[]): void` | 高亮一组节点，其余节点取消高亮。 |
+| `clearHighlights(): void` | 清除全部高亮。 |
+
+### 事件
+
+事件都是冒泡的 `CustomEvent`。
+
+| 事件 | detail | 说明 |
+| --- | --- | --- |
+| `node-click` | `{ id: string }` | 点了节点；拖动平移之后松手不算点击。 |
+| `edge-click` | `{ id: string }` | 点了连线或连线标签。 |
+| `blank-click` | `Record<string, never>` | 点了画布空白处。 |
+| `node-contextmenu` | `{ id: string, x: number, y: number }` | 在节点上打开右键菜单；可以取消，取消后浏览器的右键菜单也不出现。 |
+| `edge-contextmenu` | `{ id: string, x: number, y: number }` | 在连线上打开右键菜单；可以取消。 |
+| `blank-contextmenu` | `{ x: number, y: number }` | 在画布空白处打开右键菜单；可以取消。 |
+| `viewport-change` | `{ viewport: Viewport }` | 视口变了：缩放、平移、适配与 setViewport 都会派发。 |
+
+## 注册
+
+### defineFlowViewer() {#defineflowviewer}
+
+```ts
+declare function defineFlowViewer(): void
+```
+
+注册 &lt;xh-flow-viewer&gt; 与内置节点渲染用到的 &lt;xh-icon&gt;；重复调用不报错。
+
+## 节点渲染
+
+### FlowNodeRenderer {#flownoderenderer}
+
+```ts
+type FlowNodeRenderer = (container: HTMLElement, context: FlowNodeRenderContext) => void
+```
+
+自定义节点内容：每次绘制都会调用，把内容写进 container；不给时用 defaultNodeRenderer。
+
+### FlowNodeRenderContext {#flownoderendercontext}
+
+自定义节点内容时拿到的上下文。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `node` | `FlowNode` | 要画的节点。 |
+| `nodeType` | `FlowNodeType \| undefined` | 节点类型；类型没有登记时为 undefined。 |
+| `label` | `string` | 要显示的文字：节点的 label，没有时取节点类型的名称，再没有取节点 id。 |
+| `status` | `FlowNodeStatus \| undefined` | 节点此刻的运行状态；没有状态时为 undefined。 |
+| `highlighted` | `boolean` | 节点是否高亮。 |
+
+### defaultNodeRenderer() {#defaultnoderenderer}
+
+```ts
+declare function defaultNodeRenderer(container: HTMLElement, { nodeType, label }: FlowNodeRenderContext): void
+```
+
+内置的节点内容：节点类型给了 icon 时图标（data-part="node-icon"）在前、文字（data-part="node-label"）在后，没给时节点里只有文字。没有登记渲染的节点类型用它，自定义的渲染也可以调它画出同样的内容。重画时复用已有的图标与文字节点。图标是 &lt;xh-icon&gt;，defineFlowViewer() 与 defineFlowDesigner() 会注册它。
+
+### FlowRuntimeExtension {#flowruntimeextension}
+
+流程运行时层的扩展：在 core 层之上加节点内容的渲染，查看器与设计器都读它。
+
+继承 `FlowCoreExtension`。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `nodeRenderers?` | `Readonly<Record<string, FlowNodeRenderer>>` | 节点内容的渲染，键是节点类型；没给渲染的类型用 defaultNodeRenderer 画图标与文字。 |
+
+### createFlowRuntimeModel() {#createflowruntimemodel}
+
+```ts
+declare function createFlowRuntimeModel(extensions?: readonly FlowRuntimeExtension[]): FlowRuntimeModel
+```
+
+合出运行时用的流程模型；同一节点类型在两个扩展里都给了渲染时抛 DesignerExtensionError。同一个数组只合一次。
+
+## 导出图片
+
+### FlowImageFormat {#flowimageformat}
+
+```ts
+type FlowImageFormat = 'svg' | 'png'
+```
+
+导出图片的格式。
+
+### FlowImageExportOptions {#flowimageexportoptions}
+
+导出图片的选项。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `scale?` | `number` | 倍率，只对 PNG 有效：PNG 的像素宽高是图的宽高乘它，缺省 1；超过浏览器画布的上限时自动降倍率，图按比例缩小。 |
+| `background?` | `string` | 底色，任何 CSS 颜色；缺省取画布此刻的底色（画布透明时往外找到第一层不透明的），写 'transparent' 不铺。 |
+| `padding?` | `number` | 流程图四周的留白，缺省 24。 |
+
+### exportFlowImage() {#exportflowimage}
+
+```ts
+declare function exportFlowImage(source: FlowImageSource, format: FlowImageFormat, options?: FlowImageExportOptions): Promise<Blob>
+```
+
+导出成图片：SVG 是 flowImageSvg 的文本，PNG 在它上面按倍率栅格化（底色已画进 SVG），超过画布上限时按比例缩小。PNG 里的文字用本机的系统字体画，不加载网页字体。
+
+### flowImageSvg() {#flowimagesvg}
+
+```ts
+declare function flowImageSvg(source: FlowImageSource, options?: FlowImageExportOptions): SVGSVGElement
+```
+
+把画面上的流程图画成一份能单独打开的 SVG：连线层经 standaloneSvg 克隆（只供命中的透明粗线不要，克隆根上的表现属性挪到放连线的组上），节点按计算样式画成框、图标与文字，连线标签画成底框与文字；四周留白，按选项铺底色。颜色写成 sRGB 的 #rrggbb，透明度写进 fill-opacity / stroke-opacity；画布的字体写在根上，文字只写与它不同的那几项。坐标是世界坐标，1 个单位即 1 像素。流程图是空的时抛 RangeError。
+
+### FlowImageSource {#flowimagesource}
+
+画出图片要读的活元素：场景、画布上的连线层、节点与连线标签的元素，以及视口的缩放。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `scene` | `FlowScene` |  |
+| `canvas` | `Element` | 画布元素：缺省底色从它开始找。 |
+| `edges` | `SVGSVGElement` | 连线所在的 SVG 层，里面的坐标是世界坐标。 |
+| `zoom` | `number` | 视口的缩放：元素在屏幕上的尺寸除以它即世界尺寸。 |
+
+| 方法 | 说明 |
+| --- | --- |
+| `node(id: string): HTMLElement \| null` | 节点 id → 画面上的节点元素。 |
+| `label(id: string): HTMLElement \| null` | 连线 id → 画面上的连线标签元素。 |
+
+## 连线路由
+
+### createOrthogonalRouter() {#createorthogonalrouter}
+
+```ts
+declare function createOrthogonalRouter(options?: OrthogonalRouterOptions): FlowEdgeRouter
+```
+
+创建直角路由器；找不到绕开全部节点的通路时，返回不看障碍物的直角折线。
+
+### OrthogonalRouterOptions {#orthogonalrouteroptions}
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `margin?` | `number` | 与节点保持的距离，也是从端口引出的长度，缺省 16。 |
+| `bendCost?` | `number` | 每个拐弯折合的长度，缺省 margin 的两倍。 |
+
+## 文案
+
+### FlowViewerTranslations {#flowviewertranslations}
+
+查看器的文案。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `label` | `string` | 视口区域的可访问名。 |
+
+## 语言包
+
+### locale/de-DE
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `flowDeDE` | 常量 | 流程的德语文案：查看器、设计器与 designer-shell 零件。 |
+
+### locale/en-US
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `flowEnUS` | 常量 | 流程的英文文案：查看器、设计器与 designer-shell 零件。 |
+
+### locale/es-ES
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `flowEsES` | 常量 | 流程的西班牙语文案：查看器、设计器与 designer-shell 零件。 |
+
+### locale/fr-FR
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `flowFrFR` | 常量 | 流程的法语文案：查看器、设计器与 designer-shell 零件。 |
+
+### locale/ja-JP
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `flowJaJP` | 常量 | 流程的日语文案：查看器、设计器与 designer-shell 零件。 |
+
+### locale/ko-KR
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `flowKoKR` | 常量 | 流程的韩语文案：查看器、设计器与 designer-shell 零件。 |
+
+### locale/pt-BR
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `flowPtBR` | 常量 | 流程的巴西葡萄牙语文案：查看器、设计器与 designer-shell 零件。 |
+
+### locale/ru-RU
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `flowRuRU` | 常量 | 流程的俄语文案：查看器、设计器与 designer-shell 零件。 |
+
+### locale/types
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `FlowLocale` | 接口 | 流程一种语言的全部文案。 |
+
+### locale/zh-CN
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `flowZhCN` | 常量 | 流程的简体中文文案：查看器、设计器与 designer-shell 零件。 |
+
+### locale/zh-TW
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `flowZhTW` | 常量 | 流程的繁体中文文案：查看器、设计器与 designer-shell 零件。 |
+
+## 全部导出
+
+### designer-locale
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `DEFAULT_FLOW_DESIGNER_TRANSLATIONS` | 常量 | 设计器不配语言包时的缺省文案。 |
+| `FLOW_DESIGNER_EN_US` | 常量 | 设计器的英文文案，也是不配语言包时的缺省。 |
+| `FlowBuiltinPropertyKey` | 类型 | 设计器内建的属性路径，formatJsonPath 的写法。 |
+| `FlowDesignerLocale` | 接口 | 一种语言的设计器文案：问题说明与内建属性名写成表，其余与 FlowDesignerTranslations 相同。 |
+| `flowDesignerTranslations` | 函数 | 把一种语言的设计器文案换成设计器读的形状：问题按码查表，表里没有的（扩展的问题码）显示问题码。 |
+| `FlowIssueMessage` | 类型 | 一条问题说明：text 取参数的文字，type 取参数里那个节点类型的显示名。 |
+
+### extensions
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `createFlowRuntimeModel` | 函数 | 合出运行时用的流程模型；同一节点类型在两个扩展里都给了渲染时抛 DesignerExtensionError。 |
+| `FlowRuntimeExtension` | 接口 | 流程运行时层的扩展：在 core 层之上加节点内容的渲染，查看器与设计器都读它。 |
+| `FlowRuntimeModel` | 接口 | 运行时用的流程模型：core 的模型加上各节点类型的渲染。 |
+
+### flow-viewer
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `defineFlowViewer` | 函数 | 注册 &lt;xh-flow-viewer&gt; 与内置节点渲染用到的 &lt;xh-icon&gt;；重复调用不报错。 |
+| `FLOW_VIEWER_TAG` | 常量 | 查看器的标签名。 |
+| `FlowNodeRenderContext` | 接口 | 自定义节点内容时拿到的上下文。 |
+| `FlowNodeRenderer` | 类型 | 自定义节点内容：每次绘制都会调用，把内容写进 container；不给时用 defaultNodeRenderer。 |
+| `FlowViewerEventMap` | 接口 | 查看器派发的事件；x / y 为浏览器视口坐标。 |
+| `XhFlowViewer` | 类 | 流程查看器 &lt;xh-flow-viewer&gt;：只读显示流程、运行状态与高亮。 |
+
+### image-export
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `exportFlowImage` | 函数 | 导出成图片：SVG 是 flowImageSvg 的文本，PNG 在它上面按倍率栅格化（底色已画进 SVG），超过画布上限时按比例缩小。 |
+| `FlowImageExportOptions` | 接口 | 导出图片的选项。 |
+| `FlowImageFormat` | 类型 | 导出图片的格式。 |
+| `FlowImageSource` | 接口 | 画出图片要读的活元素：场景、画布上的连线层、节点与连线标签的元素，以及视口的缩放。 |
+| `flowImageSvg` | 函数 | 把画面上的流程图画成一份能单独打开的 SVG：连线层经 standaloneSvg 克隆（只供命中的透明粗线不要，克隆根上的表现属性挪到放连线的组上），节点按计算样式画成框、图标与文字，连线标签画成底框与文字；四周留白，按选项铺底色。 |
+
+### node-renderer
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `defaultNodeRenderer` | 函数 | 内置的节点内容：节点类型给了 icon 时图标（data-part="node-icon"）在前、文字（data-part="node-label"）在后，没给时节点里只有文字。 |
+
+### router
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `createOrthogonalRouter` | 函数 | 创建直角路由器；找不到绕开全部节点的通路时，返回不看障碍物的直角折线。 |
+| `OrthogonalRouterOptions` | 接口 |  |
+
+### scene
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `buildScene` | 函数 | 算出整张图的场景。 |
+| `FlowNodeStatus` | 类型 | 节点运行状态；内置样式覆盖 running / completed / faulted / waiting / canceled / compensated，其余取值由使用方自行着色。 |
+| `FlowScene` | 接口 |  |
+| `FlowSceneEdge` | 接口 |  |
+| `FlowSceneNode` | 接口 |  |
+| `FlowSceneOptions` | 接口 |  |
+
+### translations
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `DEFAULT_FLOW_VIEWER_TRANSLATIONS` | 常量 | 查看器的英文文案，也是不配语言包时的缺省。 |
+| `FlowDesignerTranslations` | 接口 | 设计器的文案。 |
+| `FlowHistoryTranslations` | 接口 | 撤销历史里一步的说明：单个节点写「种类 名称」（见 node，没有名称时名称是 id），几个节点写个数。 |
+| `FlowIssueNames` | 接口 | 拼问题说明时用到的名称。 |
+| `FlowOutlineTranslations` | 接口 | 流程结构面板的几处文案。 |
+| `FlowStartVariableColumn` | 类型 | 启动变量表的列：变量名、必填、缺省值、说明。 |
+| `FlowTourStepKey` | 类型 | 新手引导里流程自己的几步：连线、自动布局与导出图片。 |
+| `FlowTourStepTranslations` | 接口 | 新手引导一步的文案。 |
+| `FlowViewerTranslations` | 接口 | 查看器的文案。 |
+
+---
+
+来源：https://flow.docs.xihanfun.com/reference/xihan-workflow
+
+# XiHan 工作流引擎预设
+
+<!-- 本页由 docs/scripts/gen-reference.mjs 从源码生成，不要手改；源码变了之后在 docs/ 运行 pnpm gen。 -->
+
+`@xihan-flow/core/presets/xihan-workflow` 是 XiHan.Framework 工作流引擎的节点预设：引擎的每种活动对应一个节点类型，属性键与引擎读的一致，并能与引擎定义 JSON 互转。用法见 [XiHan 工作流引擎预设](../guide/xihan-workflow)。
+
+## 节点类型
+
+下表与各节点类型的属性取自中文文案的预设（`createXihanWorkflow({ texts: xihanWorkflowZhCN })`）。类型名就是引擎的活动类型。
+
+| 类型 | 名称 | 类别 | 图标 | 端口 | 个数与可达性 |
+| --- | --- | --- | --- | --- | --- |
+| [`Start`](#start) | 开始 | 流程控制 | `PlayIcon` | 右侧出口 | 可达性的起点，不要求入线；恰好 1 个 |
+| [`End`](#end) | 结束 | 流程控制 | `CircleCheckIcon` | 左侧入口 | 不要求出线 |
+| [`Decision`](#decision) | 条件分支 | 流程控制 | `GitBranchIcon` | 左侧入口、右侧出口 | — |
+| [`Parallel`](#parallel) | 并行分支 | 流程控制 | `LayersIcon` | 左侧入口、右侧出口 | — |
+| [`Join`](#join) | 汇聚 | 流程控制 | `ListChecksIcon` | 左侧入口、右侧出口 | — |
+| [`Delay`](#delay) | 延时 | 流程控制 | `TimerIcon` | 左侧入口、右侧出口 | — |
+| [`SubWorkflow`](#subworkflow) | 子流程 | 流程控制 | `PuzzleIcon` | 左侧入口、右侧出口 | — |
+| [`ForEach`](#foreach) | 遍历 | 流程控制 | `RefreshIcon` | 左侧入口、右侧出口 | — |
+| [`Terminate`](#terminate) | 终止 | 流程控制 | `BanIcon` | 左侧入口 | 不要求出线 |
+| [`Fault`](#fault) | 抛出故障 | 流程控制 | `TriangleAlertIcon` | 左侧入口 | 不要求出线 |
+| [`UserTask`](#usertask) | 人工任务 | 人工 | `UserCheckIcon` | 左侧入口、右侧出口 | — |
+| [`SetVariable`](#setvariable) | 设置变量 | 数据 | `PencilIcon` | 左侧入口、右侧出口 | — |
+| [`Http`](#http) | HTTP 请求 | 集成 | `GlobeIcon` | 左侧入口、右侧出口 | — |
+| [`Script`](#script) | 脚本 | 集成 | `CpuIcon` | 左侧入口、右侧出口 | — |
+| [`PublishEvent`](#publishevent) | 发布事件 | 事件 | `MegaphoneIcon` | 左侧入口、右侧出口 | — |
+| [`WaitSignal`](#waitsignal) | 等待信号 | 事件 | `BellIcon` | 左侧入口、右侧出口 | — |
+| [`Log`](#log) | 日志 | 工具 | `FileTextIcon` | 左侧入口、右侧出口 | — |
+
+### Start · 开始 {#start}
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 名称 | `label` | `text` | 基本 | — |
+
+从它连出的连线：
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 条件 | `data.condition` | `text` | — | — |
+
+### End · 结束 {#end}
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 名称 | `label` | `text` | 基本 | — |
+| 流程结果 | `data.properties.Outcome` | `select`：通过（`approved`）、驳回（`rejected`） | 基本 | — |
+
+### Decision · 条件分支 {#decision}
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 名称 | `label` | `text` | 基本 | — |
+
+从它连出的连线：
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 条件 | `data.condition` | `text` | — | — |
+| 优先级 | `data.priority` | `number` | — | — |
+| 默认分支 | `data.isDefault` | `boolean` | — | — |
+
+### Parallel · 并行分支 {#parallel}
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 名称 | `label` | `text` | 基本 | — |
+
+从它连出的连线没有额外属性。
+
+### Join · 汇聚 {#join}
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 名称 | `label` | `text` | 基本 | — |
+| 汇聚方式 | `data.properties.Mode` | `select`：等待全部（`WaitAll`）、任一到达（`WaitAny`） | 基本 | — |
+
+从它连出的连线：
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 条件 | `data.condition` | `text` | — | — |
+
+### Delay · 延时 {#delay}
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 名称 | `label` | `text` | 基本 | — |
+| 时长（秒） | `data.properties.DurationSeconds` | `text` | 基本 | 是 |
+| 失败后继续 | `data.continueOnError` | `boolean` | 执行 | — |
+| 最多尝试次数 | `data.retryPolicy.maxAttempts` | `number` | 执行 | — |
+| 首次重试等待（秒） | `data.retryPolicy.firstDelaySeconds` | `number` | 执行 | — |
+| 退避倍率 | `data.retryPolicy.backoffFactor` | `number` | 执行 | — |
+
+从它连出的连线：
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 条件 | `data.condition` | `text` | — | — |
+
+### SubWorkflow · 子流程 {#subworkflow}
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 名称 | `label` | `text` | 基本 | — |
+| 流程编码 | `data.properties.DefinitionCode` | `text` | 基本 | 是 |
+| 流程版本 | `data.properties.DefinitionVersion` | `number` | 基本 | — |
+| 变量 | `data.properties.Variables` | `json` | 基本 | — |
+| 变量表达式 | `data.properties.VariableExpressions` | `json` | 基本 | — |
+| 等待完成 | `data.properties.WaitForCompletion` | `boolean` | 基本 | — |
+| 结果变量 | `data.properties.ResultVariable` | `text` | 基本 | — |
+| 子流程故障时失败 | `data.properties.FailOnChildFault` | `boolean` | 基本 | — |
+| 超时（秒） | `data.timeoutSeconds` | `number` | 执行 | — |
+| 失败后继续 | `data.continueOnError` | `boolean` | 执行 | — |
+| 最多尝试次数 | `data.retryPolicy.maxAttempts` | `number` | 执行 | — |
+| 首次重试等待（秒） | `data.retryPolicy.firstDelaySeconds` | `number` | 执行 | — |
+| 退避倍率 | `data.retryPolicy.backoffFactor` | `number` | 执行 | — |
+
+从它连出的连线：
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 条件 | `data.condition` | `text` | — | — |
+
+### ForEach · 遍历 {#foreach}
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 名称 | `label` | `text` | 基本 | — |
+| 集合表达式 | `data.properties.ItemsExpression` | `text` | 基本 | — |
+| 元素变量名 | `data.properties.ItemVariableName` | `text` | 基本 | — |
+| 流程编码 | `data.properties.DefinitionCode` | `text` | 基本 | 是 |
+| 流程版本 | `data.properties.DefinitionVersion` | `number` | 基本 | — |
+| 并行执行 | `data.properties.Parallel` | `boolean` | 基本 | — |
+| 一项失败即停止 | `data.properties.FailFast` | `boolean` | 基本 | — |
+| 变量 | `data.properties.Variables` | `json` | 基本 | — |
+| 结果变量 | `data.properties.ResultVariable` | `text` | 基本 | — |
+| 超时（秒） | `data.timeoutSeconds` | `number` | 执行 | — |
+| 失败后继续 | `data.continueOnError` | `boolean` | 执行 | — |
+| 最多尝试次数 | `data.retryPolicy.maxAttempts` | `number` | 执行 | — |
+| 首次重试等待（秒） | `data.retryPolicy.firstDelaySeconds` | `number` | 执行 | — |
+| 退避倍率 | `data.retryPolicy.backoffFactor` | `number` | 执行 | — |
+
+从它连出的连线：
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 条件 | `data.condition` | `text` | — | — |
+
+### Terminate · 终止 {#terminate}
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 名称 | `label` | `text` | 基本 | — |
+| 终止原因 | `data.properties.Reason` | `text` | 基本 | — |
+
+### Fault · 抛出故障 {#fault}
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 名称 | `label` | `text` | 基本 | — |
+| 内容 | `data.properties.Message` | `text` | 基本 | — |
+
+### UserTask · 人工任务 {#usertask}
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 名称 | `label` | `text` | 基本 | — |
+| 待办标题 | `data.properties.Title` | `text` | 基本 | — |
+| 受理人规则 | `data.properties.AssigneeRules` | `xihan-workflow.assignee-rules` | 参与人 | — |
+| 受理人 | `data.properties.Assignees` | `tags` | 参与人 | — |
+| 受理人表达式 | `data.properties.AssigneesExpression` | `text` | 参与人 | — |
+| 排除发起人 | `data.properties.ExcludeStarter` | `boolean` | 参与人 | — |
+| 通过规则 | `data.properties.CompletionPolicy` | `select`：任一人通过（`Any`）、全部通过（`All`）、依次审批（`Sequential`） | 参与人 | — |
+| 没有受理人时 | `data.properties.EmptyAssigneeStrategy` | `select`：报错（`Fault`）、自动通过（`AutoApprove`）、自动驳回（`AutoReject`）、转交兜底受理人（`Fallback`） | 参与人 | — |
+| 兜底受理人规则 | `data.properties.FallbackAssigneeRules` | `xihan-workflow.assignee-rules` | 参与人 | 是 |
+| 抄送规则 | `data.properties.CcRules` | `xihan-workflow.assignee-rules` | 参与人 | — |
+| 抄送人 | `data.properties.CcUserIds` | `tags` | 参与人 | — |
+| 表单数据 | `data.properties.FormData` | `json` | 表单 | — |
+| 可选办理结果 | `data.properties.AllowedOutcomes` | `tags` | 表单 | — |
+| 超时（秒） | `data.timeoutSeconds` | `number` | 执行 | — |
+| 失败后继续 | `data.continueOnError` | `boolean` | 执行 | — |
+| 最多尝试次数 | `data.retryPolicy.maxAttempts` | `number` | 执行 | — |
+| 首次重试等待（秒） | `data.retryPolicy.firstDelaySeconds` | `number` | 执行 | — |
+| 退避倍率 | `data.retryPolicy.backoffFactor` | `number` | 执行 | — |
+
+从它连出的连线：
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 条件 | `data.condition` | `text` | — | — |
+
+### SetVariable · 设置变量 {#setvariable}
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 名称 | `label` | `text` | 基本 | — |
+| 固定值 | `data.properties.Values` | `json` | 基本 | — |
+| 表达式 | `data.properties.Expressions` | `json` | 基本 | — |
+| 失败后继续 | `data.continueOnError` | `boolean` | 执行 | — |
+| 最多尝试次数 | `data.retryPolicy.maxAttempts` | `number` | 执行 | — |
+| 首次重试等待（秒） | `data.retryPolicy.firstDelaySeconds` | `number` | 执行 | — |
+| 退避倍率 | `data.retryPolicy.backoffFactor` | `number` | 执行 | — |
+
+从它连出的连线：
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 条件 | `data.condition` | `text` | — | — |
+
+### Http · HTTP 请求 {#http}
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 名称 | `label` | `text` | 基本 | — |
+| 地址 | `data.properties.Url` | `text` | 基本 | 是 |
+| 请求方法 | `data.properties.Method` | `select`：GET（`GET`）、POST（`POST`）、PUT（`PUT`）、DELETE（`DELETE`）、PATCH（`PATCH`） | 基本 | — |
+| 请求头 | `data.properties.Headers` | `json` | 基本 | — |
+| 请求体 | `data.properties.Body` | `text` | 基本 | — |
+| 内容类型 | `data.properties.ContentType` | `text` | 基本 | — |
+| 请求超时（秒） | `data.properties.TimeoutSeconds` | `number` | 基本 | — |
+| 结果变量 | `data.properties.ResultVariable` | `text` | 基本 | — |
+| 错误状态码时失败 | `data.properties.FailOnErrorStatus` | `boolean` | 基本 | — |
+| 失败后继续 | `data.continueOnError` | `boolean` | 执行 | — |
+| 最多尝试次数 | `data.retryPolicy.maxAttempts` | `number` | 执行 | — |
+| 首次重试等待（秒） | `data.retryPolicy.firstDelaySeconds` | `number` | 执行 | — |
+| 退避倍率 | `data.retryPolicy.backoffFactor` | `number` | 执行 | — |
+
+从它连出的连线：
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 条件 | `data.condition` | `text` | — | — |
+
+### Script · 脚本 {#script}
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 名称 | `label` | `text` | 基本 | — |
+| 代码 | `data.properties.Code` | `text` | 基本 | 是 |
+| 结果变量 | `data.properties.ResultVariable` | `text` | 基本 | — |
+| 失败后继续 | `data.continueOnError` | `boolean` | 执行 | — |
+| 最多尝试次数 | `data.retryPolicy.maxAttempts` | `number` | 执行 | — |
+| 首次重试等待（秒） | `data.retryPolicy.firstDelaySeconds` | `number` | 执行 | — |
+| 退避倍率 | `data.retryPolicy.backoffFactor` | `number` | 执行 | — |
+
+从它连出的连线：
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 条件 | `data.condition` | `text` | — | — |
+
+### PublishEvent · 发布事件 {#publishevent}
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 名称 | `label` | `text` | 基本 | — |
+| 事件名 | `data.properties.EventName` | `text` | 基本 | 是 |
+| 事件数据 | `data.properties.Payload` | `json` | 基本 | — |
+| 失败后继续 | `data.continueOnError` | `boolean` | 执行 | — |
+| 最多尝试次数 | `data.retryPolicy.maxAttempts` | `number` | 执行 | — |
+| 首次重试等待（秒） | `data.retryPolicy.firstDelaySeconds` | `number` | 执行 | — |
+| 退避倍率 | `data.retryPolicy.backoffFactor` | `number` | 执行 | — |
+
+从它连出的连线：
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 条件 | `data.condition` | `text` | — | — |
+
+### WaitSignal · 等待信号 {#waitsignal}
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 名称 | `label` | `text` | 基本 | — |
+| 信号名 | `data.properties.SignalName` | `text` | 基本 | 是 |
+| 接受任意关联 | `data.properties.AcceptAnyCorrelation` | `boolean` | 基本 | — |
+| 超时（秒） | `data.timeoutSeconds` | `number` | 执行 | — |
+| 失败后继续 | `data.continueOnError` | `boolean` | 执行 | — |
+| 最多尝试次数 | `data.retryPolicy.maxAttempts` | `number` | 执行 | — |
+| 首次重试等待（秒） | `data.retryPolicy.firstDelaySeconds` | `number` | 执行 | — |
+| 退避倍率 | `data.retryPolicy.backoffFactor` | `number` | 执行 | — |
+
+从它连出的连线：
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 条件 | `data.condition` | `text` | — | — |
+
+### Log · 日志 {#log}
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 名称 | `label` | `text` | 基本 | — |
+| 内容 | `data.properties.Message` | `text` | 基本 | — |
+| 级别 | `data.properties.Level` | `select`：调试（`Debug`）、信息（`Information`）、警告（`Warning`）、错误（`Error`） | 基本 | — |
+| 失败后继续 | `data.continueOnError` | `boolean` | 执行 | — |
+| 最多尝试次数 | `data.retryPolicy.maxAttempts` | `number` | 执行 | — |
+| 首次重试等待（秒） | `data.retryPolicy.firstDelaySeconds` | `number` | 执行 | — |
+| 退避倍率 | `data.retryPolicy.backoffFactor` | `number` | 执行 | — |
+
+从它连出的连线：
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 条件 | `data.condition` | `text` | — | — |
+
+## 流程定义级属性
+
+什么都没选中时属性面板编辑这些属性，换成引擎定义时写在定义的顶层。
+
+| 属性 | 路径 | 编辑方式 | 分组 | 必填 |
+| --- | --- | --- | --- | --- |
+| 流程编码 | `data.code` | `text` | 基本 | 是 |
+| 名称 | `data.name` | `text` | 基本 | 是 |
+| 分类 | `data.category` | `text` | 基本 | — |
+| 描述 | `data.description` | `text` | 基本 | — |
+| 启用补偿 | `data.enableCompensation` | `boolean` | 执行 | — |
+| 启动变量 | `data.variables` | `xihan-workflow.start-variables` | 基本 | — |
+
+## 规则
+
+规则检查引擎发布定义时把关、通用校验覆盖不到的约束。说明取自中文文案，严重程度可以经 `validateOptions.severity` 改写。
+
+| 问题码 | 严重程度 | 说明 |
+| --- | --- | --- |
+| `xihan-workflow.no-end` | 警告 | 流程没有结束或终止节点 |
+| `xihan-workflow.decision-multiple-defaults` | 错误 | 条件分支至多一条默认分支 |
+| `xihan-workflow.decision-no-default` | 警告 | 加一条默认分支或无条件分支 |
+| `xihan-workflow.user-task-no-assignee` | 错误 | 配置受理人规则、受理人或受理人表达式 |
+
+下面的文案键不是问题码，是 `legacyAssignees: false` 时同一条问题换用的说明（只提受理人规则）。
+
+| 文案键 | 用于问题码 | 说明 |
+| --- | --- | --- |
+| `xihan-workflow.user-task-no-assignee-rules` | `xihan-workflow.user-task-no-assignee` | 配置受理人规则 |
+
+## 预设
+
+### createXihanWorkflow() {#createxihanworkflow}
+
+```ts
+declare function createXihanWorkflow(options?: CreateXihanWorkflowOptions): FlowCoreExtension
+```
+
+按文案生成预设扩展。节点类型与属性的文字写在扩展里，换语言就换一个扩展对象（同一个 id，按卸下再装上处理）；物料分类与属性分组的文字交给设计器的 paletteGroupLabels、propertyGroupLabels。受理人规则的编辑方式是 XIHAN_WORKFLOW_ASSIGNEE_RULES，编辑器由宿主经设计器扩展的 editors.byControl 提供；启动变量的编辑方式是 XIHAN_WORKFLOW_START_VARIABLES，设计器内建它的编辑器，宿主同样可以按种类换掉。
+
+### CreateXihanWorkflowOptions {#createxihanworkflowoptions}
+
+createXihanWorkflow 的选项。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `texts?` | `XihanWorkflowTextsOverride` | 文案，各部分按键覆盖英文缺省；整套换语言直接传对应的语言包，如 xihanWorkflowZhCN、xihanWorkflowJaJP。 |
+| `legacyAssignees?` | `boolean` | 审批节点的属性面板里显示旧的受理人写法（Assignees、AssigneesExpression、CcUserIds），缺省 true。为 false 时不登记这三项属性，已有的值照旧读写、往返不丢，只是属性面板里不再显示；缺受理人的问题说明也只提受理人规则。 |
+
+### XihanWorkflowTexts {#xihanworkflowtexts}
+
+预设的全部文案。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `activities` | `Readonly<Record<XihanWorkflowActivityType, string>>` | 节点类型的显示名，键是活动类型。 |
+| `categories` | `Readonly<Record<XihanWorkflowCategory, string>>` | 交给设计器的 paletteGroupLabels。 |
+| `groups` | `Readonly<Record<XihanWorkflowGroup, string>>` | 交给设计器的 propertyGroupLabels。 |
+| `properties` | `Readonly<Record<XihanWorkflowPropertyKey, string>>` | 属性的标签。 |
+| `options` | `Readonly<Record<XihanWorkflowOptionKey, string>>` | 下拉选项的文字。 |
+| `issues` | `Readonly<Record<XihanWorkflowIssueTextKey, string>>` | 规则问题的说明，键见 XihanWorkflowIssueTextKey。 |
+
+## 与引擎定义互转
+
+### toWorkflowDefinition() {#toworkflowdefinition}
+
+```ts
+declare function toWorkflowDefinition(document: FlowDocument): XihanWorkflowDefinition
+```
+
+流程文档换成引擎定义：文档 data 里的字段放在前面，接着 nodes、transitions 与 extraProperties。节点坐标写进 extraProperties.designerLayout；有拐点或外观的连线写进 designerEdges，有扩展数据的写进 designerExtensions。节点总有 name 与 properties（引擎的缺省分别是空串与空字典）。
+
+### fromWorkflowDefinition() {#fromworkflowdefinition}
+
+```ts
+declare function fromWorkflowDefinition(definition: XihanWorkflowDefinition, options?: FromWorkflowDefinitionOptions): FlowDocument
+```
+
+引擎定义换成流程文档。节点坐标取 extraProperties.designerLayout，有节点没有坐标时按连线自左向右分层排出它的坐标；尺寸按活动类型取。连线没有 id 时按「源-&gt;目标#序号」补上。Delay 的 DurationSeconds 为数字时换成字符串，其余字段原样搬，值为 null 的字段去掉。结构不对时抛 TypeError。
+
+### FromWorkflowDefinitionOptions {#fromworkflowdefinitionoptions}
+
+fromWorkflowDefinition 的选项。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `nodeTypes?` | `FlowNodeTypeRegistry` | 节点尺寸先从这里按活动类型取，取不到再用预设的尺寸。 |
+
+### XihanWorkflowDefinition {#xihanworkflowdefinition}
+
+引擎的流程定义；没列出的字段原样保留。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `id?` | `string` |  |
+| `code?` | `string` | 流程编码；同一编码可以有多个版本。 |
+| `name?` | `string` |  |
+| `version?` | `number` | 版本号，同一编码内从 1 开始递增。 |
+| `description?` | `string \| null` |  |
+| `category?` | `string \| null` |  |
+| `status?` | `string` | 状态，如 Draft、Published。 |
+| `enableCompensation?` | `boolean` | 启用补偿：实例被取消时按执行的逆序执行可补偿活动的补偿逻辑。 |
+| `nodes?` | `readonly XihanWorkflowNode[]` |  |
+| `transitions?` | `readonly XihanWorkflowTransition[]` |  |
+| `variables?` | `readonly JsonObject[]` | 启动变量的声明。 |
+| `tenantId?` | `number \| null` | 租户 id；为空是平台级定义。 |
+| `creationTime?` | `string` |  |
+| `publishTime?` | `string \| null` |  |
+| `extraProperties?` | `Readonly<Record<string, string>>` | 扩展属性，值都是字符串。 |
+
+### XihanWorkflowNode {#xihanworkflownode}
+
+引擎定义里的节点。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | `string` | 节点 id，流程定义内唯一。 |
+| `name?` | `string` | 节点名称，即节点的 label。 |
+| `activityType` | `string` | 活动类型，即节点的 type；引擎内置的见 XIHAN_WORKFLOW_ACTIVITY_TYPES，也可以是应用登记的活动。 |
+| `properties?` | `JsonObject` | 活动属性，键名由各活动约定。 |
+| `retryPolicy?` | `{ readonly maxAttempts?: number, readonly firstDelaySeconds?: number, readonly backoffFactor?: number } \| null` | 重试策略；为空不重试。 |
+| `timeoutSeconds?` | `number \| null` | 挂起超时的秒数，只对会挂起的节点生效；为空不超时。 |
+| `continueOnError?` | `boolean` | 失败续行：节点最终失败时不让整个实例故障，以 error 结果继续流转。 |
+
+### XihanWorkflowTransition {#xihanworkflowtransition}
+
+引擎定义里的连线。
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| `id?` | `string` | 连线 id，流程定义内唯一。 |
+| `name?` | `string \| null` | 连线名称，即连线的 label。 |
+| `sourceNodeId` | `string` | 源节点 id。 |
+| `targetNodeId` | `string` | 目标节点 id。 |
+| `condition?` | `string \| null` | 转移条件表达式；为空表示无条件。 |
+| `priority?` | `number` | 优先级：条件分支按数值从小到大逐条求值，取第一条满足的。 |
+| `isDefault?` | `boolean` | 默认分支：条件分支的条件都不满足时走它。 |
+
+## 全部导出
+
+### activities
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `XIHAN_WORKFLOW_ASSIGNEE_RULES` | 常量 | 受理人规则的编辑方式：值是 { type, values } 的数组，编辑器由宿主提供（按 control.kind 登记）。 |
+| `XIHAN_WORKFLOW_START_VARIABLES` | 常量 | 启动变量的编辑方式：值是 { name, required?, defaultValue?, description? } 的数组，设计器内建它的编辑器。 |
+| `xihanWorkflowNodeSize` | 函数 | 节点在画布上的尺寸：开始与结束类小一些，其余（含宿主自定义的活动）一样大。 |
+| `xihanWorkflowPropertyKeys` | 函数 | 各活动类型在 data.properties 下读的键，供一致性核对。 |
+
+### definition
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `fromWorkflowDefinition` | 函数 | 引擎定义换成流程文档。 |
+| `FromWorkflowDefinitionOptions` | 接口 | fromWorkflowDefinition 的选项。 |
+| `toWorkflowDefinition` | 函数 | 流程文档换成引擎定义：文档 data 里的字段放在前面，接着 nodes、transitions 与 extraProperties。 |
+| `XihanWorkflowDefinition` | 接口 | 引擎的流程定义；没列出的字段原样保留。 |
+| `XihanWorkflowNode` | 接口 | 引擎定义里的节点。 |
+| `XihanWorkflowTransition` | 接口 | 引擎定义里的连线。 |
+
+### index
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `createXihanWorkflow` | 函数 | 按文案生成预设扩展。 |
+| `CreateXihanWorkflowOptions` | 接口 | createXihanWorkflow 的选项。 |
+| `XIHAN_WORKFLOW_ID` | 常量 | 预设的扩展 id；规则的问题码以 xihan-workflow. 开头。 |
+| `xihanWorkflow` | 常量 | 英文文案的预设扩展。 |
+
+### locale/de-DE
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `xihanWorkflowDeDE` | 常量 | 德语文案。 |
+
+### locale/en-US
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `xihanWorkflowEnUS` | 常量 | 英文文案。 |
+
+### locale/es-ES
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `xihanWorkflowEsES` | 常量 | 西班牙语文案。 |
+
+### locale/fr-FR
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `xihanWorkflowFrFR` | 常量 | 法语文案。 |
+
+### locale/ja-JP
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `xihanWorkflowJaJP` | 常量 | 日语文案。 |
+
+### locale/ko-KR
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `xihanWorkflowKoKR` | 常量 | 韩语文案。 |
+
+### locale/pt-BR
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `xihanWorkflowPtBR` | 常量 | 巴西葡萄牙语文案。 |
+
+### locale/ru-RU
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `xihanWorkflowRuRU` | 常量 | 俄语文案。 |
+
+### locale/zh-CN
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `xihanWorkflowZhCN` | 常量 | 简体中文文案。 |
+
+### locale/zh-TW
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `xihanWorkflowZhTW` | 常量 | 繁体中文文案。 |
+
+### texts
+
+| 名称 | 种类 | 说明 |
+| --- | --- | --- |
+| `XIHAN_WORKFLOW_ACTIVITY_TYPES` | 常量 | 引擎内置的活动类型，与 XiHan.Framework.Workflow 的 WorkflowActivityTypes 一一对应。 |
+| `XIHAN_WORKFLOW_TEXTS` | 常量 | 英文缺省文案。 |
+| `XihanWorkflowActivityType` | 类型 | 引擎内置的活动类型名。 |
+| `XihanWorkflowCategory` | 类型 | 物料面板的分类，节点类型的 category 取这些值。 |
+| `XihanWorkflowGroup` | 类型 | 属性面板的分组，属性描述的 group 取这些值。 |
+| `XihanWorkflowIssueCode` | 类型 | 预设规则的问题码。 |
+| `XihanWorkflowIssueTextKey` | 类型 | 规则问题说明的键：问题码，外加同一条问题随预设选项换用的说明。 |
+| `XihanWorkflowOptionKey` | 类型 | 下拉选项的键：属性键加点加取值，只列需要翻译的。 |
+| `XihanWorkflowPropertyKey` | 类型 | 属性名的键：节点属性用引擎的键名（Title、Url…），节点级字段与连线、流程定义的字段用 JSON 里的字段名，名称（节点名与连线名）为 name。 |
+| `XihanWorkflowTexts` | 接口 | 预设的全部文案。 |
+| `XihanWorkflowTextsOverride` | 类型 | 覆盖部分文案：各部分分别按键覆盖英文缺省。 |

@@ -1,0 +1,268 @@
+来源：https://flow.docs.xihanfun.com/guide/designer
+
+# 设计器
+
+`<xh-flow-designer>` 编辑流程定义：从物料面板拖入节点、拖动端口连线、在属性面板里改属性，问题列表随时给出校验结果；撤销重做、剪贴板、对齐分布与自动布局都是内置命令。它只改流程定义，不保存，什么时候存、存到哪里由宿主决定。完整的属性、方法、事件与命令见[设计器参考](../reference/designer)。
+
+## 放上页面
+
+调用 `defineFlowDesigner()` 注册设计器，它用到的 XiHan.UI 元素与设计器零件一并注册。样式表比查看器多两份：设计器零件的 `@xihan-ui/designer-shell/style.css` 与设计器自己的 `@xihan-flow/designer/style.css`。
+
+```ts
+import { defineFlowDesigner } from '@xihan-flow/designer'
+import { extensions, schema } from '../schemas/approval'
+import '@xihan-ui/styles/index.css'
+import '@xihan-ui/designer-shell/style.css'
+import '@xihan-flow/runtime/style.css'
+import '@xihan-flow/designer/style.css'
+
+defineFlowDesigner()
+```
+
+再把扩展与流程定义交给 `extensions` 与 `schema`。设计器铺满自身，宿主要给元素定高度。
+
+```ts
+const designer = document.createElement('xh-flow-designer')
+designer.extensions = extensions
+designer.paletteGroupOrder = ['human', 'control']
+designer.paletteGroupLabels = xihanWorkflowZhCN.categories
+designer.propertyGroupOrder = ['basic', 'participants', 'form', 'execution']
+designer.propertyGroupLabels = xihanWorkflowZhCN.groups
+designer.schema = schema
+```
+
+
+- `extensions` 与查看器的是同一类扩展，设计器层的扩展还能登记属性编辑器、命令与面板，见[扩展](./extensions)。同一个扩展对象换了引用会当作卸下再装上，宿主要保持引用稳定。
+- 给 `schema` 赋值即装载：清空撤销历史与选择，视口按实际大小（100%）摆好——整张图在某个方向上放得下就居中，放不下就从左上角留白处起，开头的节点在眼前；画布尺寸变了照这样重摆，直到设置视口或在画布上按下指针。要看全貌用「适合窗口」（`zoomToFit()`）。赋回当前这一份不会重新装载。
+- 读 `schema` 得到当前的流程定义。设计器从不改动传进来的对象，每次修改都产生一份新的定义。
+
+## 编辑
+
+**新建节点**：把物料面板里的节点类型拖到画布上，在松手处新建；点条目则在视口中央新建；中央已有节点时顺着右下方错开一步，连点几次不会叠在一起，错到视口边上从左上角另起一列。物料按节点类型的类别分组，`paletteGroupOrder` 定类别的先后，`paletteGroupLabels` 给类别换显示文字。宿主也可以调用 `addNode(type, at)`。
+
+**选择**：点节点或连线选中它，按住 Shift、Ctrl 或 ⌘ 点击则加选或取消；在空白处按住 Shift 拖出框选，同时按住 Ctrl 或 ⌘ 时追加到已有的选择上；点空白处清空选择。选择变化派发 `selection-change`，`getSelection()` 与 `select()` 读写选择。
+
+**移动**：拖动选中的节点。`grid` 是吸附的网格边长，缺省 16，写 `false` 不吸附；设置里的「吸附对齐」开着时（缺省开，见[设置](#设置)）靠近其它节点会吸附并显示对齐线。按住 Alt 松手时原节点不动，在新位置复制一份。画布有焦点时方向键微移选中的节点，按住 Shift 一次移一格网格。
+
+**连线**：从节点的端口拖到另一个节点的端口。拖动途中预览线标出能不能连；违反节点类型的连接约束时连不上，派发 `connect-reject`，`detail` 里是两端与全部问题。选中连线后，两端的控制柄拖到别的端口即改连；中段的控制柄拖出拐点，拐点可以拖动，双击去掉；「清除拐点」把连线交回自动路由。拖动途中按 Escape 取消。
+
+**平移与缩放**与查看器一样：在空白处拖动或滚动滚轮平移，按住 Ctrl 或 ⌘ 滚动滚轮缩放；没有选中节点时方向键平移视口。工具栏上的「拖动」（`H`）打开以后，在画布任意处按住拖动都是平移，节点上也一样，不选中、不挪节点，光标是手形；再点一下或按 Esc 退出，状态在外框的 `canvasTool` 上。小地图上按下或拖动，视口中心移到那里。
+
+## 属性面板
+
+属性面板编辑选中的对象：节点按节点类型的属性描述列出字段；连线列出连线通用的属性，再加上源节点类型给出线登记的属性。选中多个对象时只编辑它们共同的属性，一次写进全部对象；什么都没选中时编辑流程定义级的属性。
+
+字段按属性描述的分组排列。`propertyGroupOrder` 定分组的先后，`propertyGroupLabels` 给分组换标题；示例里两项都来自预设的中文文案。在同一个字段里连续输入合成一步撤销，离开字段后再改另起一步。字段的校验问题直接显示在字段上。
+
+## 问题列表
+
+流程定义、扩展或校验选项变了之后，设计器重新校验，问题列表显示全部问题，同时派发 `issues-change`。错误与警告的条数在问题列表的面板头上，点一下只看或不看这一级。有问题的节点带 `data-issue`，取值是落在它上面最严重的一级（`error` 或 `warning`），皮肤据此画出标记。点一条问题，设计器选中问题所在的节点或连线并显露它；问题落在某个属性上时，焦点直接交给属性面板里的那个字段。
+
+问题码与说明见[问题码](../reference/issues)。`validateOptions` 按问题码改写严重程度，写 `off` 即不报告：
+
+```ts
+designer.validateOptions = { severity: { 'node.isolated': 'off' } }
+```
+
+`validate()` 按同样的扩展与选项立即校验一次，宿主保存前可以用它拦下有错误的定义。
+
+## 流程结构
+
+流程结构面板按定义里的先后列出节点，每个节点下面是从它出去的连线，缺省收起。没有名称的节点写「种类名 · id」，有名称时副文本是种类名；连线没有名称时写「连线 · id」，副文本是「→ 去向」，连线的业务数据里有条件文字（`data.condition`，XiHan 工作流预设就这样写条件）时写成「条件 → 去向」。
+
+- 点一行就在画布上选中它，不在视口里时移过来（节点用 `revealNode`，连线用 `revealEdge`）；画布上选中的对象在面板里跟着选中，选中一条连线时展开它的出发节点。
+- 多选照文件管理器：按住 Ctrl / ⌘ 点击或按 Ctrl / ⌘ + Space 加选与取消，按住 Shift 点击选一段，节点与连线可以一起选；只把新选上的第一行移进视口，只取消了几行时视口不动。Delete 删掉全部选中的。
+- 指针悬停或键盘落在一行时，画布上标出那个节点或连线，离开时撤掉。
+- 删除钮与 Delete 走设计器的删除；只读时不删。行不能拖动，先后跟着流程定义。
+- 面板上方有搜索框，按名称与副文本过滤。标题与帮助是流程自己的说法，在设计器文案的 `outline` 里。
+
+## 命令
+
+菜单栏、工具栏、右键菜单与快捷键执行的都是命令。每条内置命令都带图标，工具栏缺省只显示图标，悬停或聚焦时提示命令的名字与快捷键；撤销、复制、对齐、缩放这些四款设计器都有的命令，文案用 designer-shell 语言包里 `xh-designer-commands` 那一桶，与其它设计器一致，要改它们的文字时改那一桶；撤销、重做与清空历史本身就是 designer-shell 的共用命令，见[撤销与保存](#撤销与保存)。工具栏末组是 designer-shell 内置的「面板」：点开一张菜单，列出物料、属性、问题这些能开关的面板，勾选的显示，收起的面板从这里再打开；宿主不要哪一条，用 `commandLayout` 排掉。设置、帮助、开始引导与编辑 JSON 在菜单栏里，见下文。内置命令的 id、名称与快捷键见[内置命令](../reference/designer#内置命令)；只读时会修改流程定义的命令不可用，复制、全选与缩放仍可用。命令都有对应的方法，宿主的按钮直接调用方法即可，比如 `undo()`、`duplicate()`、`align('left')`、`autoLayout({ direction: 'LR' })`；按 id 执行用 `runCommand(id)`，内置命令与扩展命令都认，命令存在且此刻可用才执行，返回是否执行了。
+
+最上一条是菜单栏，下面是工具栏。菜单栏放通用的功能，四张菜单与四款设计器一致：
+
+- 「文件」：保存（Ctrl / ⌘ + S）、打开文件（有导入器时）、导出 PNG 与 SVG、设置（Ctrl / ⌘ + ,，同 `openSettings()`）。
+- 「编辑」：撤销、重做，剪切、复制、粘贴、删除、创建副本，全选；开发者模式开着时还有编辑 JSON（Ctrl / ⌘ + Shift + J，见[编辑 JSON](#编辑-json)）。
+- 「视图」：放大、缩小、适合窗口、实际大小，拖动，自动布局与「对齐与分布」子菜单，「面板」与「外观」两个子菜单；外观里是工具栏、状态栏、菜单栏三个显示开关（改的是设置）。
+- 「帮助」：开始引导、帮助（在新窗口打开本站的设计器一页，地址是导出的 `FLOW_DESIGNER_HELP_URL`）、快捷键（打开设置的快捷键页），关于（打开设置的关于页）。
+
+画布有焦点时按 F10 把焦点交给菜单栏，左右键在菜单之间走，下键、Enter 或 Space 展开；再按 F10，或在菜单栏上按 Esc，回到画布。窄屏时菜单栏收成行首一颗「菜单」钮，各张菜单是它的子菜单。菜单栏常开，设置里没有关掉它的开关。
+
+宿主自己的操作（新建、预览、返回列表）写成一个扩展的命令，`placement` 写 `menubar:file` 就进「文件」菜单，写了 `toolbar` 也上工具栏；模板标题写成设计器的子元素 `slot="menubar-center"`，显示在整条菜单栏的正中，放不下时截断加省略号，再窄就藏起；保存状态写成 `slot="status-end"`，显示在状态栏右端、缩放比例的左边，状态栏在设置里关掉时跟着不显示；别的要常显的内容写 `slot="menubar-end"`，显示在菜单栏右边。这样设计器外面不必另起一条操作条。
+
+```ts
+designer.extensions = [{
+  id: 'acme.host',
+  commands: [
+    { id: 'acme.new', label: '新建', shortcut: ['Mod', 'Alt', 'N'], placement: ['menubar:file'], run: () => location.assign('/flows/new') },
+    { id: 'acme.back', label: '返回列表', placement: ['menubar:file', 'toolbar'], run: () => history.back() },
+  ],
+}]
+const title = document.createElement('span')
+title.slot = 'menubar-center'
+title.textContent = '请假审批 · LEAVE-01'
+const saved = document.createElement('span')
+saved.slot = 'status-end'
+saved.textContent = '已保存'
+designer.append(title, saved)
+```
+
+右键菜单按落点给出不同的命令：节点上是剪切、复制、创建副本与删除，选中两个以上节点时加上对齐，三个以上时再加上分布；连线上是删除与清除拐点；空白处是粘贴、全选、自动布局与适合窗口，开发者模式开着时末尾是编辑 JSON。在画布上按 ContextMenu 键或 Shift + F10，按当前的选择打开菜单。右键事件可以取消，取消后内置菜单与浏览器的菜单都不出现，宿主可以在 `detail` 的 `x`、`y` 处弹自己的菜单。
+
+选中节点时，选中框上方浮着一条选中工具条：创建副本、复制与删除，选中几个节点时前面多一个「对齐与分布」菜单（`align-menu`，点开列出六种对齐与两种分布）。贴顶放不下时翻到下方，拖动途中收起；只选了连线、没有选中或只读时不出现。画布有焦点时按 Alt + F10 把焦点交给它，在工具条里按 Esc 回到画布。
+
+`commandLayout` 重排工具栏、菜单栏的各张菜单、各右键菜单与选中工具条，键是位置（`toolbar`，菜单栏是 `menubar:file`、`menubar:edit`、`menubar:view`、`menubar:help`，右键菜单是 `menu:node`、`menu:edge`、`menu:blank`，选中工具条是 `selection:node` 与 `selection:nodes`），值是若干组命令 id；某张菜单或某个选中工具条排空了就不出现。写了某个位置就只显示列出的命令，没写的位置用内置排列；排列里写了不存在的命令 id 会抛 TypeError，不会静默跳过。
+
+```ts
+designer.commandLayout = {
+  'toolbar': [['undo', 'redo'], ['auto-layout'], ['zoom-to-fit', 'zoom-to-actual']],
+  'menu:blank': [['paste'], ['auto-layout']],
+}
+```
+
+面板是物料（`palette`）、流程结构（`outline`）、属性（`properties`）、问题（`issues`）、历史记录（`history`）五张卡片与画布右下角的小地图（`minimap`），id 在包入口导出的 `FLOW_PANELS` 里。流程结构停在左栏物料下面；历史记录缺省隐藏，打开后停在右栏属性下面。`defaultLayout` 是宿主给的缺省布局：用户没存过布局时用它，「恢复默认布局」也回到它；不给时全部显示、各在缺省的位置。形状是 `@xihan-ui/designer-shell` 的 `DesignerLayout`，写了的字段整项覆盖缺省，常用的是 `hidden`（收起哪些面板）与 `docks`（各栏放哪些面板、谁先谁后）。
+
+```ts
+designer.defaultLayout = { version: 1, hidden: [FLOW_PANELS.palette, FLOW_PANELS.issues, FLOW_PANELS.minimap] }
+```
+
+底部的状态栏左边写选中的对象：什么都没选中时是流程里有几个节点、几条连线，选中一个节点时是它的类型、位置与尺寸，选中一条连线时是连线名，选中多个时是选了几个；右边是缩放比例，点一下回到 100%。设置里关掉「状态栏」时整条不显示。
+
+物料、属性与问题列表各是一张卡片：面板头写标题，属性面板的副标题是当前编辑的对象，「?」弹出这块面板的说明，收起钮把它收成标题条（双击面板头也行），「更多」菜单里换栏、调序、浮出，「×」隐藏它；按住面板头可以拖到左、右、下另一栏，拖到画布上就浮出成小窗。工具栏与「视图」菜单里的「面板」逐块勾选显隐，另有显示或隐藏所有面板（Ctrl / ⌘ + \\）、还原面板显隐（Ctrl / ⌘ + Shift + \\）与恢复默认布局；每块面板还有一条开关命令 `panel:<面板 id>`，可以排进 `commandLayout`。
+
+布局改了，整份写进设置的 `layout.panels`（`DESIGNER_SETTING_KEYS.layout`），和设置对话框里改一条一样派发 `settings-change`，宿主存下来、下次随 `settings` 赋回即可；给了 `settingsStorageKey` 时设计器自己存。宿主要固定布局，用 `settingsPolicy`：`layout.panels` 锁住整份，`layout.panels.<面板 id>` 藏掉或锁定一块面板。
+
+除了命令的快捷键，画布有焦点时还认这些键：Backspace 删除，`=` 放大，F10 进出菜单栏；设置的「快捷键」页把命令的快捷键与这些键列成一张表。Ctrl / ⌘ + C、X、V 走系统剪贴板：复制出的是一段 JSON 文本，能在同一页面、别的页面或别的标签页的设计器里粘贴；读不出流程内容的文本交给扩展的导入器（见[导入与导出](./extensions#导入与导出)），没有导入器接下时不会贴进来。宿主调 `paste(内容)` 时每次比上一次多错开一格；给了落点 `paste(内容, { at })` 时内容整体的中心放到 `at`（世界坐标，视口中央是 `getViewportCenter()`），左上角吸附网格，不累加错开。剪贴板的文本格式由 `encodeFlowClipboard` 与 `decodeFlowClipboard` 互转。
+
+## 设置
+
+设置是用户偏好，每人每机一份，不随流程定义保存。`openSettings(section?)` 打开设置对话框，左边一个分区一页：
+
+- 「基础」（`general`）：主题（跟随页面、跟随系统、亮色、暗色）、主题色（跟随页面、八种预设、自定义颜色）、状态栏、自动保存、开发者模式，以及分页与渲染两条调试日志（开发者模式开着才能改）。
+- 「语言」（`language`）：跟随页面（缺省）、跟随系统，或在十种语言里选一种，名字是各自的本名（简体中文、繁體中文、English、日本語……）。
+- 「布局」（`layout`）：一张面板表，逐块面板改显隐、位置、先后与收起，表下一颗「恢复默认布局」。
+- 「工具栏」（`toolbar`）：按钮的显示方式（图标、文字、图标和文字，缺省只显示图标）、显示工具栏开关，以及一张按钮表：按缺省排列列出工具栏上的命令，可以勾掉不要的、拖动换先后、跨组挪，表下「恢复默认」。工具栏的这些只走设置，没有单独的属性；用户的改动压在宿主的 `commandLayout` 之上。
+- 「画布」（`flow`）：自动布局的方向与两种间距、吸附对齐。
+- 扩展登记的分区，排在后面。
+- 「帮助」「快捷键」「关于」三页在最后：帮助页是几段操作说明与「开始引导」「帮助」两颗钮；快捷键页把命令的快捷键与画布认的几个键列成一张表，「通用」里方向键一行写明没有选中节点时平移画布，Esc 一行写明取消正在进行的拖动；画布在空白处直接拖动就平移，所以没有「按住空格拖动」那一行；关于页写设计器的版本（包入口导出的 `FLOW_VERSION`）与许可证，扩展可以在后面加几行（扩展的 `about` 字段）。
+
+分区 id 与 `flow`、内建的 `general`、`language`、`layout`、`toolbar`、`help`、`shortcuts`、`about` 或别的扩展重名时，给 `extensions` 赋值就抛 `DesignerExtensionError`。
+
+```ts
+export function openCanvasSettings(designer: XhFlowDesigner): void {
+  designer.openSettings(FLOW_SETTINGS_SECTION)
+}
+```
+
+值是扁平的键值，键是「分区 id.条目 id」，如 `general.theme`、`flow.snap`，没写的键取缺省值。宿主给缺省、锁定条目或读值时用常量，不手写键：「画布」分区的 id 与各条目的键是包入口导出的 `FLOW_SETTINGS_SECTION` 与 `FLOW_SETTING_KEYS`，「基础」「语言」「布局」「工具栏」分区的键是 `@xihan-ui/designer-shell` 的 `DESIGNER_SETTING_KEYS`（如 `general.brand`、`language.locale`、`toolbar.display`、`toolbar.layout`）；以后条目改了 path，常量跟着变，宿主的缺省不会静默失效。`settings` 赋值即生效；用户在对话框里改了一条，设计器换成新的一份并派发 `settings-change`，宿主存起来、下次赋回。`settingsPolicy` 隐藏或锁定条目，键是条目键或分区 id：`hidden` 不显示，一个分区的条目全藏了就没有这一页；`locked` 只读，说明换成「由所在系统管理」。
+
+```ts
+export function wireSettings(designer: XhFlowDesigner, saved: FlowSettings, store: (settings: FlowSettings) => void): void {
+  // 宿主自己的缺省压在下面，用户存过的值盖在上面
+  designer.settings = { [FLOW_SETTING_KEYS.layoutDirection]: 'LR', ...saved }
+  designer.settingsPolicy = { [DESIGNER_SETTING_KEYS.theme]: 'hidden', [DESIGNER_SETTING_KEYS.brand]: 'hidden', [FLOW_SETTING_KEYS.snap]: 'locked' }
+  designer.addEventListener('settings-change', (event) => {
+    store((event as CustomEvent<{ settings: FlowSettings }>).detail.settings)
+  })
+}
+```
+
+- **主题只作用于设计器**：主题与主题色写在 `<xh-flow-designer>` 自己的 `data-theme`、`data-brand` 上，页面其余部分不变；设置对话框、菜单这些浮层跟着设计器变。主题色是内置的：跟随页面（缺省），或 UI 的八种预设，或自定义颜色，宿主不用传预设。
+- **语言只作用于设计器**：设置里选了语言，`<xh-flow-designer>` 把这一语言的 UI、designer-shell 与流程语言包作为自己的 `xhConfig` 交出去，设计器、里面的元素与它弹出的浮层都换成这种语言（日期、分页这些 UI 文案也一样），页面别处不变。跟随系统按浏览器的语言偏好挑最接近的一种，挑不到用英文；语言包第一次用到时才加载。跟随页面时 `xhConfig` 是空对象，照页面的全局配置。
+- **画布的设置**：`autoLayout()` 没给的方向与间距、工具栏的「自动布局」都取「画布」分区的值；吸附对齐关掉时拖动只吸附网格。小地图是一块面板，显隐跟着布局走。
+- **扩展读设置**：命令、面板与扩展从上下文的 `settings` 读值，各分区没写的条目已经取了缺省值，如 `context.settings['flow.snap']`。
+
+- **自动保存**：设置里开着自动保存时，有未保存的修改，停手约一秒就把整份流程定义存成这台浏览器里的草稿（localStorage），宿主不参与；设计器变干净（宿主存完调 `markSaved()`，或撤销回到保存点）时删掉草稿，关掉自动保存不删已有的草稿。宿主给 `draftKey`（同名 attribute `draft-key`，通常是流程 id）区分不同流程，不给按页面地址区分。下次宿主装进同一个键的流程、和草稿不一样时，问「发现未保存的草稿（时间）」，恢复会整份换上草稿、记一步撤销，丢弃即删掉草稿。不要这一项时用 `settingsPolicy` 把 `general.autoSave` 藏起或锁住。Ctrl / ⌘ + S 照旧派发 `save`，与自动保存无关。
+- **调试日志**：开发者模式与「渲染调试日志」都开着时，每次重画在浏览器控制台记一组「[xh-flow-designer] render · update: 改动的属性 耗时」，导出图片也记一组；流程没有分页，「分页调试日志」开了也没有日志。
+
+独立使用、没有宿主替你存时，给 `settingsStorageKey`：连上文档时若没赋 `settings` 就从根所在窗口的 localStorage 读，用户改了设置就写回去；标了 `secret` 的文本条目（如密钥）不存。读写失败派发 `settings-storage-error`，设置留在内存里。不给就不读写存储。
+
+```ts
+export function standalone(designer: XhFlowDesigner): void {
+  designer.settingsStorageKey = 'flow-designer:settings'
+  designer.addEventListener('settings-storage-error', (event) => {
+    console.warn('设置没能读写本机存储，这次改的只在内存里', (event as CustomEvent<{ error: unknown }>).detail.error)
+  })
+}
+```
+
+## 新手引导
+
+设计器第一次显示出来、画布铺好之后，自动开始一次新手引导：先讲菜单栏（各张菜单里有什么，F10 进出菜单栏），再一步步高亮工具栏、节点面板、画布、属性面板、问题面板与状态栏，接着是流程自己的三步——连线（指向第一个端口）、自动布局与导出图片（指向工具栏上的钮，并说它们也在「视图」「文件」菜单里），最后一步是设置：高亮「文件」菜单，设置在那里，引导能从「帮助」菜单重新开始。目标看不见的那步自动跳过，比如画布上还没有节点时不讲连线。
+
+窄屏时菜单栏收成一颗「菜单」钮，讲菜单栏与设置的两步都落在这颗钮上。
+
+- 走完、跳过或关上之后，设置里记下 `help.tourDone`（`@xihan-ui/designer-shell` 的 `DESIGNER_TOUR_DONE_KEY`）并派发 `settings-change`，以后不再自动开始。宿主替用户存设置时，这个键随设置一起存。
+- 设计器藏着时不开始，等它显示出来再看。宿主不要自动开始时写 `autoTour = false`（同名 attribute `auto-tour="false"`）。
+- 引导限在设计器的外框里：遮罩只盖外框，高亮框裁在外框里，页面别处照常可读可点。同一页同时只有一个引导：别的设计器的引导开着时不自动开始。
+- `startTour()` 随时从头开始，同一页里别的引导开着时先收起它，没有能走的步骤时返回 `false`；「帮助」菜单与设置帮助页里的「开始引导」、`start-tour` 命令做的是同一件事。
+- 扩展可以登记自己的步骤，见[扩展](./extensions)的 `tourSteps`。
+
+## 撤销与保存
+
+每次修改记为一步撤销，拖动这类连续操作松手时才记为一步。`canUndo`、`canRedo` 表示能不能撤销重做，`undo()`、`redo()` 执行。
+
+- **每一步带说明**：如「移动 任务 approve_1」「添加 3 个节点」「修改「名称」」「自动布局」「编辑 JSON」。单个节点写「种类 名称」（没有名称时是 id），几个节点写个数；创建副本与按住 Alt 拖动复制都写「复制」加节点；说明跟着界面语言变。撤销、重做钮的名字带上下一步的说明，如「撤销：移动 任务 approve_1」，按钮上看得见的字仍是「撤销」。
+- **合并**：在同一个属性字段里连续输入合成一步；画布有焦点时按方向键微移，同一组选中的节点一秒内连按合成一步，换了选中另起一步。
+- **快捷键**：撤销 Ctrl / ⌘ + Z，重做 Ctrl / ⌘ + Shift + Z，另认 Ctrl + Y。
+- **清空历史**：命令 `clear-history`，不上工具栏，在历史记录面板的面板头上；点了先弹确认框，确定后才清空，清空后不能再撤销到之前。
+- **历史记录面板**：列出每一步与起点，选一步（或起点）就一次跳过去，之后的步骤留着、可以再重做回来；只读时只能看。撤销、重做、清空与跳转之后，读屏会礼貌地读一句。宿主自己改流程定义时用 `execute(operations)`，一组操作记为一步，操作的写法见[流程定义结构](./schema#编辑操作)。
+
+流程定义每次变化派发 `schema-change`，`detail` 里是新的定义、这次的操作与种类：`execute` 是编辑，`undo`、`redo` 是撤销重做，`load` 是装载了新定义。
+
+```ts
+designer.addEventListener('schema-change', (event) => {
+  const { kind, operations } = (event as FlowDesignerEventMap['schema-change']).detail
+  status.textContent = `${KIND_TEXT[kind]}：${operations.map(operation => operation.type).join('、')}`
+})
+```
+
+`dirty` 表示有没有未保存的修改，变化时派发 `dirty-change`。设计器不自己保存：画布有焦点时按 Ctrl / ⌘ + S，或点「文件」菜单的「保存」（命令 `save`），只派发 `save`，宿主保存成功后调用 `markSaved()` 把当前状态记为已保存。撤销回已保存的那一步时 `dirty` 也会回到 `false`。
+
+```ts
+const saveNow = (): void => {
+  // 宿主在这里把 designer.schema 交给后端，保存成功后记为已保存
+  designer.markSaved()
+  status.textContent = '已保存'
+}
+const save = button('保存', saveNow)
+save.disabled = true
+designer.addEventListener('save', saveNow)
+designer.addEventListener('dirty-change', (event) => {
+  save.disabled = !(event as FlowDesignerEventMap['dirty-change']).detail.dirty
+})
+```
+
+## 编辑 JSON
+
+`openJsonEditor()` 打开一个编辑整份流程定义 JSON 的对话框（也是 `edit-json` 命令做的事）。`edit-json` 命令只在设置里开着开发者模式时存在：关着时菜单栏、右键菜单里都没有它，快捷键也不响应；宿主要给用户这个入口，就在 `settings` 里预先写 `general.developer: true`，或用 `settingsPolicy` 锁住它。`openJsonEditor()` 方法照样能调。对话框：编辑框里写出当前的定义，边改边检查，下面列出问题，底边是格式化、复制、取消与应用。
+
+- 问题与问题列表同一套：先按读入检查结构，读得了再按当前的扩展与 `validateOptions` 校验，说明与所在对象的名字与问题列表一致。点一条，光标跳到那个路径在文字里的位置。
+- 文字解析不了、有错误级的问题或与打开时相同时，「应用」不可用。
+- 应用即整份换上，记为一步撤销，派发 `schema-change`（种类是 `execute`），选择清空，视口随后按实际大小摆好；撤销一步回到原来那份。
+- 只读时能看、能格式化与复制，不能应用。
+
+## 导出图片
+
+`export("svg" | "png", options)` 与查看器的导出图片相同，选项也一样；选中的节点与连线按没选中的样子画。它是设计器自带的图片导出器，与扩展登记的导出器走同一个 `export()`。
+
+工具栏最后一组是「导出 PNG」与「导出 SVG」，流程图是空的时不可用，只读时照样能用。导出后派发可以取消的 `export` 事件，`detail` 里是格式与文件；没被取消时存成 `flow.png` 或 `flow.svg` 下载，宿主想自己命名或上传就取消它，拿 `detail.blob` 自己存。不想要这两个按钮时用 `commandLayout` 把它们去掉。
+
+## 只读
+
+`readonly` 打开后仍可以选择、浏览、复制与缩放，不能修改：拖动、连线、删除、粘贴与属性面板的编辑都不起作用，会修改的方法什么都不做。元素上带 `data-readonly`。
+
+同名 attribute 是三态的，与 XiHan.UI 的元素一致：不写为缺省（不只读）；写 `readonly="false"` 为 `false`；写 `readonly`、`readonly="true"` 或别的值为 `true`；摘掉 attribute 回到缺省。这是行为变化：以前只要写了这个 attribute 就算只读，`readonly="false"` 也不例外。经 property 赋值不受影响。
+
+```ts
+const readonly = button('只读', () => {
+  designer.readonly = !designer.readonly
+  readonly.setAttribute('aria-pressed', String(designer.readonly))
+})
+readonly.setAttribute('aria-pressed', 'false')
+```
+
+## 文案
+
+设计器的缺省文案是英文。全站换语言时与查看器一样合并同一语言的流程语言包（如 `flowZhCN`、`flowJaJP`），写法见[快速开始](../quickstart#中文界面)。单个实例要改时写 `translations`，它压在全局配置之上；可以改的文案见 [FlowDesignerTranslations](../reference/designer#flowdesignertranslations)。

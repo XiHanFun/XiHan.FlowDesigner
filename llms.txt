@@ -1,0 +1,38 @@
+# 曦寒流程设计器
+
+> 框架无关的流程设计器：以原生 Web Components 交付，流程定义是纯 JSON；查看器显示流程与运行状态，设计器可视化编辑；节点类型、属性、规则、命令与面板都经扩展登记，自带 XiHan 工作流引擎的节点预设，能与引擎定义互转。
+
+本文件由文档站构建期生成，内容与仓库文档同源。
+
+## 机读资产
+
+- [llms-full.txt](https://flow.docs.xihanfun.com/llms-full.txt): 全部 17 页正文
+- [llms-guide.txt](https://flow.docs.xihanfun.com/llms-guide.txt): 6 页指南
+- [llms-reference.txt](https://flow.docs.xihanfun.com/llms-reference.txt): 7 页参考
+- 每页 Markdown：把站点地址后缀成 `.md`，如 https://flow.docs.xihanfun.com/guide/designer.md
+
+## 开始
+
+- [更新日志](https://flow.docs.xihanfun.com/changelog): 本页记录曦寒流程设计器各版本的变更，只收使用者能感知的改动。
+- [曦寒流程设计器](https://flow.docs.xihanfun.com/): 框架无关的流程图查看与设计
+- [介绍](https://flow.docs.xihanfun.com/introduction): 曦寒流程设计器（XiHan.FlowDesigner）是一款框架无关的流程设计器：以原生 Web Components 交付，用查看器显示流程与每个节点的运行状态，用设计器可视化编辑流程。
+- [快速开始](https://flow.docs.xihanfun.com/quickstart): 这一页在任意前端项目里装上运行时，把一张费用审批流显示出来，再逐步标出各节点的运行状态。
+
+## 指南
+
+- [设计器](https://flow.docs.xihanfun.com/guide/designer): `<xh-flow-designer>` 编辑流程定义：从物料面板拖入节点、拖动端口连线、在属性面板里改属性，问题列表随时给出校验结果；撤销重做、剪贴板、对齐分布与自动布局都是内置命令。
+- [扩展](https://flow.docs.xihanfun.com/guide/extensions): 节点类型、属性、编辑方式、规则、节点渲染、属性编辑器、命令与面板，都经扩展登记。
+- [与宿主集成](https://flow.docs.xihanfun.com/guide/host): 查看器与设计器只管显示与编辑，不发网络请求，也不碰存储与权限。
+- [流程定义结构](https://flow.docs.xihanfun.com/guide/schema): 流程定义（`FlowDocument`）是纯 JSON：一组节点、一组连线，加上文档级的业务数据。
+- [查看器](https://flow.docs.xihanfun.com/guide/viewer): `<xh-flow-viewer>` 在业务页面里显示流程：按节点类型画出节点与连线，标出每个节点的运行状态与高亮，支持缩放、平移与定位节点。
+- [XiHan 工作流引擎预设](https://flow.docs.xihanfun.com/guide/xihan-workflow): XiHan.Framework 的工作流引擎按流程定义 JSON 运行流程。
+
+## 参考
+
+- [模型层 core](https://flow.docs.xihanfun.com/reference/core): `@xihan-flow/core` 是纯 TypeScript 的模型层：流程定义的类型、读入检查、校验、编辑操作、连线几何、节点类型登记与扩展合并，不依赖 DOM，浏览器、Node.js 与其它 JavaScript 运行环境里都能用。
+- [设计器](https://flow.docs.xihanfun.com/reference/designer): `<xh-flow-designer>` 编辑流程定义，类在 `@xihan-flow/designer` 里导出为 `XhFlowDesigner`，调用 `defineFlowDesigner()` 注册。
+- [扩展](https://flow.docs.xihanfun.com/reference/extensions): 扩展分三层：core 层登记节点类型、属性、编辑方式与规则，校验与编辑操作只读这一层；运行时层再加节点内容的渲染，见查看器参考；设计器层再加属性编辑器、命令、面板、导入器、导出器与 `setup`。
+- [问题码](https://flow.docs.xihanfun.com/reference/issues): `readDocument` 读入与 `validateDocument` 校验给出的问题都带问题码、从文档根算起的路径、所在对象与严重程度，不带文案；设计器的问题列表与属性面板按语言包把问题码换成说明。
+- [流程定义类型](https://flow.docs.xihanfun.com/reference/schema): 流程定义（`FlowDocument`）是纯 JSON，下面的类型取自 `@xihan-flow/core` 的源码。
+- [查看器](https://flow.docs.xihanfun.com/reference/viewer): `<xh-flow-viewer>` 在业务页面里显示流程与运行状态，类在 `@xihan-flow/runtime` 里导出为 `XhFlowViewer`，调用 `defineFlowViewer()` 注册。
+- [XiHan 工作流引擎预设](https://flow.docs.xihanfun.com/reference/xihan-workflow): `@xihan-flow/core/presets/xihan-workflow` 是 XiHan.Framework 工作流引擎的节点预设：引擎的每种活动对应一个节点类型，属性键与引擎读的一致，并能与引擎定义 JSON 互转。
