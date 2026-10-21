@@ -40,6 +40,14 @@ const guideSidebar: DefaultTheme.SidebarItem[] = [
     ],
   },
   {
+    text: 'AI 辅助开发',
+    collapsed: false,
+    items: [
+      { text: 'For Agents', link: '/ai/agents' },
+      { text: 'LLMs.txt', link: '/ai/llms' },
+    ],
+  },
+  {
     text: '指南',
     collapsed: false,
     items: [
@@ -83,7 +91,37 @@ const sidebar: DefaultTheme.Sidebar = {
 }
 
 const nav: DefaultTheme.NavItem[] = [
-  { text: '指南', link: '/introduction', activeMatch: '^/(introduction|quickstart|guide/.*)$' },
+  {
+    text: '指南',
+    activeMatch: '^/(introduction|quickstart|guide/.*|ai/.*)$',
+    items: [
+      {
+        text: '开始',
+        items: [
+          { text: '介绍', link: '/introduction' },
+          { text: '快速开始', link: '/quickstart' },
+        ],
+      },
+      {
+        text: '指南',
+        items: [
+          { text: '流程定义结构', link: '/guide/schema' },
+          { text: '查看器', link: '/guide/viewer' },
+          { text: '设计器', link: '/guide/designer' },
+          { text: '扩展', link: '/guide/extensions' },
+          { text: 'XiHan 工作流引擎预设', link: '/guide/xihan-workflow' },
+          { text: '与宿主集成', link: '/guide/host' },
+        ],
+      },
+      {
+        text: 'AI 辅助开发',
+        items: [
+          { text: 'For Agents', link: '/ai/agents' },
+          { text: 'LLMs.txt', link: '/ai/llms' },
+        ],
+      },
+    ],
+  },
   { text: '参考', link: '/reference/schema', activeMatch: '^/reference/' },
   {
     text: '生态',
@@ -165,6 +203,7 @@ export default defineXiHanConfig({
     site: 'https://flow.docs.xihanfun.com',
     sections: [
       { dir: '.', label: '开始' },
+      { dir: 'ai', label: 'AI 辅助开发' },
       { dir: 'guide', label: '指南' },
       { dir: 'reference', label: '参考' },
     ],
