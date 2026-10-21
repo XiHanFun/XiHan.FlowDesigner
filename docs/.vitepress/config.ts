@@ -40,14 +40,6 @@ const guideSidebar: DefaultTheme.SidebarItem[] = [
     ],
   },
   {
-    text: 'AI 辅助开发',
-    collapsed: false,
-    items: [
-      { text: 'For Agents', link: '/ai/agents' },
-      { text: 'LLMs.txt', link: '/ai/llms' },
-    ],
-  },
-  {
     text: '指南',
     collapsed: false,
     items: [
@@ -57,6 +49,14 @@ const guideSidebar: DefaultTheme.SidebarItem[] = [
       { text: '扩展', link: '/guide/extensions' },
       { text: 'XiHan 工作流引擎预设', link: '/guide/xihan-workflow' },
       { text: '与宿主集成', link: '/guide/host' },
+    ],
+  },
+  {
+    text: 'AI 辅助开发',
+    collapsed: false,
+    items: [
+      { text: 'For Agents', link: '/ai/agents' },
+      { text: 'LLMs.txt', link: '/ai/llms' },
     ],
   },
 ]
@@ -103,7 +103,7 @@ const nav: DefaultTheme.NavItem[] = [
         ],
       },
       {
-        text: '指南',
+        text: '深入',
         items: [
           { text: '流程定义结构', link: '/guide/schema' },
           { text: '查看器', link: '/guide/viewer' },
