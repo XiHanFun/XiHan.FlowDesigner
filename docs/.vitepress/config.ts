@@ -156,7 +156,10 @@ const nav: DefaultTheme.NavItem[] = [
   // 三个包锁步同版，版本号取 core 的
   {
     text: `v${manifest('../../flow/packages/core/package.json').version}`,
-    items: [{ text: '更新日志', link: '/changelog' }],
+    items: [
+      { text: '更新日志', link: '/changelog' },
+      { text: 'npm', link: 'https://www.npmjs.com/org/xihan-flow' },
+    ],
   },
 ]
 
