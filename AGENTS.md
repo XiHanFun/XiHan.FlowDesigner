@@ -103,7 +103,7 @@ XiHan.FlowDesigner 是框架无关的流程设计器，以原生 Web Components 
 - runtime 是业务页面使用的元素，体积敏感；设计器专用的代码不进 runtime。
 - 所有包源码不得 import 任何前端框架（ESLint 已拦截）。
 - 运行时依赖只允许 `@xihan-flow/*` 与 `@xihan-ui/*`；引入任何其他依赖之前先征得维护者同意。
-- 三个公开包之间写 `dependencies`（`workspace:^`，锁步同版）；`@xihan-ui/*` 写 `peerDependencies`（`^5.0.0`），由宿主装唯一的一份，开发与测试另写一份 `devDependencies`（`catalog:`）。用到新的 UI 包时 peer 与 dev 两处一起加；UI 升大版本时改 `flow/pnpm-workspace.yaml` 的 catalog 与各包的 peer 范围。
+- 三个公开包之间写 `dependencies`（`workspace:^`，锁步同版）；`@xihan-ui/*` 写 `peerDependencies`（`^5.1.0`），由宿主装唯一的一份，开发与测试另写一份 `devDependencies`（`catalog:`）。用到新的 UI 包时 peer 与 dev 两处一起加；UI 升大版本时改 `flow/pnpm-workspace.yaml` 的 catalog 与各包的 peer 范围。
 - 用的是 npm 上已经发布的 UI。要用 UI 还没发布的改动，等 UI 发版后再升；本地临时验证可以在 `pnpm-workspace.yaml` 里用 `overrides` 指向同级 `XiHan.UI/ui/packages/<分组>/<包>`（读的是它的 dist，先在 `XiHan.UI/ui` 构建），验完删掉、恢复锁文件，不提交。
 
 ## 硬性约定

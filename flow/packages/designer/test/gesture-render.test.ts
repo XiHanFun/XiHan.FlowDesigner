@@ -86,14 +86,25 @@ describe('缩放比例', () => {
 
 describe('画布尺寸', () => {
   it('有 ResizeObserver 时取它量出的尺寸：滚轮缩放不再读画布的 clientWidth / clientHeight', async () => {
-    const callbacks: (() => void)[] = []
+    const observers: { callback: ResizeObserverCallback, targets: Element[] }[] = []
     vi.stubGlobal('ResizeObserver', class {
-      constructor(callback: () => void) {
-        callbacks.push(callback)
+      readonly #record: { callback: ResizeObserverCallback, targets: Element[] }
+      constructor(callback: ResizeObserverCallback) {
+        this.#record = { callback, targets: [] }
+        observers.push(this.#record)
       }
 
-      observe(): void {}
-      disconnect(): void {}
+      observe(target: Element): void {
+        this.#record.targets.push(target)
+      }
+
+      unobserve(target: Element): void {
+        this.#record.targets = this.#record.targets.filter(item => item !== target)
+      }
+
+      disconnect(): void {
+        this.#record.targets = []
+      }
     })
     const designer = await mount()
     const root = part(designer, 'viewport')[0]!
@@ -108,8 +119,11 @@ describe('画布尺寸', () => {
       })
     }
     root.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, right: 600, bottom: 300, width: 600, height: 300, toJSON: () => ({}) })
-    for (const callback of callbacks)
-      callback()
+    // 照真实的接口回调：每个观察器带上它盯着的那些节点此刻的尺寸
+    for (const { callback, targets } of observers) {
+      if (targets.length > 0)
+        callback(targets.map(target => ({ target, contentRect: target.getBoundingClientRect(), borderBoxSize: [], contentBoxSize: [], devicePixelContentBoxSize: [] }) as unknown as ResizeObserverEntry), {} as ResizeObserver)
+    }
     reads = 0
     const zoom = designer.getViewport().zoom
     for (let i = 0; i < 5; i++)
