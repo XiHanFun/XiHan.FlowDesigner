@@ -1,5 +1,11 @@
 # @xihan-flow/core
 
+## 1.0.0-rc.2
+
+### Patch Changes
+
+- 6167311: **调整** `@xihan-ui/*` 的 peer 范围提到 `^5.1.0`：宿主要装 XiHan.UI 5.1.0 及以上，设计器的关闭钮与外壳的流畅度改进都在这一版里。
+
 ## 1.0.0-rc.1
 
 ### Major Changes
