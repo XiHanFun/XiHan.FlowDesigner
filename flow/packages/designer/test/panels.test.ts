@@ -148,6 +148,30 @@ describe('工具栏', () => {
     expect(saved.closest('[data-region]')).toBeNull()
   })
 
+  it('closable：缺省没有关闭钮；开了菜单栏最右端有一颗，按下由设计器派发一次 close，外框的那个不冒到宿主；同名 attribute 与 readonly 一样三态', async () => {
+    const designer = await mount()
+    await settleFrame(designer)
+    const button = (): HTMLButtonElement | null => frameOf(designer).querySelector<HTMLButtonElement>('[data-part="menubar-close"]')
+    expect([designer.closable, button()?.hidden ?? true]).toEqual([undefined, true])
+    const seen: EventTarget[] = []
+    const onClose = (event: Event): void => void seen.push(event.target!)
+    document.addEventListener('close', onClose)
+    try {
+      designer.setAttribute('closable', '')
+      await settleFrame(designer)
+      expect([designer.closable, (frameOf(designer) as HTMLElement & { closable?: boolean }).closable, button()!.hidden]).toEqual([true, true, false])
+      expect(button()!.closest('[data-region]')!.getAttribute('data-region')).toBe('menubar')
+      button()!.click()
+      expect(seen).toEqual([designer])
+      designer.setAttribute('closable', 'false')
+      await settleFrame(designer)
+      expect([designer.closable, button()!.hidden]).toEqual([false, true])
+    }
+    finally {
+      document.removeEventListener('close', onClose)
+    }
+  })
+
   it('画布有焦点时按 F10 把焦点交给菜单栏，再按 F10 回到画布', async () => {
     const designer = await mount()
     await settleFrame(designer)

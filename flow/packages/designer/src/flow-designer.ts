@@ -208,6 +208,8 @@ export interface FlowDesignerEventMap {
   'export': CustomEvent<{ format: FlowImageFormat, blob: Blob }>
   /** 画布有焦点时按了 Ctrl / ⌘ + S；设计器不自己保存。 */
   'save': CustomEvent<Record<string, never>>
+  /** 按了菜单栏最右端的关闭钮（closable 开着时）：设计器不做别的，怎么关、要不要先问未保存的修改由宿主定。 */
+  'close': CustomEvent<Record<string, never>>
   /**
    * 在设置对话框里改了一条设置，或在外框上挪了面板（键是 layout.panels，值是整份布局）：设计器已换成
    * 新的 settings 并生效（主题、主题色、吸附与自动布局的选项、面板布局）；value 为 undefined 表示删掉这个键、回到缺省值。
@@ -305,6 +307,7 @@ interface ConnectPreview {
 export class XhFlowDesigner extends XhReactiveElement {
   static override properties = {
     readonly: { converter: BOOLEAN_CONVERTER },
+    closable: { converter: BOOLEAN_CONVERTER },
     autoTour: { converter: BOOLEAN_CONVERTER, attribute: 'auto-tour' },
     grid: { attribute: false },
     defaultLayout: { attribute: false },
@@ -327,6 +330,11 @@ export class XhFlowDesigner extends XhReactiveElement {
    * 其余写法（空串、"true" 等）为 true。
    */
   declare readonly: boolean | undefined
+  /**
+   * 在菜单栏最右端显示关闭钮，按下派发 close；缺省不显示。设计器不做别的，宿主接 close 去关或回到列表，
+   * 有未保存的修改（dirty）时先问。同名 attribute 三态与 readonly 相同。
+   */
+  declare closable: boolean | undefined
   /**
    * 设计器第一次显示出来、画布铺好之后自动开始新手引导，缺省开；藏着时不开始；设置里记过 help.tourDone（走完、跳过或关上过一次）时不再自动开始。
    * 写 false 关掉，start-tour 命令、帮助页的「开始引导」与 startTour() 照样能开始。同名 attribute auto-tour，写 "false" 是关。
@@ -1328,6 +1336,11 @@ export class XhFlowDesigner extends XhReactiveElement {
     frame.addEventListener('layout-change', this.#onLayoutChange)
     // 拖动工具开关了：工具栏「拖动」钮的按下状态跟着重画
     frame.addEventListener('canvas-tool-change', () => this.requestUpdate())
+    // 外框的关闭钮：不让外框的 close 冒到宿主，由设计器自己派发
+    frame.addEventListener('close', (event) => {
+      event.stopPropagation()
+      emitEvent(this, 'close', {})
+    })
     toolbar.slot = 'toolbar'
     palette.element.slot = 'palette'
     canvas.slot = 'canvas'
@@ -1664,6 +1677,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     frame.layout = this.#storedLayout()
     frame.defaultLayout = this.defaultLayout
     frame.layoutPolicy = this.#frameLayoutPolicy()
+    frame.closable = this.closable === true
     this.#renderStatus(layers, t)
     const context: FlowDesignerContext = { designer: this, translations: t, commandTranslations: shared, settings: this.#resolvedSettings, frame: layers.frame }
     const { commands } = this.#model

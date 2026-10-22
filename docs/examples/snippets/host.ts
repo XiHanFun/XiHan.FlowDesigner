@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-// 与宿主集成：打开与保存流程（存成引擎定义）、离开前提醒未保存、显示实例的运行状态、服务端复核流程定义。
+// 与宿主集成：打开与保存流程（存成引擎定义）、离开前提醒未保存、关闭钮回到列表、显示实例的运行状态、服务端复核流程定义。
 
 // #region save
 import type { XihanWorkflowDefinition } from '@xihan-flow/core/presets/xihan-workflow'
@@ -43,6 +43,17 @@ export function guardUnsaved(designer: XhFlowDesigner): () => void {
   return () => window.removeEventListener('beforeunload', onBeforeUnload)
 }
 // #endregion leave
+
+// #region close
+/** confirmLeave 是宿主自己的确认对话框，用户确定离开时为 true。 */
+export function closeToList(designer: XhFlowDesigner, confirmLeave: () => Promise<boolean>, backToList: () => void): void {
+  designer.closable = true
+  designer.addEventListener('close', async () => {
+    if (!designer.dirty || await confirmLeave())
+      backToList()
+  })
+}
+// #endregion close
 
 // #region status
 /** 宿主接口返回的一条节点执行记录。 */
