@@ -10,6 +10,12 @@
 
 本页记录曦寒流程设计器各版本的变更，只收使用者能感知的改动。`@xihan-flow/core`、`@xihan-flow/runtime`、`@xihan-flow/designer` 三个包总是同一个版本号一起发布。
 
+## v1.0.0-rc.2（2026-10-22）
+
+- **新增** 设计器加 `closable` 属性（同名 attribute）：开着时菜单栏最右端显示一颗关闭钮，按下派发 `close` 事件，怎么关、要不要先问未保存的修改由宿主决定；缺省不显示。嵌在业务页面里时用它回到列表，见[与宿主集成](./guide/host#打开与保存)。
+- **调整** 设计器的拖动、连线、框选与缩放更流畅：手势进行中只重画画布、覆盖层与状态栏，面板、工具栏、菜单栏与小地图在松手后刷新一次；拖动节点时只给与它相连的连线重新绕线。
+- **调整** `@xihan-ui/*` 的 peer 范围提到 `^5.1.0`：宿主要装 XiHan.UI 5.1.0 及以上，关闭钮与外壳的流畅度改进都在这一版里。
+
 ## v1.0.0-rc.1（2026-10-21）
 
 首次发布，以原生 Web Components 交付，不绑定前端框架。
@@ -472,7 +478,7 @@ designer.validateOptions = { severity: { 'node.isolated': 'off' } }
 
 画布有焦点时按 F10 把焦点交给菜单栏，左右键在菜单之间走，下键、Enter 或 Space 展开；再按 F10，或在菜单栏上按 Esc，回到画布。窄屏时菜单栏收成行首一颗「菜单」钮，各张菜单是它的子菜单。菜单栏常开，设置里没有关掉它的开关。
 
-宿主自己的操作（新建、预览、返回列表）写成一个扩展的命令，`placement` 写 `menubar:file` 就进「文件」菜单，写了 `toolbar` 也上工具栏；模板标题写成设计器的子元素 `slot="menubar-center"`，显示在整条菜单栏的正中，放不下时截断加省略号，再窄就藏起；保存状态写成 `slot="status-end"`，显示在状态栏右端、缩放比例的左边，状态栏在设置里关掉时跟着不显示；别的要常显的内容写 `slot="menubar-end"`，显示在菜单栏右边。这样设计器外面不必另起一条操作条。
+宿主自己的操作（新建、预览）写成一个扩展的命令，`placement` 写 `menubar:file` 就进「文件」菜单，写了 `toolbar` 也上工具栏；模板标题写成设计器的子元素 `slot="menubar-center"`，显示在整条菜单栏的正中，放不下时截断加省略号，再窄就藏起；保存状态写成 `slot="status-end"`，显示在状态栏右端、缩放比例的左边，状态栏在设置里关掉时跟着不显示；别的要常显的内容写 `slot="menubar-end"`，显示在菜单栏右边。这样设计器外面不必另起一条操作条。要关掉设计器、回到业务页面时写 `closable`：菜单栏最右端多一颗关闭钮，按下派发 `close`，见[与宿主集成](./host#打开与保存)；不必在「文件」菜单里放「返回列表」。
 
 ```ts
 designer.extensions = [{
@@ -1040,7 +1046,7 @@ catch (error) {
 
 | 事情 | 宿主做什么 | 元素给什么 |
 | --- | --- | --- |
-| 流程的保存 | 存流程定义，或换成引擎定义交给工作流引擎；管版本与发布 | `schema`、`schema-change`、`save`、`dirty`、`markSaved()`，预设的 `toWorkflowDefinition` |
+| 流程的保存 | 存流程定义，或换成引擎定义交给工作流引擎；管版本与发布；关掉设计器回到业务页面 | `schema`、`schema-change`、`save`、`dirty`、`markSaved()`、`closable` 与 `close`，预设的 `toWorkflowDefinition` |
 | 运行状态 | 从后端取实例的执行情况，换成节点的状态 | 查看器的 `statuses`、`setNodeStatuses()`、`highlightNodes()` |
 | 权限 | 决定谁能看、谁能改，服务端再复核 | `readonly`、`panels`、`extensions` |
 | 校验 | 保存前拦住有错误的定义，服务端复核 | `validate()`、`issues-change`、`validateDocument` |
@@ -1091,6 +1097,19 @@ export function guardUnsaved(designer: XhFlowDesigner): () => void {
   }
   window.addEventListener('beforeunload', onBeforeUnload)
   return () => window.removeEventListener('beforeunload', onBeforeUnload)
+}
+```
+
+设计器在业务页面里编辑完要回到列表时，写上 `closable`：菜单栏最右端多一颗关闭钮，按下派发 `close`。设计器不做别的，怎么回去、要不要先问未保存的修改由宿主决定：
+
+```ts
+/** confirmLeave 是宿主自己的确认对话框，用户确定离开时为 true。 */
+export function closeToList(designer: XhFlowDesigner, confirmLeave: () => Promise<boolean>, backToList: () => void): void {
+  designer.closable = true
+  designer.addEventListener('close', async () => {
+    if (!designer.dirty || await confirmLeave())
+      backToList()
+  })
 }
 ```
 
@@ -1723,6 +1742,7 @@ const original = button('按保存的坐标读回', () => {
 | 属性 | attribute | 类型 | 说明 |
 | --- | --- | --- | --- |
 | `readonly` | `readonly` | `boolean \| undefined` | 只读：可以选择与浏览，不能修改；缺省 false。同名 attribute 三态：不写为缺省，写 "false" 为 false，其余写法（空串、"true" 等）为 true。 |
+| `closable` | `closable` | `boolean \| undefined` | 在菜单栏最右端显示关闭钮，按下派发 close；缺省不显示。设计器不做别的，宿主接 close 去关或回到列表，有未保存的修改（dirty）时先问。同名 attribute 三态与 readonly 相同。 |
 | `autoTour` | `auto-tour` | `boolean \| undefined` | 设计器第一次显示出来、画布铺好之后自动开始新手引导，缺省开；藏着时不开始；设置里记过 help.tourDone（走完、跳过或关上过一次）时不再自动开始。写 false 关掉，start-tour 命令、帮助页的「开始引导」与 startTour() 照样能开始。同名 attribute auto-tour，写 "false" 是关。 |
 | `grid` | — | `number \| false` | 拖动与新建节点时吸附的网格边长，false 不吸附网格；缺省 16。 |
 | `defaultLayout` | — | `DesignerLayout \| undefined` | 面板布局的缺省：设置里还没有 layout.panels 时用它，「恢复默认布局」也回到它；不给按各面板登记的位置，全部显示。用户挪了面板、改了显隐或大小，整份布局写进设置的 layout.panels（DESIGNER_SETTING_KEYS.layout）并派发 settings-change。 |
@@ -1809,6 +1829,7 @@ const original = button('按保存的坐标读回', () => {
 | `import-error` | `{ importer?: string, source: DesignerImportSource, error: unknown }` | 导入没有成功：导入器抛了错，或给出的节点、连线或流程定义不合法、用了没登记的节点类型，importer 是导入器的 id；openFile() 选的文件没有导入器接下时也派发，此时没有 importer。 |
 | `export` | `{ format: FlowImageFormat, blob: Blob }` | 工具栏的导出命令导出了图片，带格式与文件；可以取消，取消后设计器不自己下载，宿主拿 blob 自己存。没被取消时存成 flow.png 或 flow.svg 下载。 |
 | `save` | `Record<string, never>` | 画布有焦点时按了 Ctrl / ⌘ + S；设计器不自己保存。 |
+| `close` | `Record<string, never>` | 按了菜单栏最右端的关闭钮（closable 开着时）：设计器不做别的，怎么关、要不要先问未保存的修改由宿主定。 |
 | `settings-change` | `{ key: string, value: JsonValue \| undefined, settings: DesignerSettings }` | 在设置对话框里改了一条设置，或在外框上挪了面板（键是 layout.panels，值是整份布局）：设计器已换成新的 settings 并生效（主题、主题色、吸附与自动布局的选项、面板布局）；value 为 undefined 表示删掉这个键、回到缺省值。宿主存起来，下次赋回 settings。 |
 | `settings-storage-error` | `VisualEnvironmentStorageError` | 读写 settingsStorageKey 指的本机存储失败（内容不是对象、无痕窗口、配额满）；设置留在内存里。 |
 

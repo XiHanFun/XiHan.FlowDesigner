@@ -6,7 +6,7 @@
 
 | 事情 | 宿主做什么 | 元素给什么 |
 | --- | --- | --- |
-| 流程的保存 | 存流程定义，或换成引擎定义交给工作流引擎；管版本与发布 | `schema`、`schema-change`、`save`、`dirty`、`markSaved()`，预设的 `toWorkflowDefinition` |
+| 流程的保存 | 存流程定义，或换成引擎定义交给工作流引擎；管版本与发布；关掉设计器回到业务页面 | `schema`、`schema-change`、`save`、`dirty`、`markSaved()`、`closable` 与 `close`，预设的 `toWorkflowDefinition` |
 | 运行状态 | 从后端取实例的执行情况，换成节点的状态 | 查看器的 `statuses`、`setNodeStatuses()`、`highlightNodes()` |
 | 权限 | 决定谁能看、谁能改，服务端再复核 | `readonly`、`panels`、`extensions` |
 | 校验 | 保存前拦住有错误的定义，服务端复核 | `validate()`、`issues-change`、`validateDocument` |
@@ -57,6 +57,19 @@ export function guardUnsaved(designer: XhFlowDesigner): () => void {
   }
   window.addEventListener('beforeunload', onBeforeUnload)
   return () => window.removeEventListener('beforeunload', onBeforeUnload)
+}
+```
+
+设计器在业务页面里编辑完要回到列表时，写上 `closable`：菜单栏最右端多一颗关闭钮，按下派发 `close`。设计器不做别的，怎么回去、要不要先问未保存的修改由宿主决定：
+
+```ts
+/** confirmLeave 是宿主自己的确认对话框，用户确定离开时为 true。 */
+export function closeToList(designer: XhFlowDesigner, confirmLeave: () => Promise<boolean>, backToList: () => void): void {
+  designer.closable = true
+  designer.addEventListener('close', async () => {
+    if (!designer.dirty || await confirmLeave())
+      backToList()
+  })
 }
 ```
 

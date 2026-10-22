@@ -95,7 +95,7 @@ designer.validateOptions = { severity: { 'node.isolated': 'off' } }
 
 画布有焦点时按 F10 把焦点交给菜单栏，左右键在菜单之间走，下键、Enter 或 Space 展开；再按 F10，或在菜单栏上按 Esc，回到画布。窄屏时菜单栏收成行首一颗「菜单」钮，各张菜单是它的子菜单。菜单栏常开，设置里没有关掉它的开关。
 
-宿主自己的操作（新建、预览、返回列表）写成一个扩展的命令，`placement` 写 `menubar:file` 就进「文件」菜单，写了 `toolbar` 也上工具栏；模板标题写成设计器的子元素 `slot="menubar-center"`，显示在整条菜单栏的正中，放不下时截断加省略号，再窄就藏起；保存状态写成 `slot="status-end"`，显示在状态栏右端、缩放比例的左边，状态栏在设置里关掉时跟着不显示；别的要常显的内容写 `slot="menubar-end"`，显示在菜单栏右边。这样设计器外面不必另起一条操作条。
+宿主自己的操作（新建、预览）写成一个扩展的命令，`placement` 写 `menubar:file` 就进「文件」菜单，写了 `toolbar` 也上工具栏；模板标题写成设计器的子元素 `slot="menubar-center"`，显示在整条菜单栏的正中，放不下时截断加省略号，再窄就藏起；保存状态写成 `slot="status-end"`，显示在状态栏右端、缩放比例的左边，状态栏在设置里关掉时跟着不显示；别的要常显的内容写 `slot="menubar-end"`，显示在菜单栏右边。这样设计器外面不必另起一条操作条。要关掉设计器、回到业务页面时写 `closable`：菜单栏最右端多一颗关闭钮，按下派发 `close`，见[与宿主集成](./host#打开与保存)；不必在「文件」菜单里放「返回列表」。
 
 ```ts
 designer.extensions = [{
@@ -663,7 +663,7 @@ catch (error) {
 
 | 事情 | 宿主做什么 | 元素给什么 |
 | --- | --- | --- |
-| 流程的保存 | 存流程定义，或换成引擎定义交给工作流引擎；管版本与发布 | `schema`、`schema-change`、`save`、`dirty`、`markSaved()`，预设的 `toWorkflowDefinition` |
+| 流程的保存 | 存流程定义，或换成引擎定义交给工作流引擎；管版本与发布；关掉设计器回到业务页面 | `schema`、`schema-change`、`save`、`dirty`、`markSaved()`、`closable` 与 `close`，预设的 `toWorkflowDefinition` |
 | 运行状态 | 从后端取实例的执行情况，换成节点的状态 | 查看器的 `statuses`、`setNodeStatuses()`、`highlightNodes()` |
 | 权限 | 决定谁能看、谁能改，服务端再复核 | `readonly`、`panels`、`extensions` |
 | 校验 | 保存前拦住有错误的定义，服务端复核 | `validate()`、`issues-change`、`validateDocument` |
@@ -714,6 +714,19 @@ export function guardUnsaved(designer: XhFlowDesigner): () => void {
   }
   window.addEventListener('beforeunload', onBeforeUnload)
   return () => window.removeEventListener('beforeunload', onBeforeUnload)
+}
+```
+
+设计器在业务页面里编辑完要回到列表时，写上 `closable`：菜单栏最右端多一颗关闭钮，按下派发 `close`。设计器不做别的，怎么回去、要不要先问未保存的修改由宿主决定：
+
+```ts
+/** confirmLeave 是宿主自己的确认对话框，用户确定离开时为 true。 */
+export function closeToList(designer: XhFlowDesigner, confirmLeave: () => Promise<boolean>, backToList: () => void): void {
+  designer.closable = true
+  designer.addEventListener('close', async () => {
+    if (!designer.dirty || await confirmLeave())
+      backToList()
+  })
 }
 ```
 
