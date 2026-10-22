@@ -25,7 +25,7 @@ description: 实现、重构、修复或测试 XiHan.FlowDesigner 的流程定�
 
 ## 复用 XiHan.UI
 
-`@xihan-ui/*` 是 peerDependencies（`^5.0.0`），开发时装 catalog 里的正式包。UI 已有的组件、编码器、算法与格式化一律直接用；常用能力即使眼下只有流程用到，也先封装进 UI。只有流程专属语义（端口位置、节点类型、带业务语义的编辑操作）留在本仓。
+`@xihan-ui/*` 是 peerDependencies（`^5.1.0`），开发时装 catalog 里的正式包。UI 已有的组件、编码器、算法与格式化一律直接用；常用能力即使眼下只有流程用到，也先封装进 UI。只有流程专属语义（端口位置、节点类型、带业务语义的编辑操作）留在本仓。
 
 设计器的外框、面板、菜单栏、设置对话框、引导、命令表这些零件在 XiHan.UI 的 `@xihan-ui/designer-shell` 与 `@xihan-ui/designer-kit` 里，**缺陷与新能力去 UI 仓改**，不在本仓局部修补或另写一套；UI 那边改完要等 UI 发版、本仓升 catalog 才用得上。临时验证未发布的 UI 改动用 `overrides` 指同级 `XiHan.UI/ui/packages/<分组>/<包>`，验完删掉、恢复锁文件，不提交。
 
