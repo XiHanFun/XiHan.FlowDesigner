@@ -43,7 +43,7 @@ XiHan.FlowDesigner 是框架无关的流程设计器，以原生 Web Components 
 ├─ docs/                            # 产品文档站（VitePress，独立的 pnpm 项目）
 └─ flow/                           # pnpm monorepo 根
    ├─ .changeset/                 # changesets 配置与待发布的变更集
-   ├─ scripts/release/            # 发版脚本：VersionUpgrade、锁步与标签核对、产物契约、冒烟（smoke/ 是冒烟用的宿主项目模板）
+   ├─ scripts/release/            # 发版脚本：VersionUpgrade、锁步与标签核对、产物契约、预发布版跟上 latest、冒烟（smoke/ 是冒烟用的宿主项目模板）
    ├─ packages/
    │  ├─ core/                    # @xihan-flow/core：模型层，纯 TS，不碰 DOM
    │  ├─ runtime/                 # @xihan-flow/runtime：业务页面用的运行时元素
@@ -132,7 +132,7 @@ XiHan.FlowDesigner 是框架无关的流程设计器，以原生 Web Components 
 - 三个公开包经 changesets 的 `fixed` 组锁步同版；`scripts/release/check-version-lock.mjs` 核对。
 - 使用者能感知的改动附一份变更集（`pnpm changeset`），中文、官方口径；CI、测试、文档站、脚本、README 不写。
 - 定版本用 `flow/scripts/release/VersionUpgrade.bat`（或 `pwsh scripts/release/VersionUpgrade.ps1`）：消费变更集、写各包 CHANGELOG，可进出预发布通道；不提交、不打标签、不推送，`-DryRun` 只打印计划。同一笔在 `docs/changelog.md` 补这一版的一节，导航上的版本号取 core 的版本。
-- release.yml 先核对标签（在 main 的历史里；标签号等于包版本且与 `.changeset/pre.json` 一致，`check-release-tag.mjs`），再构建、`gate:publish`、`changeset publish`（带 provenance），然后 `scripts/release/smoke.mjs --version` 冒烟，最后调 `deploy-docs.yml` 部署文档站。deploy-docs 只部署已经发布的版本：当前版本有标签、main 上的包与标签一致、这个版本已在 npm 上。
+- release.yml 先核对标签（在 main 的历史里；标签号等于包版本且与 `.changeset/pre.json` 一致，`check-release-tag.mjs`），再构建、`gate:publish`、`changeset publish`（带 provenance），接着 `scripts/release/promote-latest.mjs`：预发布模式、且 npm 上这个包还没有任何正式版时，等 npm 取得到这一版再把 `latest` 也指过来（正式版发出前每个候选版都让 `latest` 跟着走，有了正式版后自动不做，本地可 `--dry-run`），然后 `scripts/release/smoke.mjs --version` 冒烟，最后调 `deploy-docs.yml` 部署文档站。deploy-docs 只部署已经发布的版本：当前版本有标签、main 上的包与标签一致、这个版本已在 npm 上。
 - npm 包的版本不建 GitHub Release。
 - main 只接收发版；两次发版之间挑进 main 的纯文档修正，进了 main 以后立刻把 main 合回 dev。
 - 合并 main、打标签、发布都只在用户明确要求时执行。
@@ -144,7 +144,7 @@ XiHan.FlowDesigner 是框架无关的流程设计器，以原生 Web Components 
 3. 门禁全跑后提交 `build: v<版本>`：`flow/` 的 lint、build、typecheck、test、`gate:publish`、`smoke --pack`，`docs/` 的 gate:gen、check:examples、lint、typecheck、build，`git diff --check`。
 4. 推 dev，等 CI 全绿。
 5. `git fetch . dev:main` 把 main 快进到 dev，推 main，等 CI 全绿。
-6. 在 main 上打 `v<版本>` 标签并推送；Release 发完后用 `npm view @xihan-flow/designer dist-tags` 核对。
+6. 在 main 上打 `v<版本>` 标签并推送；Release 发完后用 `npm view @xihan-flow/designer dist-tags` 核对（正式版发出前 `rc` 与 `latest` 都指这一版）。
 
 ## 分支与 worktree
 

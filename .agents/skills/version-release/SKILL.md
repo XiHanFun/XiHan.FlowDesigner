@@ -22,9 +22,9 @@ description: 为 XiHan.FlowDesigner 定版本、消费变更集、进出 rc 预�
 
 ## 发布
 
-用户明确要求后，在 main 的末笔上打标签并推送：`git tag v<版本> main`、`git push origin v<版本>`。Release 工作流依次是：核对标签 → 发到 npm（构建、`gate:publish`、`changeset publish` 带 provenance，凭 `NPM_TOKEN`）→ 发布后冒烟（`smoke.mjs --version` 在空项目里装刚发的版本）→ 部署文档站（`deploy-docs.yml` 只部署已发布的版本）。
+用户明确要求后，在 main 的末笔上打标签并推送：`git tag v<版本> main`、`git push origin v<版本>`。Release 工作流依次是：核对标签 → 发到 npm（构建、`gate:publish`、`changeset publish` 带 provenance，凭 `NPM_TOKEN`）→ 预发布版跟上 `latest`（`scripts/release/promote-latest.mjs`：预发布模式、且 npm 上这个包还没有正式版时，等取得到这一版再 `npm dist-tag add <包>@<版本> latest`；有正式版后不动）→ 发布后冒烟（`smoke.mjs --version` 在空项目里装刚发的版本）→ 部署文档站（`deploy-docs.yml` 只部署已发布的版本）。
 
-只看 `gh run view <run-id>` 的摘要。发完核对：
+只看 `gh run view <run-id>` 的摘要。发完核对三个包都在；正式版发出前 `rc` 与 `latest` 都指向这一版，之后预发布只动 `rc`：
 
 ```bash
 npm view @xihan-flow/core dist-tags
@@ -32,4 +32,4 @@ npm view @xihan-flow/runtime dist-tags
 npm view @xihan-flow/designer dist-tags
 ```
 
-冒烟报「npm 上找不到 …」、E404、ETARGET、No matching version 时，多半是 npm 还没同步完（新包首发时 npm 先挂一个 `0.0.0-stage` 占位版，真正的版本可能晚到十分钟）。等 `npm view @xihan-flow/<包>@<版本> version` 取得到，再 `gh run rerun <run-id> --failed` 补跑冒烟与部署。其他失败停下报原文。不删标签重打、不移动标签掩盖问题、不手改 dist、不重复发已存在的版本。
+冒烟报「npm 上找不到 …」、E404、ETARGET、No matching version 时，多半是 npm 还没同步完（新包首发时 npm 先挂一个 `0.0.0-stage` 占位版，真正的版本可能晚到十分钟）。等 `npm view @xihan-flow/<包>@<版本> version` 取得到，再 `gh run rerun <run-id> --failed` 补跑冒烟与部署。「预发布版跟上 latest」那一步失败（多半是 npm 还取不到这一版，它会等约 5 分钟）：重跑「发到 npm」这个 job，发包那步跳过已有的版本，接着补上 `latest`。不手工改 dist-tag，除非用户明确要。其他失败停下报原文。不删标签重打、不移动标签掩盖问题、不手改 dist、不重复发已存在的版本。
