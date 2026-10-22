@@ -8,6 +8,9 @@
     "@xihan-flow/playground": "0.0.0"
   },
   "changesets": [
-    "first-release"
+    "designer-closable",
+    "first-release",
+    "smooth-designer-gestures",
+    "ui-5-1"
   ]
 }
