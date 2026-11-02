@@ -585,6 +585,52 @@ describe('问题列表', () => {
     expect(designer.querySelector<HTMLElement>('[data-part="node"][data-node-id="s"]')!.dataset.issue).toBeUndefined()
   })
 
+  it('连线上的问题标在连线上：取最严重的一级，没有标签的在中点画标记、有标签的标在标签上，问题消失后标记去掉', async () => {
+    const checked: FlowDesignerExtension = {
+      id: 'checked',
+      rules: [document => document.edges.flatMap((edge, index) => (edge.data?.check === undefined
+        ? []
+        : [
+            { code: 'checked.edge', path: ['edges', index], target: { kind: 'edge', id: edge.id }, severity: 'warning' as const },
+            ...(edge.data.check === 'error' ? [{ code: 'checked.edge', path: ['edges', index], target: { kind: 'edge', id: edge.id } }] : []),
+          ]))],
+    }
+    const schema = {
+      version: 1 as const,
+      nodes: [
+        { id: 's', type: 'start', x: 0, y: 0, width: 100, height: 40 },
+        { id: 't', type: 'task', x: 200, y: 0, width: 100, height: 40 },
+        { id: 'e', type: 'end', x: 400, y: 0, width: 100, height: 40 },
+      ],
+      edges: [
+        { id: 'st', source: { node: 's' }, target: { node: 't' }, data: { check: 'error' } },
+        { id: 'te', source: { node: 't' }, target: { node: 'e' }, label: '通过', data: { check: 'warning' } },
+      ],
+    }
+    const designer = await mount((element) => {
+      element.extensions = [...element.extensions!, checked]
+      element.schema = schema
+    })
+    await settle(designer)
+    const edge = (id: string): HTMLElement => designer.querySelector<HTMLElement>(`[data-part="edge"][data-edge-id="${id}"]`)!
+    const marks = (): string[][] => part(designer, 'edge-issue').map(mark => [mark.dataset.edgeId!, mark.dataset.issue!, mark.style.left, mark.style.top])
+    const label = (): HTMLElement => part(designer, 'edge-label')[0]!
+    expect([edge('st').dataset.issue, edge('te').dataset.issue]).toEqual(['error', 'warning'])
+    expect(marks()).toEqual([['st', 'error', '150px', '20px']])
+    expect([label().dataset.edgeId, label().dataset.issue, label().textContent]).toEqual(['te', 'warning', '通过'])
+    expect(rows(designer).filter(item => item.textContent!.includes('checked.edge')).map(item => item.dataset.severity)).toEqual(['error', 'warning', 'warning'])
+
+    designer.schema = { ...schema, edges: [{ ...schema.edges[0]!, data: {} }, schema.edges[1]!] }
+    await settle(designer)
+    expect([edge('st').dataset.issue, edge('te').dataset.issue]).toEqual([undefined, 'warning'])
+    expect(marks()).toEqual([])
+
+    designer.schema = { ...schema, edges: schema.edges.map(item => ({ ...item, data: {} })) }
+    await settle(designer)
+    expect(edge('te').dataset.issue).toBeUndefined()
+    expect([label().dataset.issue, label().textContent]).toEqual([undefined, '通过'])
+  })
+
   it('再给 extensions 赋值（两次）以后，错误、警告数仍在面板头里，并且在文档里', async () => {
     const designer = await mount(element => element.extensions = [typed])
     await settle(designer)

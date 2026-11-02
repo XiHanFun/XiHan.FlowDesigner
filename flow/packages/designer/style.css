@@ -193,6 +193,7 @@ xh-flow-designer [data-part='node'][data-highlighted] {
   box-shadow: 0 0 0 var(--xh-ring-width) var(--xh-ring-focus);
 }
 
+/* 问题标记：节点右上角、连线中点的右上方（有标签时在标签右上角）各一颗圆点，按最严重的一级着色 */
 xh-flow-designer [data-part='node'][data-issue]::after {
   content: '';
   position: absolute;
@@ -201,11 +202,49 @@ xh-flow-designer [data-part='node'][data-issue]::after {
   inline-size: var(--xh-space-1_5);
   block-size: var(--xh-space-1_5);
   border-radius: var(--xh-radius-full);
-  background: var(--xh-fg-danger);
   pointer-events: none;
 }
 
-xh-flow-designer [data-part='node'][data-issue='warning']::after {
+/* 连线上的圆点外描一圈画布底色 */
+xh-flow-designer [data-part='edge-issue'],
+xh-flow-designer [data-part='edge-label'][data-issue]::after {
+  position: absolute;
+  box-sizing: content-box;
+  inline-size: var(--xh-space-1_5);
+  block-size: var(--xh-space-1_5);
+  border: var(--xh-stroke-thin) solid var(--xh-bg-canvas);
+  border-radius: var(--xh-radius-full);
+  pointer-events: none;
+}
+
+xh-flow-designer [data-part='edge-issue'] {
+  translate: var(--xh-space-1) calc(-100% - var(--xh-space-1));
+}
+
+[dir='rtl'] xh-flow-designer [data-part='edge-issue'] {
+  translate: calc(-100% - var(--xh-space-1)) calc(-100% - var(--xh-space-1));
+}
+
+xh-flow-designer [data-part='edge-label'][data-issue]::after {
+  content: '';
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  translate: 50% -50%;
+}
+
+[dir='rtl'] xh-flow-designer [data-part='edge-label'][data-issue]::after {
+  translate: -50% -50%;
+}
+
+xh-flow-designer [data-part='node'][data-issue]::after,
+xh-flow-designer [data-part='edge-issue'],
+xh-flow-designer [data-part='edge-label'][data-issue]::after {
+  background: var(--xh-fg-danger);
+}
+
+xh-flow-designer [data-part='node'][data-issue='warning']::after,
+xh-flow-designer [data-part='edge-issue'][data-issue='warning'],
+xh-flow-designer [data-part='edge-label'][data-issue='warning']::after {
   background: var(--xh-fg-warning);
 }
 

@@ -33,6 +33,7 @@ import type { JsonValue } from '@xihan-ui/core/json'
 import type { VisualEnvironmentStorageError } from '@xihan-ui/core/visual-environment'
 import type { AlignMode, DesignerImportSource, DistributeAxis, ExecuteOptions, ExtensionHost, Viewport } from '@xihan-ui/designer-kit'
 import type { PropertyEditorLayer } from '@xihan-ui/designer-kit/properties'
+import type { IssueSeverity } from '@xihan-ui/designer-kit/schema'
 import type {
   CommandMenubar,
   CommandToolbar,
@@ -94,6 +95,7 @@ import {
   wheelZoomFactor,
   zoomBy,
 } from '@xihan-ui/designer-kit'
+import { issueSeverity } from '@xihan-ui/designer-kit/schema'
 import {
   applyToolbarCustomization,
   arrangeCommands,
@@ -251,6 +253,12 @@ const PORT_HIT_DISTANCE = 12
 const HANDLE_SELECTOR = '[data-part="edge-handle"], [data-part="vertex-handle"], [data-part="segment-handle"]'
 /** 画布有焦点时接管的剪贴板事件。 */
 const CLIPBOARD_EVENTS = ['copy', 'cut', 'paste'] as const
+
+/** 按对象种类分的 id → 落在它上面最严重的一级问题。 */
+interface IssueLevels {
+  readonly node: Map<string, IssueSeverity>
+  readonly edge: Map<string, IssueSeverity>
+}
 
 interface Layers {
   readonly frame: XhDesignerFrameElement
@@ -435,8 +443,8 @@ export class XhFlowDesigner extends XhReactiveElement {
   #dirty = false
   #issuesScheduled = false
   #issues: readonly FlowIssue[] = []
-  /** 节点 id → 落在它上面的问题里最严重的那一级。 */
-  #issueLevels = new Map<string, 'error' | 'warning'>()
+  /** 节点、连线各自的 id → 落在它上面的问题里最严重的那一级。 */
+  #issueLevels: IssueLevels = { node: new Map(), edge: new Map() }
   #resizeObserver: ResizeObserver | undefined
   /** ResizeObserver 量出的画布尺寸；null 表示还没量过。 */
   #sizeCache: { width: number, height: number } | undefined | null = null
@@ -1207,11 +1215,13 @@ export class XhFlowDesigner extends XhReactiveElement {
     queueMicrotask(() => {
       this.#issuesScheduled = false
       this.#issues = this.validate()
-      this.#issueLevels = new Map()
+      const levels: IssueLevels = { node: new Map(), edge: new Map() }
       for (const issue of this.#issues) {
-        if (issue.target?.kind === 'node' && this.#issueLevels.get(issue.target.id) !== 'error')
-          this.#issueLevels.set(issue.target.id, issue.severity === 'warning' ? 'warning' : 'error')
+        const target = issue.target
+        if ((target?.kind === 'node' || target?.kind === 'edge') && levels[target.kind].get(target.id) !== 'error')
+          levels[target.kind].set(target.id, issueSeverity(issue))
       }
+      this.#issueLevels = levels
       this.requestUpdate()
       emitEvent(this, 'issues-change', { issues: this.#issues })
     })
@@ -1388,22 +1398,35 @@ export class XhFlowDesigner extends XhReactiveElement {
     const doc = this.ownerDocument
     reconcile(layers.edges, edges, this.#keys, edge => edge.id, (edge, reuse) => {
       const group = reuse ?? createEdgeGroup(doc)
-      paintEdge(group, edge, selected.has(edge.id), this.#highlight?.kind === 'edge' && this.#highlight.id === edge.id)
+      paintEdge(group, edge, {
+        selected: selected.has(edge.id),
+        highlighted: this.#highlight?.kind === 'edge' && this.#highlight.id === edge.id,
+        issue: this.#issueLevels.edge.get(edge.id),
+      })
       return group
     })
   }
 
+  /** 连线中点上的标签；带问题而没有标签的连线在中点画一颗问题标记。 */
   #renderLabels(layers: Layers): void {
-    const labeled = this.#scene?.edges.filter(edge => edge.label !== undefined && edge.labelPoint !== undefined) ?? []
+    const levels = this.#issueLevels.edge
+    const items = (this.#scene?.edges ?? []).flatMap((edge) => {
+      if (edge.labelPoint === undefined)
+        return []
+      if (edge.label !== undefined)
+        return [{ part: 'edge-label', edge, text: edge.label }]
+      return levels.has(edge.id) ? [{ part: 'edge-issue', edge, text: '' }] : []
+    })
     const doc = this.ownerDocument
-    reconcile(layers.labels, labeled, this.#keys, edge => edge.id, (edge, reuse) => {
-      const label = (reuse as HTMLElement | undefined) ?? createGeneratedElement(doc, 'div')
-      label.dataset.part = 'edge-label'
-      label.dataset.edgeId = edge.id
-      label.textContent = edge.label ?? ''
-      label.style.left = `${edge.labelPoint!.x}px`
-      label.style.top = `${edge.labelPoint!.y}px`
-      return label
+    reconcile(layers.labels, items, this.#keys, item => `${item.part}\u0000${item.edge.id}`, (item, reuse) => {
+      const element = (reuse as HTMLElement | undefined) ?? createGeneratedElement(doc, 'div')
+      element.dataset.part = item.part
+      element.dataset.edgeId = item.edge.id
+      toggleData(element, 'issue', levels.get(item.edge.id))
+      element.textContent = item.text
+      element.style.left = `${item.edge.labelPoint!.x}px`
+      element.style.top = `${item.edge.labelPoint!.y}px`
+      return element
     })
   }
 
@@ -1422,7 +1445,7 @@ export class XhFlowDesigner extends XhReactiveElement {
     element.dataset.nodeId = node.id
     element.dataset.nodeType = node.type
     toggleData(element, 'selected', selected ? '' : undefined)
-    toggleData(element, 'issue', this.#issueLevels.get(node.id))
+    toggleData(element, 'issue', this.#issueLevels.node.get(node.id))
     const highlighted = this.#highlight?.kind === 'node' && this.#highlight.id === node.id
     toggleData(element, 'highlighted', highlighted ? '' : undefined)
     element.style.left = `${rect.x}px`
@@ -2581,11 +2604,15 @@ function createEdgeGroup(doc: Document): SVGGElement {
   return group
 }
 
-function paintEdge(group: Element, edge: FlowSceneEdge, selected: boolean, highlighted: boolean): void {
+function paintEdge(group: Element, edge: FlowSceneEdge, state: { readonly selected: boolean, readonly highlighted: boolean, readonly issue: IssueSeverity | undefined }): void {
   group.setAttribute('data-edge-id', edge.id)
   toggleAttribute(group, 'data-dashed', edge.dashed)
-  toggleAttribute(group, 'data-selected', selected)
-  toggleAttribute(group, 'data-highlighted', highlighted)
+  toggleAttribute(group, 'data-selected', state.selected)
+  toggleAttribute(group, 'data-highlighted', state.highlighted)
+  if (state.issue === undefined)
+    group.removeAttribute('data-issue')
+  else
+    group.setAttribute('data-issue', state.issue)
   const [hit, line, arrow] = Array.from(group.children)
   hit!.setAttribute('d', edge.path)
   line!.setAttribute('d', edge.path)
