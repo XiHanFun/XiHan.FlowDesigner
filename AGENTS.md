@@ -130,12 +130,11 @@ XiHan.FlowDesigner 是框架无关的流程设计器，以原生 Web Components 
 做法照 XiHan.UI：changesets 记变更，发布分支上的 `v<版本>` 标签触发 `.github/workflows/release.yml` 发 npm。说明见 `flow/.changeset/README.md`。
 
 - 发布分支：预览版（带 `-rc.N` 这类预发布后缀的版本）从 `preview` 发，正式版从 `main` 发，都由 `dev` 快进，只接收发版。预览版沿用 `rc` 通道：已经发到 `1.0.0-rc.2`，按 semver `preview` 排在 `rc` 之前，换名字版本号会倒退。
-- 预览版现在还发不出去：`release.yml` 的 guard 只放行 `main` 上的标签，`ci.yml` 也不跑 `preview`。这两处改好之后删掉这一条。
 - `deploy-docs.yml` 只认 main 上的版本：预览版发布时跳过部署文档站，不算失败。
 - 三个公开包经 changesets 的 `fixed` 组锁步同版；`scripts/release/check-version-lock.mjs` 核对。
 - 使用者能感知的改动附一份变更集（`pnpm changeset`），中文、官方口径；CI、测试、文档站、脚本、README 不写。
 - 定版本用 `flow/scripts/release/VersionUpgrade.bat`（或 `pwsh scripts/release/VersionUpgrade.ps1`）：消费变更集、写各包 CHANGELOG，可进出预发布通道；不提交、不打标签、不推送，`-DryRun` 只打印计划。同一笔在 `docs/changelog.md` 补这一版的一节，导航上的版本号取 core 的版本。
-- release.yml 先核对标签（在 main 的历史里；标签号等于包版本且与 `.changeset/pre.json` 一致，`check-release-tag.mjs`），再构建、`gate:publish`、`changeset publish`（带 provenance），接着 `scripts/release/promote-latest.mjs`：预发布模式、且 npm 上这个包还没有任何正式版时，等 npm 取得到这一版再把 `latest` 也指过来（正式版发出前每个候选版都让 `latest` 跟着走，有了正式版后自动不做，本地可 `--dry-run`），然后 `scripts/release/smoke.mjs --version` 冒烟，最后调 `deploy-docs.yml` 部署文档站。deploy-docs 只部署已经发布的版本：当前版本有标签、main 上的包与标签一致、这个版本已在 npm 上。
+- release.yml 先核对标签（带预发布后缀的在 preview 的历史里，不带的在 main 的历史里；标签号等于包版本且与 `.changeset/pre.json` 一致，`check-release-tag.mjs`），再构建、`gate:publish`、`changeset publish`（带 provenance），接着 `scripts/release/promote-latest.mjs`：预发布模式、且 npm 上这个包还没有任何正式版时，等 npm 取得到这一版再把 `latest` 也指过来（正式版发出前每个候选版都让 `latest` 跟着走，有了正式版后自动不做，本地可 `--dry-run`），然后 `scripts/release/smoke.mjs --version` 冒烟，最后调 `deploy-docs.yml` 部署文档站。deploy-docs 只部署已经发布的版本：当前版本有标签、main 上的包与标签一致、这个版本已在 npm 上。
 - npm 包的版本不建 GitHub Release。
 - main 只接收发版；两次发版之间挑进 main 的纯文档修正，进了 main 以后立刻把 main 合回 dev。
 - 合并 main 或 preview、打标签、发布都只在用户明确要求时执行。
