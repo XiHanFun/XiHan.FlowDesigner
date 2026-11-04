@@ -9,7 +9,9 @@ description: 为 XiHan.FlowDesigner 定版本、消费变更集、进出 rc 预�
 
 - 工作区无冲突、没有进行中的 merge / rebase；在 `dev` 上做，detached HEAD 不发版。
 - 三个公开包 `@xihan-flow/core`、`runtime`、`designer` 经 changesets 的 `fixed` 组锁步同版；版本真源是三包的 `version`，预发布状态在 `flow/.changeset/pre.json`。
-- 标签写 `v<版本>`（如 `v1.0.0-rc.2`），必须打在 `main` 历史里的提交上，标签号等于三包版本、与 `pre.json` 的通道一致；`scripts/release/check-release-tag.mjs` 核对，Release 的 guard 也查这两条。
+- 标签写 `v<版本>`（如 `v1.0.0-rc.2`），必须打在对应发布分支历史里的提交上（预览版 `preview`，正式版 `main`），标签号等于三包版本、与 `pre.json` 的通道一致；`scripts/release/check-release-tag.mjs` 核对，Release 的 guard 也查这两条。
+- 发布分支：预览版（带 `-rc.N` 这类预发布后缀）从 `preview` 发，正式版从 `main` 发，都由 `dev` 快进。预览版沿用 `rc` 通道：已经发到 `1.0.0-rc.2`，按 semver `preview` 排在 `rc` 之前，换名字版本号会倒退。
+- 预览版现在还发不出去：`release.yml` 的 guard 只放行 `main` 上的标签，`ci.yml` 也不跑 `preview`（见 `AGENTS.md`「发版」）。
 - 推送、打标签、发布都要用户当时明确同意；同意一次只管这一次。
 
 ## 准备版本
@@ -18,11 +20,11 @@ description: 为 XiHan.FlowDesigner 定版本、消费变更集、进出 rc 预�
 2. 在 `flow/` 跑 `scripts/release/VersionUpgrade.bat`（或 `pwsh scripts/release/VersionUpgrade.ps1`），不替用户预选级别与通道；`-DryRun` 只打印计划。rc 怎么起号、怎么续号与转正见 [references/rc-numbering.md](references/rc-numbering.md)。
 3. 核对：三包同版、各包 `CHANGELOG.md`、`pre.json`、被消费的变更集；在 `docs/changelog.md` 补这一版的一节（导航上的版本号自动取 core 的版本）。
 4. 门禁全跑：`flow/` 的 `pnpm lint`、`build`、`typecheck`、`test`、`gate:publish`、`smoke --pack`，`docs/` 的 `gate:gen`、`check:examples`、`lint`、`typecheck`、`build`，`git diff --check`。
-5. 提交 `build: v<版本>`；推 dev 等 CI 全绿；`git fetch . dev:main` 把 main 快进到 dev，推 main，等 CI 全绿。这一笔推送后不再 amend 或 rebase。
+5. 提交 `build: v<版本>`；推 dev 等 CI 全绿；把发布分支快进到 dev（预览版 `git fetch . dev:preview`，正式版 `git fetch . dev:main`，不是快进就停下查），推发布分支，等 CI 全绿。这一笔推送后不再 amend 或 rebase。
 
 ## 发布
 
-用户明确要求后，在 main 的末笔上打标签并推送：`git tag v<版本> main`、`git push origin v<版本>`。Release 工作流依次是：核对标签 → 发到 npm（构建、`gate:publish`、`changeset publish` 带 provenance，凭 `NPM_TOKEN`）→ 预发布版跟上 `latest`（`scripts/release/promote-latest.mjs`：预发布模式、且 npm 上这个包还没有正式版时，等取得到这一版再 `npm dist-tag add <包>@<版本> latest`；有正式版后不动）→ 发布后冒烟（`smoke.mjs --version` 在空项目里装刚发的版本）→ 部署文档站（`deploy-docs.yml` 只部署已发布的版本）。
+用户明确要求后，在发布分支的末笔上打标签并推送：`git tag v<版本> <preview 或 main>`、`git push origin v<版本>`。Release 工作流依次是：核对标签 → 发到 npm（构建、`gate:publish`、`changeset publish` 带 provenance，凭 `NPM_TOKEN`）→ 预发布版跟上 `latest`（`scripts/release/promote-latest.mjs`：预发布模式、且 npm 上这个包还没有正式版时，等取得到这一版再 `npm dist-tag add <包>@<版本> latest`；有正式版后不动）→ 发布后冒烟（`smoke.mjs --version` 在空项目里装刚发的版本）→ 部署文档站（`deploy-docs.yml` 只部署已发布的版本）。
 
 只看 `gh run view <run-id>` 的摘要。发完核对三个包都在；正式版发出前 `rc` 与 `latest` 都指向这一版，之后预发布只动 `rc`：
 
