@@ -361,7 +361,7 @@ xh-flow-designer [data-part='edge-handle'] {
 xh-flow-designer [data-part='vertex-handle'] {
   inline-size: calc(var(--xh-space-2_5) / var(--xh-flow-designer-zoom, 1));
   block-size: calc(var(--xh-space-2_5) / var(--xh-flow-designer-zoom, 1));
-  border-radius: var(--xh-radius-sm);
+  border-radius: var(--xh-radius-2xs);
   cursor: move;
 }
 
