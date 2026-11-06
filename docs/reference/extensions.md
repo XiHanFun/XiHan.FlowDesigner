@@ -247,7 +247,7 @@ type PropertyCondition = { readonly path: JsonPath, readonly equals: JsonValue }
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
 | `editors?` | `PropertyEditorLayer<Editor>` | 属性编辑器，按扩展顺序压在设计器内建的之上。 |
-| `commands?` | `readonly DesignerCommand<Ctx>[]` | 命令：工具栏按钮、右键菜单项与快捷键共用；命令 id 与快捷键不能与内置或别的扩展的重名。 |
+| `commands?` | `readonly DesignerCommand<Ctx>[]` | 命令：工具栏按钮、上下文菜单项与快捷键共用；命令 id 与快捷键不能与内置或别的扩展的重名。 |
 | `fieldSources?` | `readonly DesignerFieldSource[]` | 字段来源：导入字段的对话框里，排在内置的 JSON 样例与 JSON Schema 两页之后。 |
 
 | 方法 | 说明 |
@@ -323,7 +323,7 @@ type FlowDesignerCommand = DesignerCommand<FlowDesignerContext>
 
 ### DesignerCommand {#designercommand}
 
-一条命令：工具栏按钮、右键菜单项与快捷键共用。给了 panel 是弹层命令，给了 menu 是菜单命令，在工具栏上点它分别打开锚在按钮上的弹层与菜单，两者只能给一个；两者都没给的普通命令必须有 run。登记时（mergeExtensions）不合这两条就抛 TypeError。
+一条命令：工具栏按钮、上下文菜单项与快捷键共用。给了 panel 是弹层命令，给了 menu 是菜单命令，在工具栏上点它分别打开锚在按钮上的弹层与菜单，两者只能给一个；两者都没给的普通命令必须有 run。登记时（mergeExtensions）不合这两条就抛 TypeError。
 
 类型参数 `Ctx = unknown`。
 
@@ -341,7 +341,7 @@ type FlowDesignerCommand = DesignerCommand<FlowDesignerContext>
 | 方法 | 说明 |
 | --- | --- |
 | `enabled(context: Ctx): boolean` | 不给即总是可用。 |
-| `visible(context: Ctx): boolean` | 不给即总是存在；返回 false 时这条命令此刻不存在：工具栏、菜单栏、右键菜单与菜单命令里都不列它，快捷键不触发，执行也不跑（如只在开发者模式下才有的调试入口）。 |
+| `visible(context: Ctx): boolean` | 不给即总是存在；返回 false 时这条命令此刻不存在：工具栏、菜单栏、上下文菜单与菜单命令里都不列它，快捷键不触发，执行也不跑（如只在开发者模式下才有的调试入口）。 |
 | `checked(context: Ctx): boolean` | 给了就是开关式命令，按钮与菜单项显示选中状态。 |
 | `run(context: Ctx): void` | 执行命令；按钮、菜单项与快捷键都只在命令此刻可用时调用它。弹层命令与菜单命令可以不给：工具栏上点它们是打开弹层或菜单，不调 run；给了 run，快捷键按下时调它（通常调工具栏的 open 打开同一份）。 |
 | `panel(context: Ctx): DesignerCommandPanel<Ctx>` | 弹层命令：每次打开时建出放进弹层的面板。 |
@@ -354,7 +354,7 @@ type FlowDesignerCommand = DesignerCommand<FlowDesignerContext>
 type DesignerCommandPlacement = 'toolbar' | `menubar:${string}` | `menu:${string}` | `selection:${string}`
 ```
 
-命令出现的位置：工具栏；菜单栏上的某张菜单（菜单 id，如 file、edit、view、help，或各款与扩展登记的）；某种主体的右键菜单（主体由各款定，如 node、edge、element、card、blank）；或选中某种主体时浮在选中框上的选中工具条（主体同样由各款定，如 element、text、node、multiple）。
+命令出现的位置：工具栏；菜单栏上的某张菜单（菜单 id，如 file、edit、view、help，或各款与扩展登记的）；某种主体的上下文菜单（主体由各款定，如 node、edge、element、card、blank）；或选中某种主体时浮在选中框上的选中工具条（主体同样由各款定，如 element、text、node、multiple）。
 
 ## 导入与导出
 
