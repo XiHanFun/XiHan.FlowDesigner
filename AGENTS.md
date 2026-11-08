@@ -137,7 +137,7 @@ Node.js 与 pnpm 的最低版本见 `flow/package.json` 的 `engines`，其余�
 - 使用者能感知的改动附一份变更集（`pnpm changeset`），中文、官方口径；CI、测试、文档站、脚本、README 不写。
 - 定版本用 `flow/scripts/release/VersionUpgrade.bat`（或 `pwsh scripts/release/VersionUpgrade.ps1`）：消费变更集、写各包 CHANGELOG，可进出预发布通道；不提交、不打标签、不推送，`-DryRun` 只打印计划。同一笔在 `docs/changelog.md` 补这一版的一节，导航上的版本号取 core 的版本。
 - release.yml 先核对标签（带预发布后缀的在 preview 的历史里，不带的在 main 的历史里；标签号等于包版本且与 `.changeset/pre.json` 一致，`check-release-tag.mjs`），再构建、`gate:publish`、`changeset publish`（带 provenance），接着 `scripts/release/promote-latest.mjs`：预发布模式、且 npm 上这个包还没有任何正式版时，等 npm 取得到这一版再把 `latest` 也指过来（正式版发出前每个候选版都让 `latest` 跟着走，有了正式版后自动不做，本地可 `--dry-run`），然后 `scripts/release/smoke.mjs --version` 冒烟，最后调 `deploy-docs.yml` 部署文档站。deploy-docs 只部署已经发布的版本：当前版本有标签、main 上的包与标签一致、这个版本已在 npm 上。
-- npm 包的版本不建 GitHub Release。
+- 每个 `v<版本>` 标签有一个同名的 GitHub Release：发完 npm 后由 release.yml 建好，说明取 `docs/changelog.md` 这一版的一节（`scripts/release/release-notes.mjs`），预发布版标成 Pre-release。这一节缺了，「核对标签」就拦下，不会发包。
 - main 只接收发版；两次发版之间挑进 main 的纯文档修正，进了 main 以后立刻把 main 合回 dev。
 - 合并 main 或 preview、打标签、发布都只在用户明确要求时执行。
 
@@ -148,7 +148,7 @@ Node.js 与 pnpm 的最低版本见 `flow/package.json` 的 `engines`，其余�
 3. 门禁全跑后提交 `build: v<版本>`：`flow/` 的 lint、build、typecheck、test、`gate:publish`、`smoke --pack`，`docs/` 的 gate:gen、check:examples、lint、typecheck、build，`git diff --check`。
 4. 推 dev，等 CI 全绿。
 5. 发布分支从 dev 快进（预览版 `git fetch . dev:preview`，正式版 `git fetch . dev:main`，不是快进就停下查），推发布分支，等上面的 CI 全绿。
-6. 在发布分支的版本提交上打 `v<版本>` 标签并推送；Release 发完后用 `npm view @xihan-flow/designer dist-tags` 核对（正式版发出前 `rc` 与 `latest` 都指这一版）。
+6. 在发布分支的版本提交上打 `v<版本>` 标签并推送；Release 发完后用 `npm view @xihan-flow/designer dist-tags` 核对（正式版发出前 `rc` 与 `latest` 都指这一版），GitHub 上这个标签的 Release 也已建好。
 
 ## 分支与 worktree
 
