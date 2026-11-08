@@ -10,6 +10,19 @@
 
 本页记录曦寒流程设计器各版本的变更，只收使用者能感知的改动。`@xihan-flow/core`、`@xihan-flow/runtime`、`@xihan-flow/designer` 三个包总是同一个版本号一起发布。
 
+## v1.0.0（2026-11-08）
+
+首个正式版。设计器画布上带问题的连线也有了常驻的问题标记；所依赖的 XiHan.UI 升到 5.4.0，外观随之变化。
+
+::: warning 升级须知
+- `@xihan-ui/*` 的 peer 范围改为 `^5.4.0`：宿主要装 XiHan.UI 5.4.0 及以上。
+- 缺省品牌色换成偏紫的靛蓝；要保留原来的蓝色，在主题根上写 `data-brand="indigo"`。
+:::
+
+- **修复** 设计器画布上，带问题的连线和节点一样有常驻的问题标记：连线带 `data-issue`（`error` 或 `warning`），按最严重的一级在连线中点的右上方画一颗圆点，有标签时画在标签右上角。预设规则、通用校验和扩展的 `rules` 给出的连线问题都这样标。选中、悬停、高亮和只读时圆点都在，问题消失后随之去掉。
+- **调整** 设计器的外观随 XiHan.UI 变化：圆角、聚焦环与面板分组的箭头位置都有调整；问题面板的筛选和属性面板、设置里的按钮组，选中项改为实心主色、字反白。
+- **调整** 工具栏钮的提示压在下拉或菜单上面时，按空白处会一并收起；按下带提示的钮后，提示不再重新弹出。
+
 ## v1.0.0-rc.2（2026-10-22）
 
 - **新增** 设计器加 `closable` 属性（同名 attribute）：开着时菜单栏最右端显示一颗关闭钮，按下派发 `close` 事件，怎么关、要不要先问未保存的修改由宿主决定；缺省不显示。嵌在业务页面里时用它回到列表，见[与宿主集成](./guide/host#打开与保存)。
@@ -445,7 +458,7 @@ designer.schema = schema
 
 ## 问题列表
 
-流程定义、扩展或校验选项变了之后，设计器重新校验，问题列表显示全部问题，同时派发 `issues-change`。错误与警告的条数在问题列表的面板头上，点一下只看或不看这一级。有问题的节点带 `data-issue`，取值是落在它上面最严重的一级（`error` 或 `warning`），皮肤据此画出标记。点一条问题，设计器选中问题所在的节点或连线并显露它；问题落在某个属性上时，焦点直接交给属性面板里的那个字段。
+流程定义、扩展或校验选项变了之后，设计器重新校验，问题列表显示全部问题，同时派发 `issues-change`。错误与警告的条数在问题列表的面板头上，点一下只看或不看这一级。有问题的节点和连线带 `data-issue`，取值是落在它上面最严重的一级（`error` 或 `warning`）。画布上常驻一颗按这一级着色的圆点：节点画在右上角，连线画在中点的右上方，连线有标签时画在标签右上角；问题消失后圆点随之去掉。点一条问题，设计器选中问题所在的节点或连线并显露它；问题落在某个属性上时，焦点直接交给属性面板里的那个字段。
 
 问题码与说明见[问题码](../reference/issues)。`validateOptions` 按问题码改写严重程度，写 `off` 即不报告：
 
@@ -2398,7 +2411,7 @@ type PropertyCondition = { readonly path: JsonPath, readonly equals: JsonValue }
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
 | `editors?` | `PropertyEditorLayer<Editor>` | 属性编辑器，按扩展顺序压在设计器内建的之上。 |
-| `commands?` | `readonly DesignerCommand<Ctx>[]` | 命令：工具栏按钮、右键菜单项与快捷键共用；命令 id 与快捷键不能与内置或别的扩展的重名。 |
+| `commands?` | `readonly DesignerCommand<Ctx>[]` | 命令：工具栏按钮、上下文菜单项与快捷键共用；命令 id 与快捷键不能与内置或别的扩展的重名。 |
 | `fieldSources?` | `readonly DesignerFieldSource[]` | 字段来源：导入字段的对话框里，排在内置的 JSON 样例与 JSON Schema 两页之后。 |
 
 | 方法 | 说明 |
@@ -2474,7 +2487,7 @@ type FlowDesignerCommand = DesignerCommand<FlowDesignerContext>
 
 ### DesignerCommand {#designercommand}
 
-一条命令：工具栏按钮、右键菜单项与快捷键共用。给了 panel 是弹层命令，给了 menu 是菜单命令，在工具栏上点它分别打开锚在按钮上的弹层与菜单，两者只能给一个；两者都没给的普通命令必须有 run。登记时（mergeExtensions）不合这两条就抛 TypeError。
+一条命令：工具栏按钮、上下文菜单项与快捷键共用。给了 panel 是弹层命令，给了 menu 是菜单命令，在工具栏上点它分别打开锚在按钮上的弹层与菜单，两者只能给一个；两者都没给的普通命令必须有 run。登记时（mergeExtensions）不合这两条就抛 TypeError。
 
 类型参数 `Ctx = unknown`。
 
@@ -2492,7 +2505,7 @@ type FlowDesignerCommand = DesignerCommand<FlowDesignerContext>
 | 方法 | 说明 |
 | --- | --- |
 | `enabled(context: Ctx): boolean` | 不给即总是可用。 |
-| `visible(context: Ctx): boolean` | 不给即总是存在；返回 false 时这条命令此刻不存在：工具栏、菜单栏、右键菜单与菜单命令里都不列它，快捷键不触发，执行也不跑（如只在开发者模式下才有的调试入口）。 |
+| `visible(context: Ctx): boolean` | 不给即总是存在；返回 false 时这条命令此刻不存在：工具栏、菜单栏、上下文菜单与菜单命令里都不列它，快捷键不触发，执行也不跑（如只在开发者模式下才有的调试入口）。 |
 | `checked(context: Ctx): boolean` | 给了就是开关式命令，按钮与菜单项显示选中状态。 |
 | `run(context: Ctx): void` | 执行命令；按钮、菜单项与快捷键都只在命令此刻可用时调用它。弹层命令与菜单命令可以不给：工具栏上点它们是打开弹层或菜单，不调 run；给了 run，快捷键按下时调它（通常调工具栏的 open 打开同一份）。 |
 | `panel(context: Ctx): DesignerCommandPanel<Ctx>` | 弹层命令：每次打开时建出放进弹层的面板。 |
@@ -2505,7 +2518,7 @@ type FlowDesignerCommand = DesignerCommand<FlowDesignerContext>
 type DesignerCommandPlacement = 'toolbar' | `menubar:${string}` | `menu:${string}` | `selection:${string}`
 ```
 
-命令出现的位置：工具栏；菜单栏上的某张菜单（菜单 id，如 file、edit、view、help，或各款与扩展登记的）；某种主体的右键菜单（主体由各款定，如 node、edge、element、card、blank）；或选中某种主体时浮在选中框上的选中工具条（主体同样由各款定，如 element、text、node、multiple）。
+命令出现的位置：工具栏；菜单栏上的某张菜单（菜单 id，如 file、edit、view、help，或各款与扩展登记的）；某种主体的上下文菜单（主体由各款定，如 node、edge、element、card、blank）；或选中某种主体时浮在选中框上的选中工具条（主体同样由各款定，如 element、text、node、multiple）。
 
 ## 导入与导出
 
